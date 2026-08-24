@@ -1,3 +1,7 @@
+/* ==========================================================================
+   PIGGY MASTER ADMIN DASHBOARD - PIGGIES FARM VIEW
+   ========================================================================== */
+
 import { piggiesService } from '../services/piggiesService.js';
 import { usersService } from '../services/usersService.js';
 import { DataTable } from '../components/DataTable.js';
@@ -49,7 +53,7 @@ export class PiggiesView {
           header: 'Peso Actual',
           render: (p) => `
             <div style="font-weight: 800; color: var(--accent-gold); font-size: 1rem;">
-              ⚖️ ${p.currentWeight} kg
+              ${p.currentWeight} kg
             </div>
           `
         },
@@ -93,7 +97,7 @@ export class PiggiesView {
           render: (p) => `
             <div style="display: flex; gap: 0.4rem; justify-content: flex-end;">
               <button class="btn btn-secondary btn-sm" data-action="edit-piggy" title="Editar Pesaje y Estado">
-                ${icons.edit} Editar
+                ${icons.edit} <span>Editar</span>
               </button>
               <button class="btn btn-secondary btn-sm" data-action="delete-piggy" style="color: var(--accent-red);" title="Eliminar">
                 ${icons.trash}
@@ -258,7 +262,7 @@ export class PiggiesView {
             </div>
 
             <div class="form-group">
-              <label class="form-label" for="new-piggy-amount">Inversión (COP)</label>
+              <label class="form-label" for="new-piggy-amount">Inversión</label>
               <input type="number" id="new-piggy-amount" class="form-input" value="1000000" step="100000" required />
             </div>
           </div>

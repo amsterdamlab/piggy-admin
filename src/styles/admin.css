@@ -482,6 +482,16 @@ body {
   border-color: var(--border-color-light);
 }
 
+.stat-card-clickable {
+  cursor: pointer;
+}
+
+.stat-card-clickable:hover {
+  border-color: var(--primary-pink);
+  box-shadow: 0 4px 15px rgba(255, 75, 139, 0.2);
+  transform: translateY(-3px);
+}
+
 .stat-icon-wrapper {
   width: 52px;
   height: 52px;

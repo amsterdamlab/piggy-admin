@@ -1,3 +1,8 @@
+/* ==========================================================================
+   PIGGY MASTER ADMIN DASHBOARD - WALLET & TREASURY VIEW
+   Approval center for Bre-B/QR vouchers, withdrawals, and ledger audit
+   ========================================================================== */
+
 import { walletService } from '../services/walletService.js';
 import { DataTable } from '../components/DataTable.js';
 import { modal } from '../components/Modal.js';
@@ -37,31 +42,35 @@ export class WalletView {
               </div>
             </div>
 
+            <!-- Tabs -->
             <div class="tabs-container" style="width: 100%; margin-bottom: 0;">
-              <button class="tab-btn ${this.currentTab === 'recharges' ? 'active' : ''}" data-tab="recharges">
-                📥 Comprobantes de Recarga ${pendingRecharges > 0 ? `<span class="badge badge-danger" style="margin-left: 4px;">${pendingRecharges}</span>` : ''}
+              <button class="tab-btn ${this.currentTab === 'recharges' ? 'active' : ''}" data-tab="recharges" style="display: inline-flex; align-items: center; gap: 6px;">
+                ${icons.download} <span>Comprobantes de Recarga</span> ${pendingRecharges > 0 ? `<span class="badge badge-danger" style="margin-left: 4px;">${pendingRecharges}</span>` : ''}
               </button>
-              <button class="tab-btn ${this.currentTab === 'withdrawals' ? 'active' : ''}" data-tab="withdrawals">
-                📤 Solicitudes de Retiro ${pendingWithdrawals > 0 ? `<span class="badge badge-warning" style="margin-left: 4px;">${pendingWithdrawals}</span>` : ''}
+              <button class="tab-btn ${this.currentTab === 'withdrawals' ? 'active' : ''}" data-tab="withdrawals" style="display: inline-flex; align-items: center; gap: 6px;">
+                ${icons.upload} <span>Solicitudes de Retiro</span> ${pendingWithdrawals > 0 ? `<span class="badge badge-warning" style="margin-left: 4px;">${pendingWithdrawals}</span>` : ''}
               </button>
-              <button class="tab-btn ${this.currentTab === 'ledger' ? 'active' : ''}" data-tab="ledger">
-                📜 Libro Contable (Auditoría)
+              <button class="tab-btn ${this.currentTab === 'ledger' ? 'active' : ''}" data-tab="ledger" style="display: inline-flex; align-items: center; gap: 6px;">
+                ${icons.wallet} <span>Libro Contable (Auditoría)</span>
               </button>
             </div>
           </div>
 
+          <!-- Tab 1: Recharges -->
           <div id="tab-wallet-recharges" style="display: ${this.currentTab === 'recharges' ? 'block' : 'none'};">
             <div id="recharges-table-wrapper">
               ${this.renderRechargesTableHtml()}
             </div>
           </div>
 
+          <!-- Tab 2: Withdrawals -->
           <div id="tab-wallet-withdrawals" style="display: ${this.currentTab === 'withdrawals' ? 'block' : 'none'};">
             <div id="withdrawals-table-wrapper">
               ${this.renderWithdrawalsTableHtml()}
             </div>
           </div>
 
+          <!-- Tab 3: Ledger -->
           <div id="tab-wallet-ledger" style="display: ${this.currentTab === 'ledger' ? 'block' : 'none'};">
             <div id="ledger-table-wrapper">
               ${this.renderLedgerTableHtml()}
@@ -122,9 +131,9 @@ export class WalletView {
         {
           header: 'Estado',
           render: (r) => {
-            if (r.status === 'pending') return `<span class="badge badge-warning">Pendiente ⚠️</span>`;
-            if (r.status === 'approved') return `<span class="badge badge-success">Aprobado ✓</span>`;
-            return `<span class="badge badge-danger">Rechazado ✗</span>`;
+            if (r.status === 'pending') return `<span class="badge badge-warning">Pendiente</span>`;
+            if (r.status === 'approved') return `<span class="badge badge-success">Aprobado</span>`;
+            return `<span class="badge badge-danger">Rechazado</span>`;
           }
         },
         {
@@ -200,9 +209,9 @@ export class WalletView {
         {
           header: 'Estado',
           render: (w) => {
-            if (w.status === 'pending') return `<span class="badge badge-warning">Pendiente ⚠️</span>`;
-            if (w.status === 'approved') return `<span class="badge badge-success">Transferido ✓</span>`;
-            return `<span class="badge badge-danger">Rechazado ✗</span>`;
+            if (w.status === 'pending') return `<span class="badge badge-warning">Pendiente</span>`;
+            if (w.status === 'approved') return `<span class="badge badge-success">Transferido</span>`;
+            return `<span class="badge badge-danger">Rechazado</span>`;
           }
         },
         {
@@ -245,7 +254,7 @@ export class WalletView {
           render: (t) => `<span class="badge badge-info">${t.type}</span>`
         },
         {
-          header: 'Monto (COP)',
+          header: 'Monto',
           render: (t) => `
             <div style="font-weight: 800; color: ${t.amount >= 0 ? 'var(--accent-green)' : 'var(--accent-red)'};">
               ${t.amount >= 0 ? '+' : ''}$${Math.abs(t.amount).toLocaleString('es-CO')}
@@ -274,6 +283,7 @@ export class WalletView {
   attachEvents(container) {
     this.container = container;
 
+    // Tabs
     container.querySelectorAll('.tab-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const tab = btn.getAttribute('data-tab');
@@ -318,12 +328,12 @@ export class WalletView {
           <div style="display: flex; flex-direction: column; gap: 1rem; align-items: center;">
             <div style="width: 100%; max-height: 480px; overflow: auto; background: var(--bg-dark); border-radius: var(--radius-md); display: flex; justify-content: center; padding: 1rem; border: 1px solid var(--border-color);">
               ${r.receiptUrl 
-                ? `<img src="${r.receiptUrl}" alt="Comprobante" style="max-width: 100%; border-radius: var(--radius-sm);" onerror="this.parentElement.innerHTML='<div style=\\'padding: 3rem; color: var(--text-muted);\\'>⚠️ Imagen no disponible o enlace expirado</div>';" />`
+                ? `<img src="${r.receiptUrl}" alt="Comprobante" style="max-width: 100%; border-radius: var(--radius-sm);" onerror="this.parentElement.innerHTML='<div style=\\'padding: 3rem; color: var(--text-muted);\\'>Imagen no disponible o enlace expirado</div>';" />`
                 : `<div style="padding: 3rem; color: var(--text-muted);">No se adjuntó imagen en esta solicitud</div>`
               }
             </div>
             <div style="width: 100%; display: flex; justify-content: space-between; font-size: 0.9rem; background: var(--bg-dark); padding: 0.75rem 1rem; border-radius: var(--radius-md);">
-              <div>Monto: <strong>$${r.amount.toLocaleString('es-CO')} COP</strong></div>
+              <div>Monto: <strong>$${r.amount.toLocaleString('es-CO')}</strong></div>
               <div>Método: <strong>${r.paymentMethod}</strong></div>
               <div>Referencia: <code>${r.referenceCode}</code></div>
             </div>

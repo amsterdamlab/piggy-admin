@@ -1,3 +1,7 @@
+/* ==========================================================================
+   PIGGY MASTER ADMIN DASHBOARD - GOURMET & ALLIES VIEW
+   ========================================================================== */
+
 import { gourmetAlliesService } from '../services/gourmetAlliesService.js';
 import { DataTable } from '../components/DataTable.js';
 import { modal } from '../components/Modal.js';
@@ -29,22 +33,25 @@ export class GourmetAlliesView {
               </div>
             </div>
 
+            <!-- Tabs -->
             <div class="tabs-container" style="width: 100%; margin-bottom: 0;">
-              <button class="tab-btn ${this.currentTab === 'gourmet' ? 'active' : ''}" data-tab="gourmet">
-                🥩 Piggy Gourmet (${this.gourmetProducts.length})
+              <button class="tab-btn ${this.currentTab === 'gourmet' ? 'active' : ''}" data-tab="gourmet" style="display: inline-flex; align-items: center; gap: 6px;">
+                ${icons.gourmet} <span>Piggy Gourmet (${this.gourmetProducts.length})</span>
               </button>
-              <button class="tab-btn ${this.currentTab === 'allies' ? 'active' : ''}" data-tab="allies">
-                🤝 Red de Aliados (${this.allies.length})
+              <button class="tab-btn ${this.currentTab === 'allies' ? 'active' : ''}" data-tab="allies" style="display: inline-flex; align-items: center; gap: 6px;">
+                ${icons.allies} <span>Red de Aliados (${this.allies.length})</span>
               </button>
             </div>
           </div>
 
+          <!-- Tab 1: Gourmet Products -->
           <div id="tab-content-gourmet" style="display: ${this.currentTab === 'gourmet' ? 'block' : 'none'};">
             <div id="gourmet-datatable-wrapper">
               ${this.renderGourmetTableHtml()}
             </div>
           </div>
 
+          <!-- Tab 2: Allies Directory -->
           <div id="tab-content-allies" style="display: ${this.currentTab === 'allies' ? 'block' : 'none'};">
             <div id="allies-datatable-wrapper">
               ${this.renderAlliesTableHtml()}
@@ -70,7 +77,7 @@ export class GourmetAlliesView {
             <div style="width: 44px; height: 44px; border-radius: var(--radius-md); overflow: hidden; background: var(--bg-dark); border: 1px solid var(--border-color); display: flex; align-items: center; justify-content: center;">
               ${p.imageUrl 
                 ? `<img src="${p.imageUrl}" alt="${p.name}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.onerror=null; this.src='https://placehold.co/100x100/151B28/FF4B8B?text=Corte';" />`
-                : `<span style="font-size: 1.3rem;">🥩</span>`
+                : `<span style="color: var(--primary-pink);">${icons.gourmet}</span>`
               }
             </div>
           `
@@ -89,11 +96,11 @@ export class GourmetAlliesView {
           render: (p) => `<span class="badge badge-neutral">${p.category}</span>`
         },
         {
-          header: 'Precio COP / Puntos',
+          header: 'Precio / Puntos',
           render: (p) => `
             <div>
               <div style="font-weight: 800; color: var(--accent-green);">$${p.price.toLocaleString('es-CO')}</div>
-              <div style="font-size: 0.72rem; color: var(--accent-gold); font-weight: 700;">⭐ ${p.pointsPrice} pts</div>
+              <div style="font-size: 0.72rem; color: var(--accent-gold); font-weight: 700;">${p.pointsPrice} pts</div>
             </div>
           `
         },
@@ -138,7 +145,7 @@ export class GourmetAlliesView {
             <div style="width: 44px; height: 44px; border-radius: var(--radius-md); overflow: hidden; background: var(--bg-dark); border: 1px solid var(--border-color); display: flex; align-items: center; justify-content: center;">
               ${a.logoUrl 
                 ? `<img src="${a.logoUrl}" alt="${a.name}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.onerror=null; this.src='https://placehold.co/100x100/151B28/10B981?text=Aliado';" />`
-                : `<span style="font-size: 1.3rem;">🤝</span>`
+                : `<span style="color: var(--accent-green);">${icons.allies}</span>`
               }
             </div>
           `
@@ -185,6 +192,7 @@ export class GourmetAlliesView {
   attachEvents(container) {
     this.container = container;
 
+    // Tabs switching
     container.querySelectorAll('.tab-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const tab = btn.getAttribute('data-tab');
@@ -215,6 +223,7 @@ export class GourmetAlliesView {
     if (alliesEl) alliesEl.style.display = tab === 'allies' ? 'block' : 'none';
   }
 
+  // ==================== GOURMET MODAL ====================
   openGourmetModal(product = null) {
     const isEdit = !!product;
     const initial = product || {
@@ -249,7 +258,7 @@ export class GourmetAlliesView {
 
           <div class="form-row">
             <div class="form-group">
-              <label class="form-label" for="g-price">Precio Dinero (COP)</label>
+              <label class="form-label" for="g-price">Precio</label>
               <input type="number" id="g-price" class="form-input" value="${initial.price}" step="1000" required />
             </div>
 
@@ -273,6 +282,7 @@ export class GourmetAlliesView {
             <label class="form-label" for="g-image-url">URL Directa de la Imagen</label>
             <input type="url" id="g-image-url" class="form-input" placeholder="https://..." value="${initial.imageUrl}" />
             
+            <!-- Live Preview -->
             <div class="image-preview-container" id="g-image-preview-box">
               ${initial.imageUrl 
                 ? `<img src="${initial.imageUrl}" class="image-preview-img" alt="Preview" onerror="this.parentElement.innerHTML='<span class=\\'image-preview-placeholder\\'>URL inválida</span>';" />`
@@ -289,7 +299,7 @@ export class GourmetAlliesView {
           input.addEventListener('input', (e) => {
             const url = e.target.value.trim();
             if (url) {
-              box.innerHTML = `<img src="${url}" class="image-preview-img" alt="Preview" onerror="this.parentElement.innerHTML='<span class=\\'image-preview-placeholder\\'>⚠️ Imagen no encontrada</span>';" />`;
+              box.innerHTML = `<img src="${url}" class="image-preview-img" alt="Preview" onerror="this.parentElement.innerHTML='<span class=\\'image-preview-placeholder\\'>Imagen no encontrada</span>';" />`;
             } else {
               box.innerHTML = `<span class="image-preview-placeholder">Vista previa del corte / combo</span>`;
             }
@@ -346,6 +356,7 @@ export class GourmetAlliesView {
     });
   }
 
+  // ==================== ALLIES MODAL ====================
   openAllyModal(ally = null) {
     const isEdit = !!ally;
     const initial = ally || {
@@ -392,6 +403,7 @@ export class GourmetAlliesView {
             <label class="form-label" for="a-logo-url">URL del Logo del Aliado</label>
             <input type="url" id="a-logo-url" class="form-input" placeholder="https://..." value="${initial.logoUrl}" />
             
+            <!-- Live Preview -->
             <div class="image-preview-container" id="a-logo-preview-box">
               ${initial.logoUrl 
                 ? `<img src="${initial.logoUrl}" class="image-preview-img" alt="Logo" onerror="this.parentElement.innerHTML='<span class=\\'image-preview-placeholder\\'>Logo no válido</span>';" />`
@@ -408,7 +420,7 @@ export class GourmetAlliesView {
           input.addEventListener('input', (e) => {
             const url = e.target.value.trim();
             if (url) {
-              box.innerHTML = `<img src="${url}" class="image-preview-img" alt="Logo" onerror="this.parentElement.innerHTML='<span class=\\'image-preview-placeholder\\'>⚠️ Logo no encontrado</span>';" />`;
+              box.innerHTML = `<img src="${url}" class="image-preview-img" alt="Logo" onerror="this.parentElement.innerHTML='<span class=\\'image-preview-placeholder\\'>Logo no encontrado</span>';" />`;
             } else {
               box.innerHTML = `<span class="image-preview-placeholder">Vista previa del Logo</span>`;
             }

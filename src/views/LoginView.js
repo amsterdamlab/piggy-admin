@@ -1,3 +1,7 @@
+/* ==========================================================================
+   PIGGY MASTER ADMIN DASHBOARD - LOGIN VIEW
+   ========================================================================== */
+
 import { authService } from '../services/authService.js';
 import { toast } from '../components/Toast.js';
 import { icons } from '../icons.js';
@@ -11,8 +15,10 @@ export class LoginView {
     return `
       <div class="login-wrapper">
         <div class="login-card">
-          <div class="login-logo">👑</div>
-          <h2 class="login-title">Piggy Master Admin</h2>
+          <div style="margin-bottom: 1.25rem;">
+            <img src="/piggy-favicon.svg" alt="Piggy Logo" style="width: 58px; height: 58px; margin: 0 auto; display: block;" />
+          </div>
+          <h2 class="login-title">Piggy Admin</h2>
           <p class="login-subtitle">Ingreso seguro a la consola de administración y tesorería</p>
 
           <form id="admin-login-form">
@@ -40,7 +46,7 @@ export class LoginView {
                 autocomplete="current-password"
               />
               <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.35rem;">
-                Tip: Puedes usar tu contraseña de Supabase o el PIN Maestro de Administrador.
+                Puedes usar tu contraseña de Supabase o el PIN Maestro de Administrador.
               </div>
             </div>
 

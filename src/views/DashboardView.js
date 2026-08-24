@@ -1,3 +1,8 @@
+/* ==========================================================================
+   PIGGY MASTER ADMIN DASHBOARD - DASHBOARD VIEW
+   Main executive analytics view with Chart.js, KPIs, and Top Investors
+   ========================================================================== */
+
 import { dashboardService } from '../services/dashboardService.js';
 import { renderStatCard } from '../components/StatCard.js';
 import { ChartWrapper } from '../components/ChartWrapper.js';
@@ -12,21 +17,19 @@ export class DashboardView {
     const metrics = await dashboardService.getSummaryMetrics();
     const topInvestors = await dashboardService.getTopInvestors();
 
-    const formattedCapital = new Intl.NumberFormat('es-CO', {
-      style: 'currency',
-      currency: 'COP',
-      maximumFractionDigits: 0
-    }).format(metrics.totalInvested);
+    const formattedCapital = `$${Number(metrics.totalInvested || 0).toLocaleString('es-CO')}`;
 
     return `
       <div class="dashboard-view">
+        <!-- KPI Cards Grid (Directly linked to modules) -->
         <div class="stats-grid">
           ${renderStatCard({
             title: 'Capital Total Gestionado',
             value: formattedCapital,
             subtitle: '+18.4% vs mes anterior',
             iconSvg: icons.dollar,
-            color: 'pink'
+            color: 'pink',
+            href: '#wallet'
           })}
 
           ${renderStatCard({
@@ -34,7 +37,8 @@ export class DashboardView {
             value: `${metrics.activePiggies} <span style="font-size: 0.9rem; font-weight: 500; color: var(--text-secondary);">/ ${metrics.totalPiggies}</span>`,
             subtitle: 'Ciclo óptimo de 19 semanas',
             iconSvg: icons.pig,
-            color: 'gold'
+            color: 'gold',
+            href: '#piggies'
           })}
 
           ${renderStatCard({
@@ -42,18 +46,21 @@ export class DashboardView {
             value: metrics.totalUsers,
             subtitle: 'Comunidad de engorde digital',
             iconSvg: icons.users,
-            color: 'green'
+            color: 'green',
+            href: '#users'
           })}
 
           ${renderStatCard({
             title: 'Solicitudes Pendientes',
             value: `<span style="color: ${metrics.pendingRequests > 0 ? 'var(--accent-red)' : 'var(--text-primary)'};">${metrics.pendingRequests}</span>`,
-            subtitle: metrics.pendingRequests > 0 ? '⚠️ Requiere revisión inmediata' : 'Al día',
+            subtitle: metrics.pendingRequests > 0 ? 'Requiere revisión en tesorería' : 'Al día',
             iconSvg: icons.wallet,
-            color: metrics.pendingRequests > 0 ? 'purple' : 'blue'
+            color: metrics.pendingRequests > 0 ? 'purple' : 'blue',
+            href: '#wallet'
           })}
         </div>
 
+        <!-- Chart Section -->
         <div class="card">
           <div class="card-header">
             <div>
@@ -71,7 +78,9 @@ export class DashboardView {
           </div>
         </div>
 
+        <!-- Bottom Grid: Top Investors & Quick Actions -->
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 1.5rem;">
+          <!-- Top Investors Card -->
           <div class="card">
             <div class="card-header">
               <h3 class="card-title">${icons.users} Top Inversionistas</h3>
@@ -83,7 +92,7 @@ export class DashboardView {
                   <tr>
                     <th>Inversionista</th>
                     <th>Piggies</th>
-                    <th>Inversión COP</th>
+                    <th>Inversión</th>
                     <th>Nivel ROI</th>
                   </tr>
                 </thead>
@@ -94,8 +103,8 @@ export class DashboardView {
                         <div style="font-weight: 700;">${inv.name}</div>
                         <div style="font-size: 0.75rem; color: var(--text-muted);">${inv.contact}</div>
                       </td>
-                      <td style="font-weight: 800; color: var(--primary-pink);">${inv.piggiesCount} 🐖</td>
-                      <td>$${(inv.totalInvested).toLocaleString('es-CO')}</td>
+                      <td style="font-weight: 800; color: var(--primary-pink);">${inv.piggiesCount} Cerditos</td>
+                      <td style="font-weight: 700; color: var(--accent-green);">$${(inv.totalInvested).toLocaleString('es-CO')}</td>
                       <td><span class="badge badge-warning">${inv.roiTier}</span></td>
                     </tr>
                   `).join('')}
@@ -104,6 +113,7 @@ export class DashboardView {
             </div>
           </div>
 
+          <!-- Quick Actions & Protocol -->
           <div class="card">
             <div class="card-header">
               <h3 class="card-title">${icons.zap} Acciones Rápidas & Tesorería</h3>

@@ -1,3 +1,7 @@
+/* ==========================================================================
+   PIGGY MASTER ADMIN DASHBOARD - SIDEBAR COMPONENT
+   ========================================================================== */
+
 import { icons } from '../icons.js';
 import { store } from '../state.js';
 import { authService } from '../services/authService.js';
@@ -32,10 +36,12 @@ export class Sidebar {
     const html = `
       <aside class="admin-sidebar" id="main-admin-sidebar">
         <div class="sidebar-header">
-          <div class="sidebar-logo-icon">🐷</div>
+          <div class="sidebar-logo-icon" style="background: transparent; box-shadow: none; padding: 0;">
+            <img src="/piggy-favicon.svg" alt="Piggy Logo" style="width: 38px; height: 38px; object-fit: contain;" />
+          </div>
           <div>
             <div class="sidebar-brand-title">Piggy Admin <span class="sidebar-brand-badge">Master</span></div>
-            <div style="font-size: 0.7rem; color: var(--text-muted);">Panel de Control 👑</div>
+            <div style="font-size: 0.7rem; color: var(--text-muted);">Panel de Control</div>
           </div>
         </div>
 
@@ -52,7 +58,9 @@ export class Sidebar {
 
         <div class="sidebar-footer">
           <div class="admin-user-info">
-            <div class="admin-avatar">👑</div>
+            <div class="admin-avatar" style="background: var(--bg-card); border: 1px solid var(--border-color); color: var(--primary-pink);">
+              ${icons.users}
+            </div>
             <div class="admin-user-details">
               <div class="admin-user-name">${admin.full_name || 'Admin Piggy'}</div>
               <div class="admin-user-role">${admin.role || 'Super Administrador'}</div>
@@ -83,6 +91,7 @@ export class Sidebar {
     this.element = parentElement.querySelector('#main-admin-sidebar');
     if (!this.element) return;
 
+    // Logout button
     const logoutBtn = this.element.querySelector('#sidebar-logout-btn');
     if (logoutBtn) {
       logoutBtn.addEventListener('click', async () => {
@@ -93,6 +102,7 @@ export class Sidebar {
       });
     }
 
+    // Subscribe to state updates
     if (!this.unsubscribeRoute) {
       this.unsubscribeRoute = store.subscribe('route_changed', (newRoute) => {
         this.updateActiveRoute(newRoute);

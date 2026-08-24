@@ -1,3 +1,8 @@
+/* ==========================================================================
+   PIGGY MASTER ADMIN DASHBOARD - MARKETPLACE VIEW
+   CRUD for Piggy Marketplace & Accelerators (URL-based images)
+   ========================================================================== */
+
 import { marketplaceService } from '../services/marketplaceService.js';
 import { DataTable } from '../components/DataTable.js';
 import { modal } from '../components/Modal.js';
@@ -27,7 +32,7 @@ export class MarketplaceView {
             <div style="width: 48px; height: 48px; border-radius: var(--radius-md); overflow: hidden; background: var(--bg-dark); border: 1px solid var(--border-color); display: flex; align-items: center; justify-content: center;">
               ${item.imageUrl 
                 ? `<img src="${item.imageUrl}" alt="${item.itemName}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.onerror=null; this.src='https://placehold.co/100x100/151B28/FF4B8B?text=Piggy';" />`
-                : `<span style="font-size: 1.5rem;">🐖</span>`
+                : `<span style="color: var(--primary-pink);">${icons.pig}</span>`
               }
             </div>
           `
@@ -53,7 +58,7 @@ export class MarketplaceView {
           `
         },
         {
-          header: 'Precio (COP)',
+          header: 'Precio',
           render: (item) => `
             <div style="font-weight: 800; color: var(--accent-green);">
               $${item.price.toLocaleString('es-CO')}
@@ -160,7 +165,7 @@ export class MarketplaceView {
 
           <div class="form-row">
             <div class="form-group">
-              <label class="form-label" for="mk-price">Precio (COP)</label>
+              <label class="form-label" for="mk-price">Precio</label>
               <input type="number" id="mk-price" class="form-input" value="${initial.price}" step="100000" required />
             </div>
 
@@ -193,6 +198,7 @@ export class MarketplaceView {
               Pega aquí el enlace directo de la imagen subida a GitHub.
             </div>
 
+            <!-- Live Image Preview -->
             <div class="image-preview-container" id="mk-image-preview-box">
               ${initial.imageUrl 
                 ? `<img src="${initial.imageUrl}" class="image-preview-img" alt="Vista previa" onerror="this.parentElement.innerHTML='<span class=\\'image-preview-placeholder\\'>URL de imagen no válida</span>';" />` 
@@ -211,7 +217,7 @@ export class MarketplaceView {
             const url = e.target.value.trim();
             if (url) {
               previewBox.innerHTML = `
-                <img src="${url}" class="image-preview-img" alt="Vista previa" onerror="this.parentElement.innerHTML='<span class=\\'image-preview-placeholder\\'>⚠️ Enlace inválido o imagen no encontrada</span>';" />
+                <img src="${url}" class="image-preview-img" alt="Vista previa" onerror="this.parentElement.innerHTML='<span class=\\'image-preview-placeholder\\'>Enlace inválido o imagen no encontrada</span>';" />
               `;
             } else {
               previewBox.innerHTML = `<span class="image-preview-placeholder">Vista previa de la imagen</span>`;

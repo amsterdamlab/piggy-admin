@@ -1,3 +1,7 @@
+/* ==========================================================================
+   PIGGY MASTER ADMIN DASHBOARD - FLASH MISSIONS VIEW
+   ========================================================================== */
+
 import { missionsService } from '../services/missionsService.js';
 import { DataTable } from '../components/DataTable.js';
 import { modal } from '../components/Modal.js';
@@ -34,7 +38,7 @@ export class FlashMissionsView {
           header: 'Recompensa',
           render: (c) => `
             <div>
-              <div style="font-weight: 800; color: var(--accent-gold);">⭐ ${c.rewardPoints} pts</div>
+              <div style="font-weight: 800; color: var(--accent-gold);">${c.rewardPoints} pts</div>
               ${c.rewardBonusRoi > 0 
                 ? `<div style="font-size: 0.72rem; color: var(--accent-green); font-weight: 700;">+${(c.rewardBonusRoi * 100).toFixed(1)}% ROI Extra</div>` 
                 : ''
@@ -59,7 +63,7 @@ export class FlashMissionsView {
           header: 'Estado',
           render: (c) => `
             <span class="badge ${c.isActive ? 'badge-success' : 'badge-neutral'}">
-              ${c.isActive ? 'Activa ⚡' : 'Pausada'}
+              ${c.isActive ? 'Activa' : 'Pausada'}
             </span>
           `
         },
@@ -140,12 +144,12 @@ export class FlashMissionsView {
 
   openCampaignModal() {
     modal.open({
-      title: 'Crear Nueva Misión Flash ⚡',
+      title: 'Crear Nueva Misión Flash',
       contentHtml: `
         <form id="mission-form">
           <div class="form-group">
             <label class="form-label" for="m-title">Título de la Misión</label>
-            <input type="text" id="m-title" class="form-input" placeholder="Ej: ⚡ Flash: Alimenta a tu Piggy hoy" required />
+            <input type="text" id="m-title" class="form-input" placeholder="Ej: Flash: Alimenta a tu Piggy hoy" required />
           </div>
 
           <div class="form-group">
