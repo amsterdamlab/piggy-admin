@@ -22,6 +22,8 @@ export class UsersView {
       columns: [
         {
           header: 'Usuario / Contacto',
+          key: 'fullName',
+          sortValue: (u) => u.fullName,
           render: (u) => `
             <div>
               <div style="font-weight: 800; color: var(--text-primary); font-size: 0.95rem;">${u.fullName}</div>
@@ -46,6 +48,7 @@ export class UsersView {
         },
         {
           header: 'Legal',
+          sortValue: (u) => (u.termsAccepted ? 1 : 0),
           render: (u) => `
             <div style="display: flex; gap: 0.35rem; flex-wrap: wrap;">
               <span class="badge ${u.termsAccepted ? 'badge-success' : 'badge-danger'}">
@@ -59,6 +62,8 @@ export class UsersView {
         },
         {
           header: 'Saldo Billetera',
+          key: 'walletBalance',
+          sortValue: (u) => u.walletBalance,
           render: (u) => `
             <div>
               <div style="font-weight: 800; color: var(--accent-green); font-size: 1rem;">
@@ -74,6 +79,8 @@ export class UsersView {
         },
         {
           header: 'Inversión & Piggies',
+          key: 'totalCompraPiggies',
+          sortValue: (u) => u.totalCompraPiggies,
           render: (u) => `
             <div>
               <div style="font-weight: 800; color: var(--primary-pink);">
@@ -87,6 +94,8 @@ export class UsersView {
         },
         {
           header: 'Registro',
+          key: 'createdAt',
+          sortValue: (u) => new Date(u.createdAt).getTime(),
           render: (u) => `
             <div style="font-size: 0.8rem; color: var(--text-muted);">
               ${new Date(u.createdAt).toLocaleDateString('es-CO', { year: 'numeric', month: 'short', day: 'numeric' })}
@@ -95,6 +104,7 @@ export class UsersView {
         },
         {
           header: 'Acciones',
+          sortable: false,
           style: 'text-align: right;',
           render: (u) => `
             <div style="display: flex; gap: 0.4rem; justify-content: flex-end;">

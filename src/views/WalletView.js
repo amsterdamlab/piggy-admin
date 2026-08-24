@@ -36,9 +36,9 @@ export class WalletView {
         <div class="card">
           <div class="card-header" style="flex-direction: column; align-items: flex-start; gap: 1rem;">
             <div>
-              <h2 class="card-title">${icons.wallet} Centro de Tesorería & Aprobación de Pagos</h2>
+              <h2 class="card-title">${icons.wallet} Centro de Auditoría Contable</h2>
               <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.2rem;">
-                Validación de comprobantes de depósito (Bre-B/QR) y liquidación de retiros a cuentas bancarias
+                Validación de comprobantes de depósito (Bre-B/QR), liquidación de retiros y libro contable auditado
               </div>
             </div>
 
@@ -92,9 +92,11 @@ export class WalletView {
       columns: [
         {
           header: 'Usuario / Contacto',
+          key: 'userName',
+          sortValue: (r) => r.userName,
           render: (r) => `
             <div>
-              <div style="font-weight: 700;">${r.userName}</div>
+              <div style="font-weight: 700; color: var(--text-primary);">${r.userName}</div>
               <div style="font-size: 0.75rem; color: var(--text-muted);">${r.userPhone}</div>
               <div style="font-size: 0.72rem; color: var(--accent-green);">Saldo actual: $${r.userBalance.toLocaleString('es-CO')}</div>
             </div>
@@ -102,6 +104,8 @@ export class WalletView {
         },
         {
           header: 'Monto a Acreditar',
+          key: 'amount',
+          sortValue: (r) => r.amount,
           render: (r) => `
             <div style="font-size: 1.1rem; font-weight: 800; color: var(--accent-green);">
               $${r.amount.toLocaleString('es-CO')}
@@ -111,6 +115,8 @@ export class WalletView {
         },
         {
           header: 'Referencia / Voucher',
+          key: 'referenceCode',
+          sortValue: (r) => r.referenceCode,
           render: (r) => `
             <div>
               <div style="font-weight: 700; font-family: monospace;">${r.referenceCode}</div>
@@ -122,6 +128,8 @@ export class WalletView {
         },
         {
           header: 'Fecha',
+          key: 'createdAt',
+          sortValue: (r) => new Date(r.createdAt).getTime(),
           render: (r) => `
             <div style="font-size: 0.8rem; color: var(--text-muted);">
               ${new Date(r.createdAt).toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' })}
@@ -130,6 +138,8 @@ export class WalletView {
         },
         {
           header: 'Estado',
+          key: 'status',
+          sortValue: (r) => r.status,
           render: (r) => {
             if (r.status === 'pending') return `<span class="badge badge-warning">Pendiente</span>`;
             if (r.status === 'approved') return `<span class="badge badge-success">Aprobado</span>`;
@@ -138,6 +148,7 @@ export class WalletView {
         },
         {
           header: 'Acciones',
+          sortable: false,
           style: 'text-align: right;',
           render: (r) => {
             if (r.status === 'pending') {
@@ -174,15 +185,19 @@ export class WalletView {
       columns: [
         {
           header: 'Usuario / Solicitante',
+          key: 'userName',
+          sortValue: (w) => w.userName,
           render: (w) => `
             <div>
-              <div style="font-weight: 700;">${w.userName}</div>
+              <div style="font-weight: 700; color: var(--text-primary);">${w.userName}</div>
               <div style="font-size: 0.75rem; color: var(--text-muted);">${w.userPhone}</div>
             </div>
           `
         },
         {
           header: 'Monto Solicitado',
+          key: 'amount',
+          sortValue: (w) => w.amount,
           render: (w) => `
             <div style="font-size: 1.1rem; font-weight: 800; color: var(--primary-pink);">
               $${w.amount.toLocaleString('es-CO')}
@@ -192,6 +207,8 @@ export class WalletView {
         },
         {
           header: 'Cuenta Bancaria de Destino',
+          key: 'bankInfo',
+          sortValue: (w) => w.bankInfo,
           render: (w) => `
             <div style="font-size: 0.85rem; background: var(--bg-dark); padding: 0.4rem 0.6rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color); max-width: 320px;">
               ${w.bankInfo}
@@ -200,6 +217,8 @@ export class WalletView {
         },
         {
           header: 'Fecha',
+          key: 'createdAt',
+          sortValue: (w) => new Date(w.createdAt).getTime(),
           render: (w) => `
             <div style="font-size: 0.8rem; color: var(--text-muted);">
               ${new Date(w.createdAt).toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' })}
@@ -208,6 +227,8 @@ export class WalletView {
         },
         {
           header: 'Estado',
+          key: 'status',
+          sortValue: (w) => w.status,
           render: (w) => {
             if (w.status === 'pending') return `<span class="badge badge-warning">Pendiente</span>`;
             if (w.status === 'approved') return `<span class="badge badge-success">Transferido</span>`;
@@ -216,6 +237,7 @@ export class WalletView {
         },
         {
           header: 'Acciones',
+          sortable: false,
           style: 'text-align: right;',
           render: (w) => {
             if (w.status === 'pending') {
@@ -247,14 +269,20 @@ export class WalletView {
       columns: [
         {
           header: 'Usuario',
+          key: 'userName',
+          sortValue: (t) => t.userName,
           render: (t) => `<div style="font-weight: 700;">${t.userName}</div>`
         },
         {
           header: 'Tipo de Movimiento',
+          key: 'type',
+          sortValue: (t) => t.type,
           render: (t) => `<span class="badge badge-info">${t.type}</span>`
         },
         {
           header: 'Monto',
+          key: 'amount',
+          sortValue: (t) => t.amount,
           render: (t) => `
             <div style="font-weight: 800; color: ${t.amount >= 0 ? 'var(--accent-green)' : 'var(--accent-red)'};">
               ${t.amount >= 0 ? '+' : ''}$${Math.abs(t.amount).toLocaleString('es-CO')}
@@ -263,10 +291,14 @@ export class WalletView {
         },
         {
           header: 'Descripción / Auditoría',
+          key: 'description',
+          sortValue: (t) => t.description,
           render: (t) => `<div style="font-size: 0.8rem; color: var(--text-secondary);">${t.description}</div>`
         },
         {
           header: 'Fecha',
+          key: 'createdAt',
+          sortValue: (t) => new Date(t.createdAt).getTime(),
           render: (t) => `
             <div style="font-size: 0.75rem; color: var(--text-muted);">
               ${new Date(t.createdAt).toLocaleString('es-CO')}

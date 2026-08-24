@@ -631,6 +631,30 @@ body {
   white-space: nowrap;
 }
 
+.data-table th.dt-sortable-th {
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.2s ease;
+}
+
+.data-table th.dt-sortable-th:hover {
+  background-color: rgba(255, 255, 255, 0.07);
+  color: var(--text-primary);
+}
+
+.data-table th.dt-sortable-th.sorted {
+  color: var(--primary-pink);
+  background-color: rgba(255, 75, 139, 0.08);
+}
+
+.dt-sort-indicator {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 0.4rem;
+  transition: all 0.2s ease;
+  vertical-align: middle;
+}
+
 .data-table td {
   padding: 0.9rem 1rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.04);
