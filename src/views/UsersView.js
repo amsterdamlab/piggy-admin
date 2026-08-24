@@ -1,6 +1,7 @@
 /* ==========================================================================
    PIGGY MASTER ADMIN DASHBOARD - USERS CRM VIEW
    Comprehensive investor profiles, financial metrics & banking data
+   Real-time sync with Supabase profiles channel + manual refresh button
    ========================================================================== */
 
 import { usersService } from '../services/usersService.js';
@@ -12,13 +13,15 @@ export class UsersView {
   constructor() {
     this.dataTable = null;
     this.users = [];
+    this._realtimeChannel = null;
+    this._pollingInterval = null;
   }
 
   async render() {
     this.users = await usersService.getUsers();
 
     this.dataTable = new DataTable({
-      searchPlaceholder: 'Buscar por nombre, email, WhatsApp o cédula...',
+      searchPlaceholder: 'Buscar por nombre, email, WhatsApp o c\u00e9dula...',
       columns: [
         {
           header: 'Usuario / Contacto',
@@ -52,7 +55,7 @@ export class UsersView {
           render: (u) => `
             <div style="display: flex; gap: 0.35rem; flex-wrap: wrap;">
               <span class="badge ${u.termsAccepted ? 'badge-success' : 'badge-danger'}">
-                ${u.termsAccepted ? 'Términos' : 'Sin Términos'}
+                ${u.termsAccepted ? 'T\u00e9rminos' : 'Sin T\u00e9rminos'}
               </span>
               <span class="badge ${u.habeasDataAccepted ? 'badge-success' : 'badge-danger'}">
                 ${u.habeasDataAccepted ? 'Habeas Data' : 'Sin Habeas'}
@@ -78,7 +81,7 @@ export class UsersView {
           `
         },
         {
-          header: 'Inversión & Piggies',
+          header: 'Inversi\u00f3n & Piggies',
           key: 'totalCompraPiggies',
           sortValue: (u) => u.totalCompraPiggies,
           render: (u) => `
@@ -126,12 +129,21 @@ export class UsersView {
             <div>
               <h2 class="card-title">${icons.users} CRM de Inversionistas y Usuarios</h2>
               <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.2rem;">
-                Administración integral de perfiles, compras de cerditos, datos bancarios y solicitudes de tesorería
+                Administraci\u00f3n integral de perfiles, compras de cerditos, datos bancarios y solicitudes de tesorer\u00eda
               </div>
             </div>
-            <div>
+            <div style="display: flex; align-items: center; gap: 0.75rem;">
               <span class="badge badge-info">Total: ${this.users.length} Usuarios</span>
+              <button class="btn btn-secondary btn-sm" id="btn-refresh-users" title="Recargar datos desde Supabase" style="display: inline-flex; align-items: center; gap: 6px;">
+                ${icons.refresh} <span>Actualizar Saldos</span>
+              </button>
             </div>
+          </div>
+
+          <!-- Indicador de sincronizaci\u00f3n en tiempo real -->
+          <div id="realtime-status" style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0; margin-bottom: 0.5rem; font-size: 0.75rem; color: var(--text-muted);">
+            <span style="width: 7px; height: 7px; border-radius: 50%; background: var(--accent-gold); flex-shrink: 0;"></span>
+            Conectando a Supabase en tiempo real...
           </div>
 
           <div id="users-datatable-container">
@@ -139,12 +151,146 @@ export class UsersView {
           </div>
         </div>
       </div>
+
+      <style>
+        @keyframes piggy-pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.35; }
+        }
+      </style>
     `;
   }
 
   attachEvents(container) {
     if (this.dataTable) {
       this.dataTable.attachEvents(container.querySelector('#users-datatable-container'));
+    }
+
+    // Bot\u00f3n de recarga manual forzada desde Supabase
+    const refreshBtn = container.querySelector('#btn-refresh-users');
+    if (refreshBtn) {
+      refreshBtn.addEventListener('click', async () => {
+        refreshBtn.disabled = true;
+        refreshBtn.innerHTML = `${icons.refresh} <span>Actualizando...</span>`;
+        refreshBtn.style.opacity = '0.7';
+
+        try {
+          this.users = await usersService.getUsers();
+          this.dataTable.setData(this.users);
+          const badge = container.querySelector('.badge-info');
+          if (badge) badge.textContent = `Total: ${this.users.length} Usuarios`;
+        } catch (e) {
+          console.error('Error al refrescar usuarios:', e);
+        } finally {
+          refreshBtn.disabled = false;
+          refreshBtn.innerHTML = `${icons.refresh} <span>Actualizar Saldos</span>`;
+          refreshBtn.style.opacity = '1';
+        }
+      });
+    }
+
+    // Suscripci\u00f3n en tiempo real a cambios en `profiles` (saldos, datos)
+    this._startRealtimeSync(container);
+  }
+
+  _startRealtimeSync(container) {
+    const client = window.__piggySupabaseClient;
+    if (!client) {
+      // Fallback: intentar conectar con retraso (puede que no se haya inicializado a\u00fan)
+      setTimeout(() => {
+        const retryClient = window.__piggySupabaseClient;
+        if (retryClient) {
+          this._connectRealtimeChannel(retryClient, container);
+        } else {
+          this._setupPollingFallback(container);
+        }
+      }, 1500);
+      return;
+    }
+    this._connectRealtimeChannel(client, container);
+  }
+
+  _connectRealtimeChannel(client, container) {
+    // Limpiar canal anterior si existe
+    if (this._realtimeChannel) {
+      try { client.removeChannel(this._realtimeChannel); } catch (_) {}
+    }
+
+    this._realtimeChannel = client
+      .channel('admin-profiles-watch')
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'profiles' },
+        (payload) => {
+          const updatedProfile = payload.new;
+          if (!updatedProfile) return;
+
+          // Actualizar el usuario en el array local sin re-fetch completo
+          const idx = this.users.findIndex(u => u.id === updatedProfile.id);
+          if (idx !== -1) {
+            const oldUser = this.users[idx];
+            this.users[idx] = {
+              ...oldUser,
+              walletBalance: Number(updatedProfile.wallet_balance || 0),
+              bonosConsumo: Number(updatedProfile.referral_balance || 0),
+              fullName: updatedProfile.full_name || oldUser.fullName,
+              whatsapp: updatedProfile.whatsapp || oldUser.whatsapp,
+              email: updatedProfile.email || oldUser.email,
+            };
+            this.dataTable.setData(this.users);
+          }
+        }
+      )
+      .subscribe((status) => {
+        const statusEl = container.querySelector('#realtime-status');
+        if (!statusEl) return;
+
+        if (status === 'SUBSCRIBED') {
+          statusEl.innerHTML = `
+            <span style="width: 7px; height: 7px; border-radius: 50%; background: var(--accent-green); box-shadow: 0 0 6px var(--accent-green); flex-shrink: 0; animation: piggy-pulse 2s infinite;"></span>
+            Sincronizado en tiempo real con Supabase &mdash; los saldos se actualizan autom\u00e1ticamente
+          `;
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          statusEl.innerHTML = `
+            <span style="width: 7px; height: 7px; border-radius: 50%; background: var(--accent-gold); flex-shrink: 0;"></span>
+            Modo manual &mdash; usa &ldquo;Actualizar Saldos&rdquo; para ver los cambios m\u00e1s recientes
+          `;
+          this._setupPollingFallback(container);
+        }
+      });
+  }
+
+  _setupPollingFallback(container) {
+    // Polling cada 40 segundos como fallback si el canal realtime no conecta
+    if (this._pollingInterval) clearInterval(this._pollingInterval);
+    const statusEl = container.querySelector('#realtime-status');
+    if (statusEl) {
+      statusEl.innerHTML = `
+        <span style="width: 7px; height: 7px; border-radius: 50%; background: var(--accent-gold); flex-shrink: 0;"></span>
+        Actualizaci\u00f3n autom\u00e1tica cada 40s &mdash; o usa &ldquo;Actualizar Saldos&rdquo; para refrescar ahora
+      `;
+    }
+    this._pollingInterval = setInterval(async () => {
+      try {
+        this.users = await usersService.getUsers();
+        this.dataTable.setData(this.users);
+      } catch (e) {
+        console.warn('Polling fallback error:', e);
+      }
+    }, 40000);
+  }
+
+  destroy() {
+    if (this._realtimeChannel) {
+      const client = window.__piggySupabaseClient;
+      if (client) {
+        try { client.removeChannel(this._realtimeChannel); } catch (_) {}
+      }
+      this._realtimeChannel = null;
+    }
+    if (this._pollingInterval) {
+      clearInterval(this._pollingInterval);
+      this._pollingInterval = null;
     }
   }
 
@@ -164,12 +310,12 @@ export class UsersView {
       contentHtml: `
         <div style="display: flex; flex-direction: column; gap: 1.25rem;">
           
-          <!-- 1. INFORMACIÓN DE CONTACTO & BANCARIA -->
+          <!-- 1. INFORMACI\u00d3N DE CONTACTO & BANCARIA -->
           <div style="background: var(--bg-dark); padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
             <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 0.75rem;">
               <div>
                 <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em;">
-                  Información de Contacto & Identificación
+                  Informaci\u00f3n de Contacto & Identificaci\u00f3n
                 </div>
                 <div style="font-size: 1.3rem; font-weight: 800; color: var(--text-primary); margin-top: 0.2rem;">
                   ${user.fullName}
@@ -196,7 +342,7 @@ export class UsersView {
               </div>
               <div style="display: flex; align-items: center; gap: 6px;">
                 <span style="color: var(--text-secondary);">${icons.idCard}</span>
-                <span style="color: var(--text-muted);">Cédula:</span> 
+                <span style="color: var(--text-muted);">C\u00e9dula:</span> 
                 <strong style="color: var(--text-primary);">${user.cedula}</strong>
               </div>
               <div style="display: flex; align-items: center; gap: 6px;">
@@ -219,7 +365,7 @@ export class UsersView {
             </div>
           </div>
 
-          <!-- 2. MÉTRICAS FINANCIERAS Y DE GRANJA -->
+          <!-- 2. M\u00c9TRICAS FINANCIERAS Y DE GRANJA -->
           <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
             
             <div style="background: var(--bg-dark); padding: 1.1rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
@@ -296,10 +442,10 @@ export class UsersView {
 
           </div>
 
-          <!-- 3. SOLICITUDES DE TESORERÍA PENDIENTES (ACCESO RÁPIDO) -->
+          <!-- 3. SOLICITUDES DE TESORER\u00cdA PENDIENTES (ACCESO R\u00c1PIDO) -->
           <div style="background: var(--bg-dark); padding: 1.1rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
             <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; margin-bottom: 0.6rem;">
-              Estado de Solicitudes en Tesorería
+              Estado de Solicitudes en Tesorer\u00eda
             </div>
 
             ${(user.pendingRecharges > 0 || user.pendingWithdrawals > 0) ? `
@@ -335,7 +481,7 @@ export class UsersView {
             ` : `
               <div style="font-size: 0.85rem; color: var(--accent-green); font-weight: 600; display: flex; align-items: center; gap: 0.4rem;">
                 <span style="color: var(--accent-green);">${icons.check}</span>
-                <span>Al día: No tiene solicitudes pendientes de recarga o retiro en tesorería.</span>
+                <span>Al d\u00eda: No tiene solicitudes pendientes de recarga o retiro en tesorer\u00eda.</span>
               </div>
             `}
           </div>
@@ -347,7 +493,7 @@ export class UsersView {
             </div>
             <div style="display: flex; gap: 0.5rem;">
               <span class="badge ${user.termsAccepted ? 'badge-success' : 'badge-danger'}">
-                ${user.termsAccepted ? 'Términos y Condiciones Aceptados' : 'Términos Pendientes'}
+                ${user.termsAccepted ? 'T\u00e9rminos y Condiciones Aceptados' : 'T\u00e9rminos Pendientes'}
               </span>
               <span class="badge ${user.habeasDataAccepted ? 'badge-success' : 'badge-danger'}">
                 ${user.habeasDataAccepted ? 'Ley 1581 Habeas Data Aceptado' : 'Habeas Data Pendiente'}

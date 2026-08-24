@@ -23,11 +23,13 @@ export async function initSupabase() {
           autoRefreshToken: true
         }
       });
+      // Exponer globalmente para suscripciones realtime desde cualquier vista
+      window.__piggySupabaseClient = supabaseClient;
       isMockMode = false;
-      console.log('🐷 Supabase Admin: Conectado a la base de datos de producción.');
+      console.log('\uD83D\uDC37 Supabase Admin: Conectado a la base de datos de producci\u00f3n.');
       return true;
     } catch (error) {
-      console.warn('🐷 Supabase Admin: Error al inicializar cliente, usando modo fallback.', error);
+      console.warn('\uD83D\uDC37 Supabase Admin: Error al inicializar cliente, usando modo fallback.', error);
     }
   }
 
@@ -42,6 +44,7 @@ export function getClient() {
   if (!supabaseClient && SUPABASE_URL && SUPABASE_ANON_KEY) {
     try {
       supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      window.__piggySupabaseClient = supabaseClient;
       isMockMode = false;
     } catch (e) {
       console.error('Error getting Supabase client', e);
