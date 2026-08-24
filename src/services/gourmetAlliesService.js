@@ -1,14 +1,19 @@
-import { getClient, isUsingMockData } from './supabase.js';
+/* ==========================================================================
+   PIGGY MASTER ADMIN DASHBOARD - GOURMET & ALLIES SERVICE
+   Direct sync with Supabase `gourmet_offers` and `allies` tables
+   ========================================================================== */
+
+import { getClient } from './supabase.js';
 
 export const gourmetAlliesService = {
   async getGourmetProducts() {
     const client = getClient();
-    if (client && !isUsingMockData()) {
+    if (client) {
       try {
         const { data, error } = await client
-          .from('gourmet_products')
+          .from('gourmet_offers')
           .select('*')
-          .order('created_at', { ascending: false });
+          .order('sort_order', { ascending: true });
 
         if (!error && data && data.length > 0) {
           return data.map((p) => ({
@@ -16,16 +21,24 @@ export const gourmetAlliesService = {
             name: p.name,
             description: p.description || '',
             price: Number(p.price || 0),
-            pointsPrice: Number(p.points_price || 0),
-            stock: Number(p.stock || 0),
+            originalPrice: Number(p.original_price || p.price || 0),
+            pointsPrice: Math.round(Number(p.price || 0) / 350),
+            stock: 20,
             imageUrl: p.image_url || '',
-            category: p.category || 'Cortes Premium'
+            category: p.tag || 'Cortes Especiales',
+            tag: p.tag || '',
+            emoji: p.emoji || '🥩',
+            isActive: p.is_active !== undefined ? p.is_active : true,
+            sortOrder: p.sort_order || 1
           }));
         }
-      } catch (e) {}
+        if (error) console.warn('Gourmet offers error:', error.message);
+      } catch (e) {
+        console.error('Gourmet exception:', e);
+      }
     }
 
-    return this.getMockGourmetProducts();
+    return [];
   },
 
   async createGourmetProduct(product) {
@@ -34,16 +47,18 @@ export const gourmetAlliesService = {
       name: product.name,
       description: product.description || '',
       price: Number(product.price || 0),
-      points_price: Number(product.pointsPrice || 0),
-      stock: Number(product.stock || 0),
+      original_price: Number(product.originalPrice || product.price || 0),
       image_url: product.imageUrl || '',
-      category: product.category || 'Cortes Premium'
+      tag: product.tag || product.category || '✨ Exclusivo Granja',
+      emoji: product.emoji || '🥩',
+      is_active: true,
+      sort_order: Number(product.sortOrder || 1)
     };
 
-    if (client && !isUsingMockData()) {
+    if (client) {
       try {
         const { data, error } = await client
-          .from('gourmet_products')
+          .from('gourmet_offers')
           .insert(payload)
           .select()
           .single();
@@ -55,7 +70,7 @@ export const gourmetAlliesService = {
       }
     }
 
-    return { success: true, data: { id: 'gourmet-' + Date.now(), ...payload } };
+    return { success: false, error: 'No client' };
   },
 
   async updateGourmetProduct(id, product) {
@@ -64,15 +79,16 @@ export const gourmetAlliesService = {
     if (product.name !== undefined) payload.name = product.name;
     if (product.description !== undefined) payload.description = product.description;
     if (product.price !== undefined) payload.price = Number(product.price);
-    if (product.pointsPrice !== undefined) payload.points_price = Number(product.pointsPrice);
-    if (product.stock !== undefined) payload.stock = Number(product.stock);
+    if (product.originalPrice !== undefined) payload.original_price = Number(product.originalPrice);
     if (product.imageUrl !== undefined) payload.image_url = product.imageUrl;
-    if (product.category !== undefined) payload.category = product.category;
+    if (product.tag !== undefined) payload.tag = product.tag;
+    if (product.category !== undefined) payload.tag = product.category;
+    if (product.isActive !== undefined) payload.is_active = product.isActive;
 
-    if (client && !isUsingMockData()) {
+    if (client) {
       try {
         const { data, error } = await client
-          .from('gourmet_products')
+          .from('gourmet_offers')
           .update(payload)
           .eq('id', id)
           .select()
@@ -85,46 +101,54 @@ export const gourmetAlliesService = {
       }
     }
 
-    return { success: true };
+    return { success: false, error: 'No client' };
   },
 
   async deleteGourmetProduct(id) {
     const client = getClient();
-    if (client && !isUsingMockData()) {
+    if (client) {
       try {
-        const { error } = await client.from('gourmet_products').delete().eq('id', id);
+        const { error } = await client.from('gourmet_offers').delete().eq('id', id);
         if (error) throw error;
         return { success: true };
       } catch (err) {
         return { success: false, error: err.message };
       }
     }
-    return { success: true };
+    return { success: false, error: 'No client' };
   },
 
   async getAllies() {
     const client = getClient();
-    if (client && !isUsingMockData()) {
+    if (client) {
       try {
         const { data, error } = await client
           .from('allies')
           .select('*')
-          .order('created_at', { ascending: false });
+          .order('name', { ascending: true });
 
         if (!error && data && data.length > 0) {
           return data.map((a) => ({
             id: a.id,
             name: a.name,
             category: a.category || 'Restaurante',
-            location: a.location || 'Cali, Colombia',
-            logoUrl: a.logo_url || '',
-            discountInfo: a.discount_info || '10% OFF con Piggy Pass'
+            location: a.location || 'Colombia',
+            logoUrl: a.logo_url || a.image_url || '',
+            imageUrl: a.image_url || '',
+            discountInfo: a.discount_info || a.benefit || 'Descuento exclusivo',
+            description: a.description || '',
+            specialty: a.specialty || '',
+            phone: a.phone || '',
+            address: a.address || ''
           }));
         }
-      } catch (e) {}
+        if (error) console.warn('Allies error:', error.message);
+      } catch (e) {
+        console.error('Allies exception:', e);
+      }
     }
 
-    return this.getMockAllies();
+    return [];
   },
 
   async createAlly(ally) {
@@ -132,12 +156,18 @@ export const gourmetAlliesService = {
     const payload = {
       name: ally.name,
       category: ally.category || 'Restaurante',
-      location: ally.location || 'Cali',
-      logo_url: ally.logoUrl || '',
-      discount_info: ally.discountInfo || '10% de descuento'
+      location: ally.location || 'Colombia',
+      logo_url: ally.logoUrl || null,
+      image_url: ally.logoUrl || ally.imageUrl || 'https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=800&q=80',
+      discount_info: ally.discountInfo || '10% de descuento',
+      benefit: ally.discountInfo || '10% de descuento',
+      description: ally.description || 'Aliado oficial de la red Piggy.',
+      specialty: ally.specialty || ally.category || 'Gourmet',
+      phone: ally.phone || '300 000 0000',
+      address: ally.address || ally.location || 'Colombia'
     };
 
-    if (client && !isUsingMockData()) {
+    if (client) {
       try {
         const { data, error } = await client
           .from('allies')
@@ -152,7 +182,7 @@ export const gourmetAlliesService = {
       }
     }
 
-    return { success: true, data: { id: 'ally-' + Date.now(), ...payload } };
+    return { success: false, error: 'No client' };
   },
 
   async updateAlly(id, ally) {
@@ -161,10 +191,16 @@ export const gourmetAlliesService = {
     if (ally.name !== undefined) payload.name = ally.name;
     if (ally.category !== undefined) payload.category = ally.category;
     if (ally.location !== undefined) payload.location = ally.location;
-    if (ally.logoUrl !== undefined) payload.logo_url = ally.logoUrl;
-    if (ally.discountInfo !== undefined) payload.discount_info = ally.discountInfo;
+    if (ally.logoUrl !== undefined) {
+      payload.logo_url = ally.logoUrl;
+      payload.image_url = ally.logoUrl;
+    }
+    if (ally.discountInfo !== undefined) {
+      payload.discount_info = ally.discountInfo;
+      payload.benefit = ally.discountInfo;
+    }
 
-    if (client && !isUsingMockData()) {
+    if (client) {
       try {
         const { data, error } = await client
           .from('allies')
@@ -180,12 +216,12 @@ export const gourmetAlliesService = {
       }
     }
 
-    return { success: true };
+    return { success: false, error: 'No client' };
   },
 
   async deleteAlly(id) {
     const client = getClient();
-    if (client && !isUsingMockData()) {
+    if (client) {
       try {
         const { error } = await client.from('allies').delete().eq('id', id);
         if (error) throw error;
@@ -194,52 +230,6 @@ export const gourmetAlliesService = {
         return { success: false, error: err.message };
       }
     }
-    return { success: true };
-  },
-
-  getMockGourmetProducts() {
-    return [
-      {
-        id: 'gourmet-1',
-        name: 'Combo Parrillero Piggy Prime (5kg)',
-        description: 'Incluye Costilla San Luis, Bondiola marinada, Solomillo y Chorizos artesanales.',
-        price: 185000,
-        pointsPrice: 500,
-        stock: 18,
-        imageUrl: 'https://images.unsplash.com/photo-1544025162-d76694265947?w=400',
-        category: 'Combos Especiales'
-      },
-      {
-        id: 'gourmet-2',
-        name: 'Costillar Ahumado al Vacío (2.5kg)',
-        description: 'Costillar ahumado con madera de nogal, listo para dorar a la parrilla.',
-        price: 98000,
-        pointsPrice: 280,
-        stock: 24,
-        imageUrl: 'https://images.unsplash.com/photo-1529692236671-f1f6cf9683ba?w=400',
-        category: 'Cortes Premium'
-      }
-    ];
-  },
-
-  getMockAllies() {
-    return [
-      {
-        id: 'ally-1',
-        name: 'Restaurante Fogón & Cava',
-        category: 'Restaurante Gourmet',
-        location: 'Granada, Cali',
-        logoUrl: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400',
-        discountInfo: '15% OFF en toda la carta de cortes de cerdo'
-      },
-      {
-        id: 'ally-2',
-        name: 'Carnicería Boutique La Porcina',
-        category: 'Punto de Distribución',
-        location: 'Pance, Cali',
-        logoUrl: 'https://images.unsplash.com/photo-1607623814075-e51df1bdc82f?w=400',
-        discountInfo: 'Canje de tokens directo sin costo de domicilio'
-      }
-    ];
+    return { success: false, error: 'No client' };
   }
 };

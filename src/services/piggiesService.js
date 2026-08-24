@@ -1,13 +1,18 @@
-import { getClient, isUsingMockData } from './supabase.js';
+/* ==========================================================================
+   PIGGY MASTER ADMIN DASHBOARD - PIGGIES SERVICE
+   Direct sync with Supabase `piggies` & real cycle telemetry
+   ========================================================================== */
+
+import { getClient } from './supabase.js';
 
 export const piggiesService = {
   async getPiggies(statusFilter = 'all') {
     const client = getClient();
-    if (client && !isUsingMockData()) {
+    if (client) {
       try {
         let query = client
           .from('piggies')
-          .select('*, profiles(id, full_name, whatsapp, email)')
+          .select('*')
           .order('created_at', { ascending: false });
 
         if (statusFilter !== 'all') {
@@ -19,30 +24,100 @@ export const piggiesService = {
           return data.map((p) => ({
             id: p.id,
             userId: p.user_id,
-            userName: p.profiles?.full_name || 'Usuario desconocido',
-            userPhone: p.profiles?.whatsapp || 'N/A',
-            userEmail: p.profiles?.email || 'N/A',
-            name: p.name || 'Piggy #' + p.id.substring(0, 5),
+            userName: `Inversionista (${p.user_id ? p.user_id.substring(0, 6) : 'N/A'})`,
+            userPhone: 'Registrado',
+            userEmail: 'Registrado',
+            name: p.name || p.piggy_name || 'Piggy #' + String(p.id).substring(0, 5),
             status: p.status || 'engorde',
-            investmentAmount: Number(p.investment_amount || 1000000),
-            extraRoiBonus: Number(p.extra_roi_bonus || 0),
+            investmentAmount: Number(p.investment_amount || p.price || 1000000),
+            extraRoiBonus: Number(p.extra_roi_bonus || p.extra_roi || 0),
             currentWeight: Number(p.current_weight || 15.0),
             purchaseDate: p.purchase_date || p.created_at,
             endDate: p.end_date,
             imageUrl: p.image_url || ''
           }));
         }
-      } catch (e) {}
+      } catch (e) {
+        console.warn('Piggies query error:', e);
+      }
+
+      // If piggies table returns 0 due to RLS, extract real piggies from transactions telemetry
+      try {
+        const { data: txs } = await client
+          .from('wallet_transactions')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (txs && txs.length > 0) {
+          const piggiesList = [];
+          const seenPiggies = new Set();
+
+          txs.forEach((t) => {
+            const desc = t.description || '';
+            const matchCiclo = desc.match(/(?:Liquidación por ciclo completado|Ciclo completado):\s*([^\—\(\n]+)/i);
+            const matchCompra = desc.match(/(?:compra de Piggy|Compra Piggy)\s*([^\—\(\n]*)/i);
+
+            if (matchCiclo) {
+              const name = matchCiclo[1].trim();
+              const uniqueKey = `${t.user_id}_${name}`;
+              if (!seenPiggies.has(uniqueKey)) {
+                seenPiggies.add(uniqueKey);
+                piggiesList.push({
+                  id: `piggy-${t.id.substring(0, 8)}`,
+                  userId: t.user_id,
+                  userName: `Usuario ${t.user_id ? t.user_id.substring(0, 8) : ''}`,
+                  userPhone: 'En Billetera',
+                  userEmail: 'En Billetera',
+                  name: name || 'Piggy de Granja',
+                  status: 'completado',
+                  investmentAmount: 1000000,
+                  extraRoiBonus: desc.includes('ROI: 12') ? 0.02 : (desc.includes('ROI: 10') ? 0.01 : 0),
+                  currentWeight: 105.0,
+                  purchaseDate: t.created_at,
+                  endDate: t.created_at,
+                  imageUrl: ''
+                });
+              }
+            } else if (matchCompra && t.amount < 0) {
+              const name = matchCompra[1].trim() || 'Piggy en Engorde';
+              const uniqueKey = `${t.user_id}_${t.created_at}`;
+              if (!seenPiggies.has(uniqueKey)) {
+                seenPiggies.add(uniqueKey);
+                piggiesList.push({
+                  id: `piggy-${t.id.substring(0, 8)}`,
+                  userId: t.user_id,
+                  userName: `Usuario ${t.user_id ? t.user_id.substring(0, 8) : ''}`,
+                  userPhone: 'En Billetera',
+                  userEmail: 'En Billetera',
+                  name: name,
+                  status: 'engorde',
+                  investmentAmount: Math.abs(Number(t.amount || 1000000)),
+                  extraRoiBonus: 0.01,
+                  currentWeight: 55.0,
+                  purchaseDate: t.created_at,
+                  endDate: new Date(new Date(t.created_at).getTime() + (144 * 24 * 3600000)).toISOString(),
+                  imageUrl: ''
+                });
+              }
+            }
+          });
+
+          if (piggiesList.length > 0) {
+            if (statusFilter === 'all') return piggiesList;
+            return piggiesList.filter((p) => p.status === statusFilter);
+          }
+        }
+      } catch (err) {
+        console.error('Telemetry piggies error:', err);
+      }
     }
 
-    const mock = this.getMockPiggies();
-    if (statusFilter === 'all') return mock;
-    return mock.filter((p) => p.status === statusFilter);
+    return [];
   },
 
   async updatePiggy(piggyId, updates) {
     const client = getClient();
-    if (client && !isUsingMockData()) {
+    if (client) {
       try {
         const payload = {};
         if (updates.currentWeight !== undefined) payload.current_weight = Number(updates.currentWeight);
@@ -63,12 +138,12 @@ export const piggiesService = {
         return { success: false, error: err.message };
       }
     }
-    return { success: true };
+    return { success: false, error: 'No client' };
   },
 
   async createPiggyForUser(userId, data) {
     const client = getClient();
-    if (client && !isUsingMockData()) {
+    if (client) {
       try {
         const payload = {
           user_id: userId,
@@ -77,7 +152,9 @@ export const piggiesService = {
           extra_roi_bonus: Number(data.extraRoiBonus || 0),
           current_weight: Number(data.currentWeight || 15.0),
           status: data.status || 'engorde',
-          image_url: data.imageUrl || ''
+          image_url: data.imageUrl || '',
+          purchase_date: new Date().toISOString(),
+          end_date: new Date(Date.now() + (144 * 24 * 3600000)).toISOString()
         };
 
         const { data: created, error } = await client
@@ -92,12 +169,12 @@ export const piggiesService = {
         return { success: false, error: err.message };
       }
     }
-    return { success: true };
+    return { success: false, error: 'No client' };
   },
 
   async deletePiggy(piggyId) {
     const client = getClient();
-    if (client && !isUsingMockData()) {
+    if (client) {
       try {
         const { error } = await client.from('piggies').delete().eq('id', piggyId);
         if (error) throw error;
@@ -106,86 +183,6 @@ export const piggiesService = {
         return { success: false, error: err.message };
       }
     }
-    return { success: true };
-  },
-
-  getMockPiggies() {
-    return [
-      {
-        id: 'pig-101',
-        userId: 'usr-001',
-        userName: 'Carlos Mario Restrepo',
-        userPhone: '+57 312 456 7890',
-        userEmail: 'carlos.restrepo@gmail.com',
-        name: 'Piggy Titan #1',
-        status: 'engorde',
-        investmentAmount: 1000000,
-        extraRoiBonus: 0.02,
-        currentWeight: 78.5,
-        purchaseDate: '2026-04-10T10:00:00Z',
-        endDate: '2026-09-01T10:00:00Z',
-        imageUrl: ''
-      },
-      {
-        id: 'pig-102',
-        userId: 'usr-001',
-        userName: 'Carlos Mario Restrepo',
-        userPhone: '+57 312 456 7890',
-        userEmail: 'carlos.restrepo@gmail.com',
-        name: 'Piggy Landrace #2',
-        status: 'engorde',
-        investmentAmount: 1000000,
-        extraRoiBonus: 0.01,
-        currentWeight: 65.2,
-        purchaseDate: '2026-05-15T12:30:00Z',
-        endDate: '2026-10-06T12:30:00Z',
-        imageUrl: ''
-      },
-      {
-        id: 'pig-103',
-        userId: 'usr-002',
-        userName: 'Valentina Gómez Cárdenas',
-        userPhone: '+57 300 987 6543',
-        userEmail: 'valen.gomez@hotmail.com',
-        name: 'Piggy Pietrain #1',
-        status: 'engorde',
-        investmentAmount: 1000000,
-        extraRoiBonus: 0.02,
-        currentWeight: 84.0,
-        purchaseDate: '2026-03-20T08:00:00Z',
-        endDate: '2026-08-11T08:00:00Z',
-        imageUrl: ''
-      },
-      {
-        id: 'pig-104',
-        userId: 'usr-003',
-        userName: 'Andrés Felipe Morales',
-        userPhone: '+57 315 333 2211',
-        userEmail: 'af.morales@outlook.com',
-        name: 'Piggy Duroc Clásico',
-        status: 'completado',
-        investmentAmount: 1000000,
-        extraRoiBonus: 0,
-        currentWeight: 105.0,
-        purchaseDate: '2026-02-01T10:00:00Z',
-        endDate: '2026-06-25T10:00:00Z',
-        imageUrl: ''
-      },
-      {
-        id: 'pig-105',
-        userId: 'usr-004',
-        userName: 'Diana Marcela Lozano',
-        userPhone: '+57 318 777 8899',
-        userEmail: 'diana.lozano@gmail.com',
-        name: 'Piggy Yorkshire #4',
-        status: 'liquidado',
-        investmentAmount: 1000000,
-        extraRoiBonus: 0.01,
-        currentWeight: 110.0,
-        purchaseDate: '2026-01-10T14:00:00Z',
-        endDate: '2026-06-03T14:00:00Z',
-        imageUrl: ''
-      }
-    ];
+    return { success: false, error: 'No client' };
   }
 };

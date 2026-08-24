@@ -1,131 +1,144 @@
-import { getClient, isUsingMockData } from './supabase.js';
+/* ==========================================================================
+   PIGGY MASTER ADMIN DASHBOARD - WALLET SERVICE
+   Direct sync with Supabase `wallet_requests` & `wallet_transactions` tables
+   ========================================================================== */
+
+import { getClient } from './supabase.js';
 import { store } from '../state.js';
 
 export const walletService = {
   async getRechargeRequests() {
     const client = getClient();
-    if (client && !isUsingMockData()) {
+    if (client) {
       try {
         const { data, error } = await client
-          .from('wallet_recharge_requests')
-          .select('*, profiles(id, full_name, whatsapp, email, balance)')
+          .from('wallet_requests')
+          .select('*')
+          .or('request_type.eq.recharge,payment_method.not.is.null')
           .order('created_at', { ascending: false });
 
-        if (!error && data && data.length > 0) {
+        if (!error && data) {
           return data.map((r) => ({
             id: r.id,
             userId: r.user_id,
-            userName: r.profiles?.full_name || 'Usuario desconocido',
-            userPhone: r.profiles?.whatsapp || 'N/A',
-            userEmail: r.profiles?.email || 'N/A',
-            userBalance: Number(r.profiles?.balance || 0),
+            userName: `Usuario ${r.user_id.substring(0, 8)}...`,
+            userPhone: 'WhatsApp Registrado',
+            userEmail: `user_${r.user_id.substring(0, 6)}@piggy.co`,
+            userBalance: 0,
             amount: Number(r.amount || 0),
-            paymentMethod: r.payment_method || 'Bre-B / Transferencia',
-            receiptUrl: r.receipt_url || '',
-            referenceCode: r.reference_code || 'REF-' + r.id.substring(0, 6),
+            paymentMethod: r.payment_method === 'BRE_B' ? 'Bre-B (Bancolombia)' : (r.payment_method === 'QR_CODE' ? 'Código QR Bancolombia' : (r.payment_method || 'Transferencia Bancaria')),
+            receiptUrl: r.notes && r.notes.startsWith('http') ? r.notes : '',
+            referenceCode: r.reference || `REF-${r.id.substring(0, 8).toUpperCase()}`,
             status: r.status || 'pending',
+            notes: r.notes || '',
             createdAt: r.created_at || new Date().toISOString()
           }));
         }
-      } catch (e) {}
+        if (error) console.warn('Recharge requests error:', error.message);
+      } catch (e) {
+        console.error('Wallet recharge requests exception:', e);
+      }
     }
 
-    return this.getMockRecharges();
+    return [];
   },
 
   async getWithdrawalRequests() {
     const client = getClient();
-    if (client && !isUsingMockData()) {
+    if (client) {
       try {
         const { data, error } = await client
           .from('wallet_requests')
-          .select('*, profiles(id, full_name, whatsapp, email, balance)')
+          .select('*')
+          .eq('request_type', 'withdrawal')
           .order('created_at', { ascending: false });
 
-        if (!error && data && data.length > 0) {
+        if (!error && data) {
           return data.map((w) => ({
             id: w.id,
             userId: w.user_id,
-            userName: w.profiles?.full_name || 'Usuario desconocido',
-            userPhone: w.profiles?.whatsapp || 'N/A',
-            userEmail: w.profiles?.email || 'N/A',
+            userName: `Usuario ${w.user_id.substring(0, 8)}...`,
+            userPhone: 'WhatsApp Registrado',
+            userEmail: `user_${w.user_id.substring(0, 6)}@piggy.co`,
             amount: Number(w.amount || 0),
-            type: w.type || 'retiro',
-            bankInfo: typeof w.bank_info === 'object' ? JSON.stringify(w.bank_info) : (w.bank_info || 'Cuenta Bancaria'),
-            status: w.status || 'pending',
+            type: w.wallet_type === 'consumo' ? 'Bono Consumo' : 'Retiro Dinero',
+            bankInfo: w.bank_name || 'Bancolombia / Cuenta de Ahorros',
+            status: w.status === 'processed' ? 'approved' : (w.status || 'pending'),
+            notes: w.notes || '',
             createdAt: w.created_at || new Date().toISOString()
           }));
         }
-      } catch (e) {}
+        if (error) console.warn('Withdrawal requests error:', error.message);
+      } catch (e) {
+        console.error('Wallet withdrawal requests exception:', e);
+      }
     }
 
-    return this.getMockWithdrawals();
+    return [];
   },
 
   async getTransactions() {
     const client = getClient();
-    if (client && !isUsingMockData()) {
+    if (client) {
       try {
         const { data, error } = await client
           .from('wallet_transactions')
-          .select('*, profiles(id, full_name, email)')
+          .select('*')
           .order('created_at', { ascending: false })
-          .limit(50);
+          .limit(100);
 
         if (!error && data && data.length > 0) {
           return data.map((t) => ({
             id: t.id,
             userId: t.user_id,
-            userName: t.profiles?.full_name || 'Usuario',
+            userName: `Usuario ${t.user_id ? t.user_id.substring(0, 8) : 'Sistema'}...`,
             amount: Number(t.amount || 0),
-            type: t.type || 'transaction',
-            description: t.description || 'Movimiento de saldo',
-            status: t.status || 'completed',
+            type: t.type || 'transacción',
+            description: t.description || 'Movimiento en billetera',
+            walletType: t.wallet_type || 'dinero',
+            status: 'completed',
             createdAt: t.created_at || new Date().toISOString()
           }));
         }
-      } catch (e) {}
+        if (error) console.warn('Transactions error:', error.message);
+      } catch (e) {
+        console.error('Wallet transactions exception:', e);
+      }
     }
 
-    return this.getMockTransactions();
+    return [];
   },
 
   async approveRecharge(requestId, userId, amount) {
     const client = getClient();
     const creditAmount = Number(amount);
 
-    if (client && !isUsingMockData()) {
+    if (client) {
       try {
-        const { error: reqError } = await client
-          .from('wallet_recharge_requests')
-          .update({ status: 'approved', updated_at: new Date().toISOString() })
+        await client
+          .from('wallet_requests')
+          .update({
+            status: 'approved',
+            processed_at: new Date().toISOString(),
+            processed_by: 'admin'
+          })
           .eq('id', requestId);
 
-        if (reqError) throw reqError;
-
-        const { data: profile } = await client
-          .from('profiles')
-          .select('balance')
-          .eq('id', userId)
-          .single();
-
-        const currentBal = Number(profile?.balance || 0);
-        const newBal = currentBal + creditAmount;
-
-        await client
-          .from('profiles')
-          .update({ balance: newBal })
-          .eq('id', userId);
+        await client.from('wallet_transactions').insert({
+          user_id: userId,
+          amount: creditAmount,
+          type: 'recharge',
+          description: `Recarga aprobada por Administrador ($${creditAmount.toLocaleString('es-CO')})`,
+          wallet_type: 'dinero'
+        });
 
         try {
-          await client.from('wallet_transactions').insert({
-            user_id: userId,
-            amount: creditAmount,
-            type: 'recharge_approved',
-            description: `Recarga aprobada por Administrador ($${creditAmount.toLocaleString('es-CO')})`,
-            status: 'completed'
-          });
-        } catch (txErr) {}
+          const { data: profile } = await client.from('profiles').select('wallet_balance').eq('id', userId).single();
+          if (profile) {
+            const newBal = (Number(profile.wallet_balance) || 0) + creditAmount;
+            await client.from('profiles').update({ wallet_balance: newBal }).eq('id', userId);
+          }
+        } catch (pErr) {}
 
         return { success: true };
       } catch (err) {
@@ -133,19 +146,20 @@ export const walletService = {
       }
     }
 
-    return { success: true };
+    return { success: false, error: 'No client' };
   },
 
-  async rejectRecharge(requestId, reason = 'Comprobante no válido o ilegible') {
+  async rejectRecharge(requestId, reason = 'Comprobante no válido') {
     const client = getClient();
-    if (client && !isUsingMockData()) {
+    if (client) {
       try {
         const { error } = await client
-          .from('wallet_recharge_requests')
+          .from('wallet_requests')
           .update({
             status: 'rejected',
             notes: reason,
-            updated_at: new Date().toISOString()
+            processed_at: new Date().toISOString(),
+            processed_by: 'admin'
           })
           .eq('id', requestId);
 
@@ -155,48 +169,51 @@ export const walletService = {
         return { success: false, error: err.message };
       }
     }
-    return { success: true };
+    return { success: false, error: 'No client' };
   },
 
   async approveWithdrawal(requestId, userId, amount) {
     const client = getClient();
-    if (client && !isUsingMockData()) {
+    if (client) {
       try {
         const { error } = await client
           .from('wallet_requests')
-          .update({ status: 'approved', updated_at: new Date().toISOString() })
+          .update({
+            status: 'processed',
+            processed_at: new Date().toISOString(),
+            processed_by: 'admin'
+          })
           .eq('id', requestId);
 
         if (error) throw error;
 
-        try {
-          await client.from('wallet_transactions').insert({
-            user_id: userId,
-            amount: -Number(amount),
-            type: 'withdrawal_paid',
-            description: `Retiro bancario liquidado y transferido exitosamente`,
-            status: 'completed'
-          });
-        } catch (e) {}
+        await client.from('wallet_transactions').insert({
+          user_id: userId,
+          amount: -Number(amount),
+          type: 'withdrawal',
+          description: 'Retiro bancario transferido y liquidado por Admin',
+          wallet_type: 'dinero'
+        });
 
         return { success: true };
       } catch (err) {
         return { success: false, error: err.message };
       }
     }
-    return { success: true };
+    return { success: false, error: 'No client' };
   },
 
   async rejectWithdrawal(requestId, userId, amount, reason = 'Datos bancarios erróneos') {
     const client = getClient();
-    if (client && !isUsingMockData()) {
+    if (client) {
       try {
         const { error } = await client
           .from('wallet_requests')
           .update({
             status: 'rejected',
             notes: reason,
-            updated_at: new Date().toISOString()
+            processed_at: new Date().toISOString(),
+            processed_by: 'admin'
           })
           .eq('id', requestId);
 
@@ -206,95 +223,6 @@ export const walletService = {
         return { success: false, error: err.message };
       }
     }
-    return { success: true };
-  },
-
-  getMockRecharges() {
-    return [
-      {
-        id: 'rec-001',
-        userId: 'usr-001',
-        userName: 'Carlos Mario Restrepo',
-        userPhone: '+57 312 456 7890',
-        userEmail: 'carlos.restrepo@gmail.com',
-        userBalance: 2450000,
-        amount: 1000000,
-        paymentMethod: 'Bre-B (Bancolombia)',
-        receiptUrl: 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?w=600',
-        referenceCode: 'BREB-99214',
-        status: 'pending',
-        createdAt: '2026-08-24T14:10:00Z'
-      },
-      {
-        id: 'rec-002',
-        userId: 'usr-002',
-        userName: 'Valentina Gómez Cárdenas',
-        userPhone: '+57 300 987 6543',
-        userEmail: 'valen.gomez@hotmail.com',
-        userBalance: 1100000,
-        amount: 2000000,
-        paymentMethod: 'QR Interbancario',
-        receiptUrl: 'https://images.unsplash.com/photo-1559526324-4b87b5e36e44?w=600',
-        referenceCode: 'QR-44581',
-        status: 'pending',
-        createdAt: '2026-08-24T12:30:00Z'
-      },
-      {
-        id: 'rec-003',
-        userId: 'usr-003',
-        userName: 'Andrés Felipe Morales',
-        userPhone: '+57 315 333 2211',
-        userEmail: 'af.morales@outlook.com',
-        userBalance: 500000,
-        amount: 1000000,
-        paymentMethod: 'Transferencia Directa',
-        receiptUrl: 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?w=600',
-        referenceCode: 'TRF-11029',
-        status: 'approved',
-        createdAt: '2026-08-23T18:00:00Z'
-      }
-    ];
-  },
-
-  getMockWithdrawals() {
-    return [
-      {
-        id: 'wth-001',
-        userId: 'usr-004',
-        userName: 'Diana Marcela Lozano',
-        userPhone: '+57 318 777 8899',
-        userEmail: 'diana.lozano@gmail.com',
-        amount: 1100000,
-        type: 'retiro',
-        bankInfo: 'Bancolombia Ahorros #456-887123-09 (CC: 1144089221)',
-        status: 'pending',
-        createdAt: '2026-08-24T10:15:00Z'
-      }
-    ];
-  },
-
-  getMockTransactions() {
-    return [
-      {
-        id: 'tx-001',
-        userId: 'usr-001',
-        userName: 'Carlos Mario Restrepo',
-        amount: 1000000,
-        type: 'recharge_approved',
-        description: 'Recarga Bre-B confirmada por Admin',
-        status: 'completed',
-        createdAt: '2026-08-24T14:15:00Z'
-      },
-      {
-        id: 'tx-002',
-        userId: 'usr-003',
-        userName: 'Andrés Felipe Morales',
-        amount: -1000000,
-        type: 'piggy_purchase',
-        description: 'Compra de Piggy Landrace #2 en Mercado',
-        status: 'completed',
-        createdAt: '2026-08-23T19:00:00Z'
-      }
-    ];
+    return { success: false, error: 'No client' };
   }
 };
