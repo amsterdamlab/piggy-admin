@@ -98,7 +98,7 @@ export const dashboardService = {
               labels,
               datasets: [
                 {
-                  label: 'Capital Total Gestionado (COP)',
+                  label: 'Capital Total Gestionado',
                   data: capitalData,
                   borderColor: '#FF4B8B',
                   backgroundColor: 'rgba(255, 75, 139, 0.12)',
@@ -127,7 +127,7 @@ export const dashboardService = {
       labels: ['Feb 26', 'Mar 26', 'May 26', 'Jul 26', 'Ago 26'],
       datasets: [
         {
-          label: 'Capital Total Gestionado (COP)',
+          label: 'Capital Total Gestionado',
           data: [6000000, 14000000, 22000000, 31000000, 39000000],
           borderColor: '#FF4B8B',
           backgroundColor: 'rgba(255, 75, 139, 0.12)',

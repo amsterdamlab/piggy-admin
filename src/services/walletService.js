@@ -111,11 +111,9 @@ export const walletService = {
 
   async approveRecharge(requestId, userId, amount) {
     const client = getClient();
-    const creditAmount = Number(amount);
-
     if (client) {
       try {
-        await client
+        const { error } = await client
           .from('wallet_requests')
           .update({
             status: 'approved',
@@ -124,22 +122,7 @@ export const walletService = {
           })
           .eq('id', requestId);
 
-        await client.from('wallet_transactions').insert({
-          user_id: userId,
-          amount: creditAmount,
-          type: 'recharge',
-          description: `Recarga aprobada por Administrador ($${creditAmount.toLocaleString('es-CO')})`,
-          wallet_type: 'dinero'
-        });
-
-        try {
-          const { data: profile } = await client.from('profiles').select('wallet_balance').eq('id', userId).single();
-          if (profile) {
-            const newBal = (Number(profile.wallet_balance) || 0) + creditAmount;
-            await client.from('profiles').update({ wallet_balance: newBal }).eq('id', userId);
-          }
-        } catch (pErr) {}
-
+        if (error) throw error;
         return { success: true };
       } catch (err) {
         return { success: false, error: err.message };
@@ -186,15 +169,6 @@ export const walletService = {
           .eq('id', requestId);
 
         if (error) throw error;
-
-        await client.from('wallet_transactions').insert({
-          user_id: userId,
-          amount: -Number(amount),
-          type: 'withdrawal',
-          description: 'Retiro bancario transferido y liquidado por Admin',
-          wallet_type: 'dinero'
-        });
-
         return { success: true };
       } catch (err) {
         return { success: false, error: err.message };
