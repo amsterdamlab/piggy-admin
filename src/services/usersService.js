@@ -1,6 +1,6 @@
 /* ==========================================================================
    PIGGY MASTER ADMIN DASHBOARD - USERS SERVICE
-   Direct sync with Supabase `profiles` & real user transaction telemetry
+   Direct sync with Supabase `profiles`, `piggies`, and `wallet_requests`
    ========================================================================== */
 
 import { getClient } from './supabase.js';
@@ -8,136 +8,76 @@ import { getClient } from './supabase.js';
 export const usersService = {
   async getUsers() {
     const client = getClient();
-    if (client) {
-      try {
-        const { data: profiles, error } = await client
-          .from('profiles')
-          .select('*, piggies(id, investment_amount, status)')
-          .order('created_at', { ascending: false });
+    if (!client) return [];
 
-        if (!error && profiles && profiles.length > 0) {
-          return profiles.map((u) => {
-            const piggies = u.piggies || [];
-            const activePiggies = piggies.filter((p) => p.status === 'engorde' || p.status === 'active').length;
-            const totalInvested = piggies.reduce((acc, p) => acc + Number(p.investment_amount || 1000000), 0);
+    try {
+      const [pRes, pigRes, reqRes] = await Promise.all([
+        client.from('profiles').select('*').order('created_at', { ascending: false }),
+        client.from('piggies').select('*'),
+        client.from('wallet_requests').select('*')
+      ]);
 
-            return {
-              id: u.id,
-              fullName: u.full_name || `Inversionista (${u.id.substring(0, 6)})`,
-              email: u.email || 'N/A',
-              whatsapp: u.whatsapp || 'N/A',
-              termsAccepted: !!u.terms_accepted,
-              habeasDataAccepted: !!u.habeas_data_accepted,
-              balance: Number(u.wallet_balance || u.balance || 0),
-              points: Number(u.referral_balance ? Math.round(u.referral_balance / 100) : (u.points || 0)),
-              activePiggies,
-              totalInvested,
-              createdAt: u.created_at || new Date().toISOString()
-            };
-          });
-        }
-      } catch (e) {
-        console.warn('Profiles query error, attempting transaction telemetry fallback:', e);
+      const profiles = pRes.data || [];
+      const piggies = pigRes.data || [];
+      const requests = reqRes.data || [];
+
+      if (profiles.length > 0) {
+        return profiles.map((u) => {
+          const userPiggies = piggies.filter((p) => p.user_id === u.id);
+          const activePiggies = userPiggies.filter((p) => p.status === 'engorde' || p.status === 'active');
+          const completedPiggies = userPiggies.filter((p) => p.status === 'completado' || p.status === 'liquidado');
+
+          const totalCompraPiggies = userPiggies.reduce((sum, p) => sum + Number(p.investment_amount || 1000000), 0);
+
+          const piggyCount = userPiggies.length;
+          const baseRoiPct = piggyCount >= 3 ? 0.10 : (piggyCount === 2 ? 0.09 : 0.08);
+
+          // Valor de Referencia en Mercado (Beneficio proyectado / ganado)
+          const valorReferenciaMercado = userPiggies.reduce((sum, p) => {
+            const inv = Number(p.investment_amount || 1000000);
+            const extraRoi = Number(p.extra_roi_bonus || 0);
+            return sum + Math.round(inv * (baseRoiPct + extraRoi));
+          }, 0);
+
+          const avgExtraRoi = userPiggies.length > 0
+            ? userPiggies.reduce((sum, p) => sum + Number(p.extra_roi_bonus || 0), 0) / userPiggies.length
+            : 0;
+
+          const margenLabel = `${(baseRoiPct * 100).toFixed(0)}% Base${avgExtraRoi > 0 ? ` + ${(avgExtraRoi * 100).toFixed(1)}% Extra` : ''}`;
+
+          const userReqs = requests.filter((r) => r.user_id === u.id);
+          const pendingRecharges = userReqs.filter((r) => r.status === 'pending' && (r.request_type === 'recharge' || r.payment_method != null)).length;
+          const pendingWithdrawals = userReqs.filter((r) => r.status === 'pending' && r.request_type === 'withdrawal').length;
+
+          return {
+            id: u.id,
+            fullName: u.full_name || `Usuario (${u.id.substring(0, 6)})`,
+            email: u.email || 'N/A',
+            whatsapp: u.whatsapp || 'N/A',
+            cedula: u.cedula || 'No registrada',
+            bankName: u.bank_name || 'No registrado',
+            bankAccountType: u.bank_account_type || '',
+            bankAccountNumber: u.bank_account_number || '',
+            bankBreveKey: u.bank_breve_key || '',
+            walletBalance: Number(u.wallet_balance || 0),
+            bonosConsumo: Number(u.referral_balance || 0),
+            totalCompraPiggies,
+            valorReferenciaMercado,
+            margenComercialLabel: margenLabel,
+            activePiggiesCount: activePiggies.length,
+            totalPiggiesCount: userPiggies.length,
+            pendingRecharges,
+            pendingWithdrawals,
+            termsAccepted: !!u.terms_accepted,
+            habeasDataAccepted: !!u.habeas_data_accepted,
+            createdAt: u.created_at || new Date().toISOString()
+          };
+        });
       }
-
-      // If profiles returned 0 rows due to RLS, extract real users from 104 real transactions & requests
-      try {
-        const { data: txs } = await client
-          .from('wallet_transactions')
-          .select('*')
-          .order('created_at', { ascending: false });
-
-        const { data: requests } = await client
-          .from('wallet_requests')
-          .select('*');
-
-        if (txs && txs.length > 0) {
-          const userMap = {};
-
-          txs.forEach((t) => {
-            if (!t.user_id) return;
-            if (!userMap[t.user_id]) {
-              userMap[t.user_id] = {
-                id: t.user_id,
-                fullName: `Usuario ${t.user_id.substring(0, 8)}`,
-                email: `usuario_${t.user_id.substring(0, 6)}@piggy.co`,
-                whatsapp: `+57 (Registrado en Auth)`,
-                termsAccepted: true,
-                habeasDataAccepted: true,
-                balance: 0,
-                points: 200,
-                activePiggies: 0,
-                totalInvested: 0,
-                createdAt: t.created_at
-              };
-            }
-            userMap[t.user_id].balance += Number(t.amount || 0);
-            if (t.type === 'debit' || (t.description && t.description.toLowerCase().includes('compra de piggy'))) {
-              userMap[t.user_id].totalInvested += Math.abs(Number(t.amount || 0));
-              userMap[t.user_id].activePiggies += 1;
-            }
-            if (new Date(t.created_at) < new Date(userMap[t.user_id].createdAt)) {
-              userMap[t.user_id].createdAt = t.created_at;
-            }
-          });
-
-          if (requests) {
-            requests.forEach((r) => {
-              if (r.user_id && !userMap[r.user_id]) {
-                userMap[r.user_id] = {
-                  id: r.user_id,
-                  fullName: `Usuario ${r.user_id.substring(0, 8)}`,
-                  email: `usuario_${r.user_id.substring(0, 6)}@piggy.co`,
-                  whatsapp: `+57 (Registrado en Auth)`,
-                  termsAccepted: true,
-                  habeasDataAccepted: true,
-                  balance: 0,
-                  points: 100,
-                  activePiggies: 0,
-                  totalInvested: 0,
-                  createdAt: r.created_at
-                };
-              }
-            });
-          }
-
-          return Object.values(userMap);
-        }
-      } catch (err) {
-        console.error('Telemetry extraction error:', err);
-      }
+    } catch (err) {
+      console.error('Error fetching users in usersService:', err);
     }
 
     return [];
-  },
-
-  async adjustBalance(userId, newBalance, reason = 'Ajuste manual de Administrador') {
-    const client = getClient();
-    const amount = Number(newBalance);
-
-    if (client) {
-      try {
-        try {
-          await client
-            .from('profiles')
-            .update({ wallet_balance: amount, balance: amount })
-            .eq('id', userId);
-        } catch (e) {}
-
-        await client.from('wallet_transactions').insert({
-          user_id: userId,
-          amount: amount,
-          type: 'admin_adjustment',
-          description: reason,
-          wallet_type: 'dinero'
-        });
-
-        return { success: true };
-      } catch (err) {
-        return { success: false, error: err.message };
-      }
-    }
-
-    return { success: false, error: 'No client' };
   }
 };

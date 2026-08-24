@@ -8,25 +8,30 @@ import { getClient } from './supabase.js';
 export const piggiesService = {
   async getPiggies(statusFilter = 'all') {
     const client = getClient();
-    if (client) {
-      try {
-        let query = client
-          .from('piggies')
-          .select('*')
-          .order('created_at', { ascending: false });
+    if (!client) return [];
 
-        if (statusFilter !== 'all') {
-          query = query.eq('status', statusFilter);
-        }
+    try {
+      const [pigRes, profRes] = await Promise.all([
+        client.from('piggies').select('*').order('created_at', { ascending: false }),
+        client.from('profiles').select('id, full_name, whatsapp, email')
+      ]);
 
-        const { data, error } = await query;
-        if (!error && data && data.length > 0) {
-          return data.map((p) => ({
+      const piggies = pigRes.data || [];
+      const profiles = profRes.data || [];
+      const profileMap = {};
+      profiles.forEach((p) => {
+        profileMap[p.id] = p;
+      });
+
+      if (piggies.length > 0) {
+        let mapped = piggies.map((p) => {
+          const owner = profileMap[p.user_id] || {};
+          return {
             id: p.id,
             userId: p.user_id,
-            userName: `Inversionista (${p.user_id ? p.user_id.substring(0, 6) : 'N/A'})`,
-            userPhone: 'Registrado',
-            userEmail: 'Registrado',
+            userName: owner.full_name || p.full_name || `Inversionista (${p.user_id ? p.user_id.substring(0, 6) : 'N/A'})`,
+            userPhone: owner.whatsapp || 'N/A',
+            userEmail: owner.email || 'N/A',
             name: p.name || p.piggy_name || 'Piggy #' + String(p.id).substring(0, 5),
             status: p.status || 'engorde',
             investmentAmount: Number(p.investment_amount || p.price || 1000000),
@@ -34,82 +39,21 @@ export const piggiesService = {
             currentWeight: Number(p.current_weight || 15.0),
             purchaseDate: p.purchase_date || p.created_at,
             endDate: p.end_date,
+            contractCode: p.contract_code || '',
+            contractUrl: p.contract_url || '',
+            category: p.category || 'estandar',
             imageUrl: p.image_url || ''
-          }));
+          };
+        });
+
+        if (statusFilter !== 'all') {
+          mapped = mapped.filter((p) => p.status === statusFilter);
         }
-      } catch (e) {
-        console.warn('Piggies query error:', e);
+
+        return mapped;
       }
-
-      // If piggies table returns 0 due to RLS, extract real piggies from transactions telemetry
-      try {
-        const { data: txs } = await client
-          .from('wallet_transactions')
-          .select('*')
-          .order('created_at', { ascending: false });
-
-        if (txs && txs.length > 0) {
-          const piggiesList = [];
-          const seenPiggies = new Set();
-
-          txs.forEach((t) => {
-            const desc = t.description || '';
-            const matchCiclo = desc.match(/(?:Liquidación por ciclo completado|Ciclo completado):\s*([^\—\(\n]+)/i);
-            const matchCompra = desc.match(/(?:compra de Piggy|Compra Piggy)\s*([^\—\(\n]*)/i);
-
-            if (matchCiclo) {
-              const name = matchCiclo[1].trim();
-              const uniqueKey = `${t.user_id}_${name}`;
-              if (!seenPiggies.has(uniqueKey)) {
-                seenPiggies.add(uniqueKey);
-                piggiesList.push({
-                  id: `piggy-${t.id.substring(0, 8)}`,
-                  userId: t.user_id,
-                  userName: `Usuario ${t.user_id ? t.user_id.substring(0, 8) : ''}`,
-                  userPhone: 'En Billetera',
-                  userEmail: 'En Billetera',
-                  name: name || 'Piggy de Granja',
-                  status: 'completado',
-                  investmentAmount: 1000000,
-                  extraRoiBonus: desc.includes('ROI: 12') ? 0.02 : (desc.includes('ROI: 10') ? 0.01 : 0),
-                  currentWeight: 105.0,
-                  purchaseDate: t.created_at,
-                  endDate: t.created_at,
-                  imageUrl: ''
-                });
-              }
-            } else if (matchCompra && t.amount < 0) {
-              const name = matchCompra[1].trim() || 'Piggy en Engorde';
-              const uniqueKey = `${t.user_id}_${t.created_at}`;
-              if (!seenPiggies.has(uniqueKey)) {
-                seenPiggies.add(uniqueKey);
-                piggiesList.push({
-                  id: `piggy-${t.id.substring(0, 8)}`,
-                  userId: t.user_id,
-                  userName: `Usuario ${t.user_id ? t.user_id.substring(0, 8) : ''}`,
-                  userPhone: 'En Billetera',
-                  userEmail: 'En Billetera',
-                  name: name,
-                  status: 'engorde',
-                  investmentAmount: Math.abs(Number(t.amount || 1000000)),
-                  extraRoiBonus: 0.01,
-                  currentWeight: 55.0,
-                  purchaseDate: t.created_at,
-                  endDate: new Date(new Date(t.created_at).getTime() + (144 * 24 * 3600000)).toISOString(),
-                  imageUrl: ''
-                });
-              }
-            }
-          });
-
-          if (piggiesList.length > 0) {
-            if (statusFilter === 'all') return piggiesList;
-            return piggiesList.filter((p) => p.status === statusFilter);
-          }
-        }
-      } catch (err) {
-        console.error('Telemetry piggies error:', err);
-      }
+    } catch (e) {
+      console.error('Piggies query exception:', e);
     }
 
     return [];
@@ -176,7 +120,10 @@ export const piggiesService = {
     const client = getClient();
     if (client) {
       try {
-        const { error } = await client.from('piggies').delete().eq('id', piggyId);
+        const { error } = await client
+          .from('piggies')
+          .delete().eq('id', piggyId);
+
         if (error) throw error;
         return { success: true };
       } catch (err) {

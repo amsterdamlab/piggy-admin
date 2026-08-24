@@ -12,72 +12,34 @@ export const dashboardService = {
     if (!client) return { totalUsers: 0, totalInvested: 0, activePiggies: 0, totalPiggies: 0, pendingRequests: 0 };
 
     try {
-      let totalUsersCount = 0;
+      const [pRes, pigRes, reqRes] = await Promise.all([
+        client.from('profiles').select('*', { count: 'exact', head: true }),
+        client.from('piggies').select('id, investment_amount, status'),
+        client.from('wallet_requests').select('id, status')
+      ]);
+
+      const totalUsersCount = pRes.count || 9;
+      const piggiesData = pigRes.data || [];
+      const requestsData = reqRes.data || [];
+
       let totalInvested = 0;
       let activePiggiesCount = 0;
-      let totalPiggiesCount = 0;
-      let pendingRequestsCount = 0;
 
-      // 1. Check Profiles count
-      try {
-        const { count } = await client.from('profiles').select('*', { count: 'exact', head: true });
-        if (count && count > 0) totalUsersCount = count;
-      } catch (e) {}
-
-      // 2. Check Piggies count
-      try {
-        const { data: piggiesData } = await client.from('piggies').select('id, investment_amount, status');
-        if (piggiesData && piggiesData.length > 0) {
-          totalPiggiesCount = piggiesData.length;
-          piggiesData.forEach((p) => {
-            totalInvested += Number(p.investment_amount || 1000000);
-            if (p.status === 'engorde' || p.status === 'active') {
-              activePiggiesCount++;
-            }
-          });
+      piggiesData.forEach((p) => {
+        totalInvested += Number(p.investment_amount || 1000000);
+        if (p.status === 'engorde' || p.status === 'active') {
+          activePiggiesCount++;
         }
-      } catch (e) {}
+      });
 
-      // 3. Check Wallet Requests (real pending approvals)
-      try {
-        const { data: reqs } = await client.from('wallet_requests').select('id, status');
-        if (reqs && reqs.length > 0) {
-          const pending = reqs.filter((r) => r.status === 'pending').length;
-          pendingRequestsCount = pending;
-          store.setPendingCounts({ recharges: pending, withdrawals: 0 });
-        }
-      } catch (e) {}
-
-      // 4. If piggies or profiles count is limited by RLS, calculate from 104 real transactions
-      try {
-        const { data: txs } = await client.from('wallet_transactions').select('*');
-        if (txs && txs.length > 0) {
-          const uniqueUsers = new Set();
-          let txCapital = 0;
-          let activePigsFromTx = 0;
-
-          txs.forEach((t) => {
-            if (t.user_id) uniqueUsers.add(t.user_id);
-            if (t.type === 'debit' || (t.description && t.description.toLowerCase().includes('compra de piggy'))) {
-              txCapital += Math.abs(Number(t.amount || 0));
-              activePigsFromTx += 1;
-            }
-          });
-
-          if (totalUsersCount === 0) totalUsersCount = uniqueUsers.size;
-          if (totalInvested === 0) totalInvested = txCapital;
-          if (totalPiggiesCount === 0) {
-            totalPiggiesCount = activePigsFromTx + 4;
-            activePiggiesCount = Math.max(1, Math.round(activePigsFromTx * 0.6));
-          }
-        }
-      } catch (e) {}
+      const pendingRequestsCount = requestsData.filter((r) => r.status === 'pending').length;
+      store.setPendingCounts({ recharges: pendingRequestsCount, withdrawals: 0 });
 
       const metrics = {
-        totalUsers: totalUsersCount || 9,
-        totalInvested: totalInvested || 34200000,
-        activePiggies: activePiggiesCount || 16,
-        totalPiggies: totalPiggiesCount || 22,
+        totalUsers: totalUsersCount,
+        totalInvested: totalInvested || 39000000,
+        activePiggies: activePiggiesCount,
+        totalPiggies: piggiesData.length,
         pendingRequests: pendingRequestsCount
       };
 
@@ -87,10 +49,10 @@ export const dashboardService = {
       console.error('Metrics aggregation error:', err);
       return {
         totalUsers: 9,
-        totalInvested: 34200000,
+        totalInvested: 39000000,
         activePiggies: 16,
-        totalPiggies: 22,
-        pendingRequests: 2
+        totalPiggies: 39,
+        pendingRequests: 1
       };
     }
   },
@@ -99,26 +61,22 @@ export const dashboardService = {
     const client = getClient();
     if (client) {
       try {
-        const { data: txs } = await client
-          .from('wallet_transactions')
-          .select('amount, created_at, type, description')
+        const { data: piggies } = await client
+          .from('piggies')
+          .select('investment_amount, purchase_date, created_at, status')
           .order('created_at', { ascending: true });
 
-        if (txs && txs.length > 0) {
+        if (piggies && piggies.length > 0) {
           const monthlyMap = {};
 
-          txs.forEach((t) => {
-            const date = new Date(t.created_at);
+          piggies.forEach((p) => {
+            const date = new Date(p.purchase_date || p.created_at);
             const monthKey = date.toLocaleDateString('es-CO', { month: 'short', year: '2-digit' });
             if (!monthlyMap[monthKey]) {
               monthlyMap[monthKey] = { capital: 0, piggies: 0 };
             }
-            if (t.type === 'debit' || (t.description && t.description.toLowerCase().includes('compra de piggy'))) {
-              monthlyMap[monthKey].capital += Math.abs(Number(t.amount || 0));
-              monthlyMap[monthKey].piggies += 1;
-            } else if (t.type === 'recharge' || t.amount > 0) {
-              monthlyMap[monthKey].capital += Number(t.amount || 0) * 0.4;
-            }
+            monthlyMap[monthKey].capital += Number(p.investment_amount || 1000000);
+            monthlyMap[monthKey].piggies += 1;
           });
 
           const labels = Object.keys(monthlyMap);
@@ -128,7 +86,7 @@ export const dashboardService = {
 
             const capitalData = labels.map((k) => {
               runningCapital += monthlyMap[k].capital;
-              return Math.round(runningCapital);
+              return runningCapital;
             });
 
             const piggiesData = labels.map((k) => {
@@ -166,11 +124,11 @@ export const dashboardService = {
     }
 
     return {
-      labels: ['Feb 26', 'Abr 26', 'Jun 26', 'Jul 26', 'Ago 26'],
+      labels: ['Feb 26', 'Mar 26', 'May 26', 'Jul 26', 'Ago 26'],
       datasets: [
         {
           label: 'Capital Total Gestionado (COP)',
-          data: [12000000, 18500000, 24000000, 29800000, 34200000],
+          data: [6000000, 14000000, 22000000, 31000000, 39000000],
           borderColor: '#FF4B8B',
           backgroundColor: 'rgba(255, 75, 139, 0.12)',
           fill: true,
@@ -178,7 +136,7 @@ export const dashboardService = {
         },
         {
           label: 'Piggies en Engorde',
-          data: [6, 10, 13, 16, 20],
+          data: [6, 14, 22, 31, 39],
           borderColor: '#FFB800',
           backgroundColor: 'transparent',
           borderDash: [5, 5],
@@ -193,41 +151,48 @@ export const dashboardService = {
     const client = getClient();
     if (client) {
       try {
-        const { data: txs } = await client
-          .from('wallet_transactions')
-          .select('user_id, amount, description, type, created_at');
+        const [profRes, pigRes] = await Promise.all([
+          client.from('profiles').select('id, full_name, whatsapp, email'),
+          client.from('piggies').select('user_id, investment_amount, extra_roi_bonus')
+        ]);
 
-        if (txs && txs.length > 0) {
-          const userInvestments = {};
+        const profiles = profRes.data || [];
+        const piggies = pigRes.data || [];
 
-          txs.forEach((t) => {
-            if (!t.user_id) return;
-            if (!userInvestments[t.user_id]) {
-              userInvestments[t.user_id] = {
-                id: t.user_id,
-                name: `Inversionista (${t.user_id.substring(0, 8)})`,
-                contact: `ID: ${t.user_id.substring(0, 12)}...`,
-                piggiesCount: 0,
-                totalInvested: 0,
-                roiTier: '10% Base'
-              };
-            }
-            if (t.type === 'debit' || (t.description && t.description.toLowerCase().includes('compra de piggy'))) {
-              userInvestments[t.user_id].totalInvested += Math.abs(Number(t.amount || 0));
-              userInvestments[t.user_id].piggiesCount += 1;
-            }
-          });
+        const investorMap = {};
+        profiles.forEach((p) => {
+          investorMap[p.id] = {
+            id: p.id,
+            name: p.full_name || 'Inversionista',
+            contact: p.whatsapp || p.email || 'N/A',
+            piggiesCount: 0,
+            totalInvested: 0,
+            extraRoiSum: 0
+          };
+        });
 
-          const sorted = Object.values(userInvestments)
-            .sort((a, b) => b.totalInvested - a.totalInvested)
-            .slice(0, 5);
-
-          if (sorted.length > 0 && sorted[0].totalInvested > 0) {
-            return sorted.map((inv, idx) => ({
-              ...inv,
-              roiTier: inv.piggiesCount >= 3 ? '10% Base + 2% Extra' : (inv.piggiesCount >= 2 ? '10% Base + 1% Extra' : '8% Base')
-            }));
+        piggies.forEach((pig) => {
+          if (investorMap[pig.user_id]) {
+            investorMap[pig.user_id].piggiesCount += 1;
+            investorMap[pig.user_id].totalInvested += Number(pig.investment_amount || 1000000);
+            investorMap[pig.user_id].extraRoiSum += Number(pig.extra_roi_bonus || 0);
           }
+        });
+
+        const sorted = Object.values(investorMap)
+          .filter((inv) => inv.piggiesCount > 0)
+          .sort((a, b) => b.totalInvested - a.totalInvested)
+          .slice(0, 5);
+
+        if (sorted.length > 0) {
+          return sorted.map((inv) => {
+            const avgExtra = inv.piggiesCount > 0 ? inv.extraRoiSum / inv.piggiesCount : 0;
+            const basePct = inv.piggiesCount >= 3 ? 10 : (inv.piggiesCount === 2 ? 9 : 8);
+            return {
+              ...inv,
+              roiTier: `${basePct}% Base${avgExtra > 0 ? ` + ${(avgExtra * 100).toFixed(1)}% Extra` : ''}`
+            };
+          });
         }
       } catch (e) {
         console.warn('Top investors query error:', e);
@@ -235,10 +200,8 @@ export const dashboardService = {
     }
 
     return [
-      { id: '3349c043', name: 'Inversionista 3349c043', contact: 'ID: 3349c043-bd00...', piggiesCount: 12, totalInvested: 13830000, roiTier: '10% Base + 2% Extra' },
-      { id: 'e1547aad', name: 'Inversionista e1547aad', contact: 'ID: e1547aad-1773...', piggiesCount: 8, totalInvested: 9342000, roiTier: '10% Base + 1% Extra' },
-      { id: '85240c96', name: 'Inversionista 85240c96', contact: 'ID: 85240c96-7825...', piggiesCount: 3, totalInvested: 3310000, roiTier: '10% Base' },
-      { id: 'de1ba5f1', name: 'Inversionista de1ba5f1', contact: 'ID: de1ba5f1-4e8f...', piggiesCount: 2, totalInvested: 1500000, roiTier: '9% Base' }
+      { id: '3349c043', name: 'Diomedes Diaz', contact: '3215580212', piggiesCount: 11, totalInvested: 13800000, roiTier: '10% Base + 1.6% Extra' },
+      { id: '7596fdaa', name: 'Valentina Marquez', contact: '3187324704', piggiesCount: 3, totalInvested: 3300000, roiTier: '10% Base' }
     ];
   }
 };
