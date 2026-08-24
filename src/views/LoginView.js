@@ -16,7 +16,7 @@ export class LoginView {
       <div class="login-wrapper">
         <div class="login-card">
           <div style="margin-bottom: 1.25rem;">
-            <img src="/piggy-favicon.svg" alt="Piggy Logo" style="width: 58px; height: 58px; margin: 0 auto; display: block;" />
+            <img src="/piggy-favicon.svg" alt="Piggy Logo" style="width: 68px; height: 68px; margin: 0 auto; display: block; border-radius: 50%;" />
           </div>
           <h2 class="login-title">Piggy Admin</h2>
           <p class="login-subtitle">Ingreso seguro a la consola de administración y tesorería</p>

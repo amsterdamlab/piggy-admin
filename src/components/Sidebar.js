@@ -37,7 +37,7 @@ export class Sidebar {
       <aside class="admin-sidebar" id="main-admin-sidebar">
         <div class="sidebar-header">
           <div class="sidebar-logo-icon" style="background: transparent; box-shadow: none; padding: 0;">
-            <img src="/piggy-favicon.svg" alt="Piggy Logo" style="width: 38px; height: 38px; object-fit: contain;" />
+            <img src="/piggy-favicon.svg" alt="Piggy Logo" style="width: 38px; height: 38px; object-fit: contain; border-radius: 50%; display: block;" />
           </div>
           <div>
             <div class="sidebar-brand-title">Piggy Admin <span class="sidebar-brand-badge">Master</span></div>
