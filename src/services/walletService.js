@@ -168,24 +168,30 @@ export const walletService = {
             .from('wallet_transactions')
             .select('*')
             .order('created_at', { ascending: false })
-            .limit(200),
-          client.from('profiles').select('id, full_name, email')
+            .limit(300),
+          client.from('profiles').select('id, full_name, email, whatsapp')
         ]);
 
         const rawData = txRes.data || [];
-        // Omitir registros de auditoría duplicados generados previamente
-        const data = rawData.filter(t => t.description !== 'Aprobación de Recarga de Saldo Cuenta Agro' && !t.description.includes('TEST-TRIG'));
         const profiles = profRes.data || [];
         const profileMap = {};
         profiles.forEach(p => { profileMap[p.id] = p; });
 
-        if (!txRes.error && data && data.length > 0) {
+        // Filtrar de forma segura protegiendo contra valores null
+        const data = rawData.filter(t => {
+          const desc = t.description || '';
+          return desc !== 'Aprobación de Recarga de Saldo Cuenta Agro' && !desc.includes('TEST-TRIG');
+        });
+
+        if (!txRes.error && data) {
           return data.map((t) => {
             const user = profileMap[t.user_id] || {};
             return {
               id: t.id,
               userId: t.user_id,
               userName: user.full_name || (t.user_id ? `Usuario ${t.user_id.substring(0, 8)}...` : 'Sistema'),
+              userEmail: user.email || '',
+              userPhone: user.whatsapp || '',
               amount: Number(t.amount || 0),
               type: t.type || 'transacción',
               description: t.description || 'Movimiento en billetera',
