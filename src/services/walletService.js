@@ -168,20 +168,14 @@ export const walletService = {
             .from('wallet_transactions')
             .select('*')
             .order('created_at', { ascending: false })
-            .limit(300),
+            .limit(500),
           client.from('profiles').select('id, full_name, email, whatsapp')
         ]);
 
-        const rawData = txRes.data || [];
+        const data = txRes.data || [];
         const profiles = profRes.data || [];
         const profileMap = {};
         profiles.forEach(p => { profileMap[p.id] = p; });
-
-        // Filtrar de forma segura protegiendo contra valores null
-        const data = rawData.filter(t => {
-          const desc = t.description || '';
-          return desc !== 'Aprobación de Recarga de Saldo Cuenta Agro' && !desc.includes('TEST-TRIG');
-        });
 
         if (!txRes.error && data) {
           return data.map((t) => {
