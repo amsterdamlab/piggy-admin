@@ -172,7 +172,9 @@ export const walletService = {
           client.from('profiles').select('id, full_name, email')
         ]);
 
-        const data = txRes.data || [];
+        const rawData = txRes.data || [];
+        // Omitir registros de auditoría duplicados generados previamente
+        const data = rawData.filter(t => t.description !== 'Aprobación de Recarga de Saldo Cuenta Agro' && !t.description.includes('TEST-TRIG'));
         const profiles = profRes.data || [];
         const profileMap = {};
         profiles.forEach(p => { profileMap[p.id] = p; });
