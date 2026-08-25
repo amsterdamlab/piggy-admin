@@ -206,10 +206,11 @@ export const walletService = {
     const client = getClient();
     if (client) {
       try {
-        const numAmount = Math.abs(Number(amount));
         const now = new Date().toISOString();
 
-        // 1. Actualizar estado de solicitud
+        // 1. Actualizar estado de solicitud a 'approved'.
+        // El trigger en PostgreSQL (Supabase) inserta automáticamente la transacción
+        // contable correspondiente con la referencia original y acredita el saldo en profiles.
         const { error } = await client
           .from('wallet_requests')
           .update({
@@ -220,24 +221,6 @@ export const walletService = {
           .eq('id', requestId);
 
         if (error) throw error;
-
-        // 2. Registrar transacción en wallet_transactions (monto positivo)
-        await client.from('wallet_transactions').insert({
-          user_id: userId,
-          amount: numAmount,
-          type: 'recharge',
-          description: 'Aprobación de Recarga de Saldo Cuenta Agro',
-          wallet_type: 'dinero',
-          simulation_status: 'APPROVED',
-          created_at: now
-        });
-
-        // 3. Acreditar saldo en profiles
-        const { data: profile } = await client.from('profiles').select('wallet_balance').eq('id', userId).single();
-        if (profile) {
-          const currentBal = Number(profile.wallet_balance || 0);
-          await client.from('profiles').update({ wallet_balance: currentBal + numAmount }).eq('id', userId);
-        }
 
         return { success: true };
       } catch (err) {
@@ -275,10 +258,12 @@ export const walletService = {
     const client = getClient();
     if (client) {
       try {
-        const numAmount = Math.abs(Number(amount));
         const now = new Date().toISOString();
 
-        // 1. Actualizar estado de solicitud
+        // 1. Actualizar estado de solicitud a 'approved'.
+        // Nota: En las solicitudes de retiro creadas por clientes desde la app móvil, el saldo
+        // fue retenido/debitado previamente al momento de la solicitud ("Retención por solicitud en proceso").
+        // Al liquidar aquí, solo se confirma y aprueba el despacho del dinero.
         const { error: reqErr } = await client
           .from('wallet_requests')
           .update({
@@ -289,27 +274,6 @@ export const walletService = {
           .eq('id', requestId);
 
         if (reqErr) throw reqErr;
-
-        // 2. Registrar débito en wallet_transactions (monto negativo, type 'debit')
-        const { error: txErr } = await client.from('wallet_transactions').insert({
-          user_id: userId,
-          amount: -numAmount,
-          type: 'debit',
-          description: 'Retiro de Dinero Liquidado y Transferido',
-          wallet_type: 'dinero',
-          simulation_status: 'APPROVED',
-          created_at: now
-        });
-
-        if (txErr) console.warn('Error al insertar transacción de retiro:', txErr);
-
-        // 3. Descontar saldo en profiles
-        const { data: profile } = await client.from('profiles').select('wallet_balance').eq('id', userId).single();
-        if (profile) {
-          const currentBal = Number(profile.wallet_balance || 0);
-          const { error: profErr } = await client.from('profiles').update({ wallet_balance: Math.max(0, currentBal - numAmount) }).eq('id', userId);
-          if (profErr) console.warn('Error al descontar saldo en perfil:', profErr);
-        }
 
         return { success: true };
       } catch (err) {
@@ -323,6 +287,7 @@ export const walletService = {
     const client = getClient();
     if (client) {
       try {
+        // Al rechazar la solicitud, el trigger de base de datos genera la "Devolución por retiro bancario no procesado"
         const { error } = await client
           .from('wallet_requests')
           .update({
@@ -346,12 +311,10 @@ export const walletService = {
     const client = getClient();
     if (client) {
       try {
-        const numAmount = Math.abs(Number(amount));
         const now = new Date().toISOString();
-        const isBono = walletType === 'consumo' || walletType === 'bono_consumo';
-        const targetWallet = isBono ? 'consumo' : 'dinero';
 
-        // 1. Actualizar estado de solicitud a approved
+        // 1. Actualizar estado de solicitud a approved.
+        // Las solicitudes de carne del cliente ya retienen el saldo/bono al crearse.
         const { error } = await client
           .from('wallet_requests')
           .update({
@@ -362,29 +325,6 @@ export const walletService = {
           .eq('id', requestId);
 
         if (error) throw error;
-
-        // 2. Registrar débito en wallet_transactions (monto negativo)
-        await client.from('wallet_transactions').insert({
-          user_id: userId,
-          amount: -numAmount,
-          type: 'debit',
-          description: isBono ? 'Canje de Bono de Consumo (Despacho Carne)' : 'Compra de Carne en Granja (Débito Cuenta Agro)',
-          wallet_type: targetWallet,
-          simulation_status: 'APPROVED',
-          created_at: now
-        });
-
-        // 3. Descontar balance respectivo en profiles
-        const { data: profile } = await client.from('profiles').select('wallet_balance, referral_balance').eq('id', userId).single();
-        if (profile) {
-          if (targetWallet === 'dinero') {
-            const currentBal = Number(profile.wallet_balance || 0);
-            await client.from('profiles').update({ wallet_balance: Math.max(0, currentBal - numAmount) }).eq('id', userId);
-          } else {
-            const currentBonos = Number(profile.referral_balance || 0);
-            await client.from('profiles').update({ referral_balance: Math.max(0, currentBonos - numAmount) }).eq('id', userId);
-          }
-        }
 
         return { success: true };
       } catch (err) {
