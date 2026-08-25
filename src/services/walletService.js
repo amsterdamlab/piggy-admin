@@ -268,11 +268,19 @@ export const walletService = {
     if (client) {
       try {
         const now = new Date().toISOString();
+        const numAmount = Math.abs(Number(amount));
 
-        // 1. Actualizar estado de solicitud a 'approved'.
-        // Nota: En las solicitudes de retiro creadas por clientes desde la app móvil, el saldo
-        // fue retenido/debitado previamente al momento de la solicitud ("Retención por solicitud en proceso").
-        // Al liquidar aquí, solo se confirma y aprueba el despacho del dinero.
+        // 1. Obtener detalles de la solicitud para auditoría contable
+        const { data: reqData } = await client
+          .from('wallet_requests')
+          .select('*')
+          .eq('id', requestId)
+          .single();
+
+        const bank = reqData?.bank_name || 'Cuenta Bancaria';
+        const ref = reqData?.reference || `RET-${requestId.substring(0, 8).toUpperCase()}`;
+
+        // 2. Actualizar estado de solicitud a 'approved'
         const { error: reqErr } = await client
           .from('wallet_requests')
           .update({
@@ -283,6 +291,33 @@ export const walletService = {
           .eq('id', requestId);
 
         if (reqErr) throw reqErr;
+
+        // 3. Registrar el débito real en wallet_transactions
+        const { error: txErr } = await client.from('wallet_transactions').insert({
+          user_id: userId,
+          amount: -numAmount,
+          type: 'debit',
+          description: `Liquidación de Retiro Bancario (${bank}) [Ref: ${ref}]`,
+          wallet_type: 'dinero',
+          payment_method: 'TRANSFERENCIA',
+          simulation_status: 'APPROVED',
+          created_at: now
+        });
+
+        if (txErr) console.warn('Error insertando debito en wallet_transactions:', txErr);
+
+        // 4. Descontar el saldo del perfil del usuario
+        const { data: profile } = await client
+          .from('profiles')
+          .select('wallet_balance')
+          .eq('id', userId)
+          .single();
+
+        if (profile) {
+          const currentBal = Number(profile.wallet_balance || 0);
+          const newBal = Math.max(0, currentBal - numAmount);
+          await client.from('profiles').update({ wallet_balance: newBal }).eq('id', userId);
+        }
 
         return { success: true };
       } catch (err) {
@@ -296,7 +331,6 @@ export const walletService = {
     const client = getClient();
     if (client) {
       try {
-        // Al rechazar la solicitud, el trigger de base de datos genera la "Devolución por retiro bancario no procesado"
         const { error } = await client
           .from('wallet_requests')
           .update({
@@ -321,10 +355,23 @@ export const walletService = {
     if (client) {
       try {
         const now = new Date().toISOString();
+        const numAmount = Math.abs(Number(amount));
+        const isBono = walletType === 'consumo';
 
-        // 1. Actualizar estado de solicitud a approved.
-        // Las solicitudes de carne del cliente ya retienen el saldo/bono al crearse.
-        const { error } = await client
+        // 1. Obtener detalles de la solicitud para auditoría contable
+        const { data: reqData } = await client
+          .from('wallet_requests')
+          .select('*')
+          .eq('id', requestId)
+          .single();
+
+        const ref = reqData?.reference || `CRN-${requestId.substring(0, 8).toUpperCase()}`;
+        const desc = isBono
+          ? `Despacho de Carne - Canje Bonos de Consumo [Ref: ${ref}]`
+          : `Despacho de Carne - Débito Saldo Cuenta Agro [Ref: ${ref}]`;
+
+        // 2. Actualizar estado de solicitud a approved
+        const { error: reqErr } = await client
           .from('wallet_requests')
           .update({
             status: 'approved',
@@ -333,7 +380,40 @@ export const walletService = {
           })
           .eq('id', requestId);
 
-        if (error) throw error;
+        if (reqErr) throw reqErr;
+
+        // 3. Registrar el débito en wallet_transactions
+        const { error: txErr } = await client.from('wallet_transactions').insert({
+          user_id: userId,
+          amount: -numAmount,
+          type: 'debit',
+          description: desc,
+          wallet_type: isBono ? 'consumo' : 'dinero',
+          payment_method: 'DESPACHO_GRANJA',
+          simulation_status: 'APPROVED',
+          created_at: now
+        });
+
+        if (txErr) console.warn('Error insertando despacho en wallet_transactions:', txErr);
+
+        // 4. Descontar el saldo correspondiente en el perfil
+        const { data: profile } = await client
+          .from('profiles')
+          .select('wallet_balance, referral_balance')
+          .eq('id', userId)
+          .single();
+
+        if (profile) {
+          if (isBono) {
+            const currentBonos = Number(profile.referral_balance || 0);
+            const newBonos = Math.max(0, currentBonos - numAmount);
+            await client.from('profiles').update({ referral_balance: newBonos }).eq('id', userId);
+          } else {
+            const currentBal = Number(profile.wallet_balance || 0);
+            const newBal = Math.max(0, currentBal - numAmount);
+            await client.from('profiles').update({ wallet_balance: newBal }).eq('id', userId);
+          }
+        }
 
         return { success: true };
       } catch (err) {
