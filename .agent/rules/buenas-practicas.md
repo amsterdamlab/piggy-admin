@@ -71,3 +71,8 @@ trigger: always_on
 
 * **Iconos en Líneas SVG Exclusivos:** Todos los iconos de la aplicación deben ser estrictamente en formato de líneas vectoriales SVG (`stroke="currentColor"`, `stroke-width="2"`, `fill="none"`), siguiendo el diseño limpio del menú principal.
 * **Prohibición de Emojis en la UI:** Queda prohibido el uso de emojis en botones, títulos de tarjetas, menús, modales o encabezados de tabla. Todos los elementos gráficos deben utilizar los iconos SVG definidos en `src/icons.js`.
+
+**IX. PRINCIPIO DE INMUTABILIDAD Y TRANSPARENCIA CONTABLE (Audit Ledger)**
+
+* **Prohibición de Filtros Ocultos en `wallet_transactions`:** Queda estrictamente prohibido aplicar filtros en el cliente, servicios o vistas que omitan, censuren, oculten o modifiquen transacciones de la tabla `wallet_transactions`. Toda transacción que entre o salga de esta tabla en la base de datos (sea abono, débito, recarga, liquidación, corrección, ajuste manual o error de prueba) debe reflejarse SIEMPRE de forma 1:1, íntegra y transparente en el Libro Contable (Auditoría).
+* **Trazabilidad Contable Absoluta:** La plataforma opera con dinero real; por tanto, el libro mayor contable es inmutable. Ningún agente o desarrollador debe silenciar, suprimir o simular estados que alteren la visibilidad total de los movimientos financieros históricos.
