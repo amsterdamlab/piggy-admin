@@ -279,7 +279,7 @@ export const walletService = {
         const now = new Date().toISOString();
 
         // 1. Actualizar estado de solicitud
-        const { error } = await client
+        const { error: reqErr } = await client
           .from('wallet_requests')
           .update({
             status: 'approved',
@@ -288,24 +288,27 @@ export const walletService = {
           })
           .eq('id', requestId);
 
-        if (error) throw error;
+        if (reqErr) throw reqErr;
 
-        // 2. Registrar débito en wallet_transactions (monto negativo)
-        await client.from('wallet_transactions').insert({
+        // 2. Registrar débito en wallet_transactions (monto negativo, type 'debit')
+        const { error: txErr } = await client.from('wallet_transactions').insert({
           user_id: userId,
           amount: -numAmount,
-          type: 'withdrawal',
+          type: 'debit',
           description: 'Retiro de Dinero Liquidado y Transferido',
           wallet_type: 'dinero',
           simulation_status: 'APPROVED',
           created_at: now
         });
 
+        if (txErr) console.warn('Error al insertar transacción de retiro:', txErr);
+
         // 3. Descontar saldo en profiles
         const { data: profile } = await client.from('profiles').select('wallet_balance').eq('id', userId).single();
         if (profile) {
           const currentBal = Number(profile.wallet_balance || 0);
-          await client.from('profiles').update({ wallet_balance: Math.max(0, currentBal - numAmount) }).eq('id', userId);
+          const { error: profErr } = await client.from('profiles').update({ wallet_balance: Math.max(0, currentBal - numAmount) }).eq('id', userId);
+          if (profErr) console.warn('Error al descontar saldo en perfil:', profErr);
         }
 
         return { success: true };
@@ -473,7 +476,7 @@ export const walletService = {
         isCredit = false;
         targetWallet = 'dinero';
         reqType = 'withdrawal';
-        txType = 'withdrawal';
+        txType = 'debit';
         prefix = 'RET';
         defaultDesc = 'Retiro Manual de Dinero:';
       } else if (requestType === 'consumption') {
@@ -542,7 +545,7 @@ export const walletService = {
 
         const batchSize = 50;
         for (let i = 0; i < reqInserts.length; i += batchSize) {
-          await client.from('wallet_requests').insert(batchRequest);
+          await client.from('wallet_requests').insert(reqInserts.slice(i, i + batchSize));
         }
 
         if (isApproved && txInserts.length > 0) {
@@ -585,7 +588,7 @@ export const walletService = {
       if (isApproved) {
         try {
           // 1. Insertar transacción contable (con monto negativo si es débito)
-          await client.from('wallet_transactions').insert({
+          const { error: txErr } = await client.from('wallet_transactions').insert({
             user_id: userId,
             amount: isCredit ? numAmount : -numAmount,
             type: txType,
@@ -596,17 +599,21 @@ export const walletService = {
             created_at: now
           });
 
+          if (txErr) console.warn('Error al insertar transacción en wallet_transactions:', txErr);
+
           // 2. Actualizar perfil
           const { data: profile } = await client.from('profiles').select('wallet_balance, referral_balance').eq('id', userId).single();
           if (profile) {
             if (targetWallet === 'dinero') {
               const currentVal = Number(profile.wallet_balance || 0);
               const updatedVal = isCredit ? (currentVal + numAmount) : Math.max(0, currentVal - numAmount);
-              await client.from('profiles').update({ wallet_balance: updatedVal }).eq('id', userId);
+              const { error: profErr } = await client.from('profiles').update({ wallet_balance: updatedVal }).eq('id', userId);
+              if (profErr) console.warn('Error al actualizar wallet_balance:', profErr);
             } else if (targetWallet === 'consumo') {
               const currentVal = Number(profile.referral_balance || 0);
               const updatedVal = isCredit ? (currentVal + numAmount) : Math.max(0, currentVal - numAmount);
-              await client.from('profiles').update({ referral_balance: updatedVal }).eq('id', userId);
+              const { error: profErr } = await client.from('profiles').update({ referral_balance: updatedVal }).eq('id', userId);
+              if (profErr) console.warn('Error al actualizar referral_balance:', profErr);
             }
           }
         } catch (txErr) {
