@@ -11,15 +11,17 @@ export const usersService = {
     if (!client) return [];
 
     try {
-      const [pRes, pigRes, reqRes] = await Promise.all([
+      const [pRes, pigRes, reqRes, refRes] = await Promise.all([
         client.from('profiles').select('*').order('created_at', { ascending: false }),
         client.from('piggies').select('*'),
-        client.from('wallet_requests').select('*')
+        client.from('wallet_requests').select('*'),
+        client.from('referrals').select('*')
       ]);
 
       const profiles = pRes.data || [];
       const piggies = pigRes.data || [];
       const requests = reqRes.data || [];
+      const referrals = refRes.data || [];
 
       if (profiles.length > 0) {
         return profiles.map((u) => {
@@ -49,6 +51,11 @@ export const usersService = {
           const pendingRecharges = userReqs.filter((r) => r.status === 'pending' && (r.request_type === 'recharge' || r.payment_method != null)).length;
           const pendingWithdrawals = userReqs.filter((r) => r.status === 'pending' && r.request_type === 'withdrawal').length;
 
+          // Referidos a cargo
+          const userReferrals = referrals.filter((r) => r.referrer_id === u.id);
+          const profileReferrals = profiles.filter((p) => p.referred_by === u.id);
+          const referralsCount = Math.max(userReferrals.length, profileReferrals.length);
+
           return {
             id: u.id,
             fullName: u.full_name || `Usuario (${u.id.substring(0, 6)})`,
@@ -61,6 +68,8 @@ export const usersService = {
             bankBreveKey: u.bank_breve_key || '',
             walletBalance: Number(u.wallet_balance || 0),
             bonosConsumo: Number(u.referral_balance || 0),
+            referralCode: u.referral_code || 'Sin código',
+            referralsCount,
             totalCompraPiggies,
             valorReferenciaMercado,
             margenComercialLabel: margenLabel,

@@ -20,7 +20,7 @@ export class Sidebar {
 
     const navItems = [
       { id: '#dashboard', label: 'Dashboard', icon: icons.dashboard },
-      { id: '#users', label: 'Usuarios & CRM', icon: icons.users },
+      { id: '#users', label: 'Usuarios', icon: icons.users },
       { id: '#piggies', label: 'Granja de Piggies', icon: icons.pig },
       { id: '#marketplace', label: 'Mercado de Cerdos', icon: icons.marketplace },
       { id: '#gourmet-allies', label: 'Gourmet & Aliados', icon: icons.gourmet },
