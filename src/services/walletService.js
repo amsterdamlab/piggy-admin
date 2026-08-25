@@ -67,7 +67,9 @@ export const walletService = {
           client.from('profiles').select('id, full_name, whatsapp, email, wallet_balance')
         ]);
 
-        const data = reqRes.data || [];
+        const rawData = reqRes.data || [];
+        // Filtrar exclusivamente retiros de dinero
+        const data = rawData.filter(r => r.wallet_type !== 'bono_consumo' && r.wallet_type !== 'consumo');
         const profiles = profRes.data || [];
         const profileMap = {};
         profiles.forEach(p => { profileMap[p.id] = p; });
@@ -83,8 +85,9 @@ export const walletService = {
               userEmail: user.email || (w.user_id ? `user_${w.user_id.substring(0, 6)}@piggy.co` : ''),
               userBalance: Number(user.wallet_balance || 0),
               amount: Number(w.amount || 0),
-              type: w.wallet_type === 'consumo' ? 'Bono Consumo' : 'Retiro Dinero',
+              type: 'Retiro Dinero (Bancario)',
               bankInfo: w.bank_name || 'Bancolombia / Cuenta de Ahorros',
+              referenceCode: w.reference || `RET-${w.id ? w.id.substring(0, 8).toUpperCase() : 'PEND'}`,
               status: w.status === 'processed' ? 'approved' : (w.status || 'pending'),
               notes: w.notes || '',
               createdAt: w.created_at || new Date().toISOString()
@@ -94,6 +97,53 @@ export const walletService = {
         if (reqRes.error) console.warn('Withdrawal requests error:', reqRes.error.message);
       } catch (e) {
         console.error('Wallet withdrawal requests exception:', e);
+      }
+    }
+
+    return [];
+  },
+
+  async getMeatRequests() {
+    const client = getClient();
+    if (client) {
+      try {
+        const [reqRes, profRes] = await Promise.all([
+          client
+            .from('wallet_requests')
+            .select('*')
+            .or('request_type.eq.consumption,request_type.eq.meat,wallet_type.eq.bono_consumo,wallet_type.eq.consumo')
+            .order('created_at', { ascending: false }),
+          client.from('profiles').select('id, full_name, whatsapp, email, wallet_balance, referral_balance')
+        ]);
+
+        const data = reqRes.data || [];
+        const profiles = profRes.data || [];
+        const profileMap = {};
+        profiles.forEach(p => { profileMap[p.id] = p; });
+
+        if (!reqRes.error && data) {
+          return data.map((m) => {
+            const user = profileMap[m.user_id] || {};
+            return {
+              id: m.id,
+              userId: m.user_id,
+              userName: user.full_name || `Usuario ${m.user_id ? m.user_id.substring(0, 8) : 'N/A'}...`,
+              userPhone: user.whatsapp || 'No registrado',
+              userEmail: user.email || (m.user_id ? `user_${m.user_id.substring(0, 6)}@piggy.co` : ''),
+              userBalance: Number(user.wallet_balance || 0),
+              userBonos: Number(user.referral_balance || 0),
+              amount: Number(m.amount || 0),
+              type: 'Canje / Retiro de Carne',
+              referenceCode: m.reference || `CRN-${m.id ? m.id.substring(0, 8).toUpperCase() : 'PEND'}`,
+              status: m.status === 'processed' ? 'approved' : (m.status || 'pending'),
+              notes: m.notes || 'Canje de bonos por productos de carne / Gourmet',
+              createdAt: m.created_at || new Date().toISOString()
+            };
+          });
+        }
+        if (reqRes.error) console.warn('Meat requests error:', reqRes.error.message);
+      } catch (e) {
+        console.error('Wallet meat requests exception:', e);
       }
     }
 
@@ -232,5 +282,105 @@ export const walletService = {
       }
     }
     return { success: false, error: 'No client' };
+  },
+
+  async approveMeatRequest(requestId, userId, amount) {
+    const client = getClient();
+    if (client) {
+      try {
+        const { error } = await client
+          .from('wallet_requests')
+          .update({
+            status: 'processed',
+            processed_at: new Date().toISOString(),
+            processed_by: 'admin'
+          })
+          .eq('id', requestId);
+
+        if (error) throw error;
+        return { success: true };
+      } catch (err) {
+        return { success: false, error: err.message };
+      }
+    }
+    return { success: false, error: 'No client' };
+  },
+
+  async rejectMeatRequest(requestId, userId, amount, reason = 'Entrega cancelada o no coordinada') {
+    const client = getClient();
+    if (client) {
+      try {
+        const { error } = await client
+          .from('wallet_requests')
+          .update({
+            status: 'rejected',
+            notes: reason,
+            processed_at: new Date().toISOString(),
+            processed_by: 'admin'
+          })
+          .eq('id', requestId);
+
+        if (error) throw error;
+        return { success: true };
+      } catch (err) {
+        return { success: false, error: err.message };
+      }
+    }
+    return { success: false, error: 'No client' };
+  },
+
+  async getUsersList() {
+    const client = getClient();
+    if (client) {
+      try {
+        const { data, error } = await client
+          .from('profiles')
+          .select('id, full_name, email, whatsapp, cedula, bank_name, wallet_balance, referral_balance')
+          .order('full_name', { ascending: true });
+
+        if (!error && data) return data;
+      } catch (e) {
+        console.error('Error fetching users list in walletService:', e);
+      }
+    }
+    return [];
+  },
+
+  async createManualRequest({ userId, userName, requestType, amount, paymentMethod, reference, bankName, notes, initialStatus = 'pending' }) {
+    const client = getClient();
+    if (!client) return { success: false, error: 'No client' };
+
+    try {
+      const isApproved = initialStatus === 'approved' || initialStatus === 'processed';
+      const walletType = requestType === 'consumption' ? 'bono_consumo' : 'dinero';
+
+      const insertData = {
+        user_id: userId,
+        user_name: userName || 'Usuario',
+        request_type: requestType,
+        amount: Number(amount),
+        payment_method: paymentMethod || null,
+        reference: reference || `ADM-${requestType.substring(0, 3).toUpperCase()}-${Math.floor(100000 + Math.random() * 900000)}`,
+        bank_name: bankName || (requestType === 'withdrawal' ? 'Transferencia Bancaria' : null),
+        wallet_type: walletType,
+        notes: notes || 'Solicitud manual registrada desde panel administrativo',
+        status: isApproved ? (requestType === 'recharge' ? 'approved' : 'processed') : 'pending',
+        created_at: new Date().toISOString(),
+        processed_at: isApproved ? new Date().toISOString() : null,
+        processed_by: isApproved ? 'admin' : null
+      };
+
+      const { data, error } = await client
+        .from('wallet_requests')
+        .insert(insertData)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return { success: true, data };
+    } catch (err) {
+      console.error('Error in createManualRequest:', err);
+      return { success: false, error: err.message };
+    }
   }
 };

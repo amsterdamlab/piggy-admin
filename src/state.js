@@ -1,3 +1,7 @@
+/* ==========================================================================
+   PIGGY MASTER ADMIN DASHBOARD - REACTIVE STATE STORE
+   ========================================================================== */
+
 class StateStore {
   constructor() {
     this.listeners = new Map();
@@ -7,6 +11,7 @@ class StateStore {
       pendingCounts: {
         recharges: 0,
         withdrawals: 0,
+        meat: 0,
         total: 0
       },
       stats: {
@@ -70,7 +75,8 @@ class StateStore {
     this.state.pendingCounts = {
       recharges: counts.recharges || 0,
       withdrawals: counts.withdrawals || 0,
-      total: (counts.recharges || 0) + (counts.withdrawals || 0)
+      meat: counts.meat || 0,
+      total: (counts.recharges || 0) + (counts.withdrawals || 0) + (counts.meat || 0)
     };
     this.emit('pending_counts_changed', this.state.pendingCounts);
   }
@@ -86,6 +92,7 @@ class StateStore {
     }
     this.listeners.get(event).add(callback);
 
+    // Return unsubscribe function
     return () => {
       const callbacks = this.listeners.get(event);
       if (callbacks) {
