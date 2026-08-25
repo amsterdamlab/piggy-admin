@@ -159,6 +159,13 @@ export const walletService = {
     return [];
   },
 
+  /**
+   * LIBRO MAYOR CONTABLE (AUDITORÍA 1:1)
+   * REGLA ESTRICTA DE ARQUITECTURA:
+   * Esta consulta debe retornar SIEMPRE el 100% de los registros de `wallet_transactions`
+   * sin aplicar ningún filtro que omita o altere movimientos. Todas las transacciones (abonos,
+   * débitos, recargas, ajustes o errores previos) deben ser transparentes e inmutables.
+   */
   async getTransactions() {
     const client = getClient();
     if (client) {
