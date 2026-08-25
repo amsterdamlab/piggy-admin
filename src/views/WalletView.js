@@ -312,19 +312,22 @@ export class WalletView {
             <div>
               <div style="font-weight: 700; color: var(--text-primary);">${m.userName}</div>
               <div style="font-size: 0.75rem; color: var(--text-muted);">${m.userPhone}</div>
-              <div style="font-size: 0.72rem; color: var(--accent-gold);">${icons.tag} Bonos disponibles: $${m.userBonos.toLocaleString('es-CO')}</div>
+              <div style="font-size: 0.72rem; color: var(--accent-green); margin-top: 2px;">Saldo Cuenta Agro: $${m.userBalance.toLocaleString('es-CO')}</div>
+              <div style="font-size: 0.72rem; color: var(--accent-gold);">${icons.tag} Bonos: $${m.userBonos.toLocaleString('es-CO')}</div>
             </div>
           `
         },
         {
-          header: 'Monto de Bonos a Canjear',
+          header: 'Monto de la Compra / Despacho',
           key: 'amount',
           sortValue: (m) => m.amount,
           render: (m) => `
-            <div style="font-size: 1.1rem; font-weight: 800; color: var(--accent-gold);">
+            <div style="font-size: 1.1rem; font-weight: 800; color: ${m.walletType === 'consumo' ? 'var(--accent-gold)' : 'var(--primary-pink)'};">
               $${m.amount.toLocaleString('es-CO')}
             </div>
-            <span class="badge badge-warning" style="font-size: 0.7rem;">Bono de Consumo</span>
+            <span class="badge ${m.walletType === 'consumo' ? 'badge-warning' : 'badge-success'}" style="font-size: 0.7rem;">
+              ${m.walletType === 'consumo' ? 'Bono de Consumo' : 'Saldo Cuenta Agro'}
+            </span>
           `
         },
         {
@@ -366,7 +369,7 @@ export class WalletView {
             if (m.status === 'pending') {
               return `
                 <div style="display: flex; gap: 0.4rem; justify-content: flex-end;">
-                  <button class="btn btn-success btn-sm" data-action="approve-meat" title="Confirmar despacho / entrega de carne">
+                  <button class="btn btn-success btn-sm" data-action="approve-meat" title="Confirmar despacho y debitar saldo">
                     ${icons.check} Despachar
                   </button>
                   <button class="btn btn-danger btn-sm" data-action="reject-meat" title="Rechazar o cancelar solicitud">
@@ -575,11 +578,17 @@ export class WalletView {
 
   handleMeatAction(action, m) {
     if (action === 'approve-meat') {
-      if (confirm(`¿Confirmar despacho de productos de carne por $${m.amount.toLocaleString('es-CO')} para ${m.userName}?`)) {
-        walletService.approveMeatRequest(m.id, m.userId, m.amount).then(res => {
+      const walletName = m.walletType === 'consumo' ? 'Bonos de Consumo' : 'Saldo Cuenta Agro';
+      if (confirm(`¿Confirmar despacho de productos de carne por $${m.amount.toLocaleString('es-CO')} para ${m.userName}?\n\nSe descontará directamente de su ${walletName}.`)) {
+        walletService.approveMeatRequest(m.id, m.userId, m.amount, m.walletType).then(res => {
           if (res.success) {
-            toast.success('Despacho de carne confirmado y procesado');
+            toast.success('Despacho de carne confirmado y saldo debitado exitosamente');
             m.status = 'approved';
+            if (m.walletType === 'consumo') {
+              m.userBonos = Math.max(0, m.userBonos - m.amount);
+            } else {
+              m.userBalance = Math.max(0, m.userBalance - m.amount);
+            }
             this.meatTable.setData(this.meatRequests);
             this.updatePendingCount();
           } else {
@@ -613,16 +622,16 @@ export class WalletView {
       return;
     }
 
-    const defaultRef = `MKT-BNO-${Math.floor(100000 + Math.random() * 900000)}`;
+    const defaultRef = `ADM-REC-${Math.floor(100000 + Math.random() * 900000)}`;
 
     modal.open({
-      title: 'Crear Solicitud / Abono en Tesorería',
+      title: 'Crear Operación Manual en Tesorería',
       size: 'medium',
       contentHtml: `
         <form id="form-manual-wallet-request" style="display: flex; flex-direction: column; gap: 1rem;">
           
           <div style="background: rgba(255, 184, 0, 0.08); border: 1px solid var(--accent-gold); padding: 0.75rem; border-radius: var(--radius-sm); font-size: 0.8rem; color: var(--text-secondary);">
-            <strong style="color: var(--accent-gold);">${icons.shieldCheck} Control de Auditoría:</strong> Registra solicitudes o abonos de marketing directamente en <code>wallet_requests</code> y <code>wallet_transactions</code> con total trazabilidad.
+            <strong style="color: var(--accent-gold);">${icons.shieldCheck} Control de Auditoría:</strong> Registra recargas, ventas asistidas de carne, retiros o abonos de bonos con balance automático y total trazabilidad contable.
           </div>
 
           <!-- Modo de Destinatario: Individual o Masivo -->
@@ -659,7 +668,7 @@ export class WalletView {
 
           <!-- Banner Masivo (Oculto por defecto) -->
           <div id="m-massive-alert" style="display: none; background: rgba(0, 209, 178, 0.08); border: 1px solid var(--accent-green); padding: 0.75rem; border-radius: var(--radius-sm); font-size: 0.8rem; color: var(--text-primary);">
-            <strong>${icons.gift} Estrategia Masiva de Marketing:</strong> Se aplicará este abono simultáneamente a los <strong>${users.length} inversionistas</strong> registrados en la plataforma.
+            <strong>${icons.gift} Estrategia Masiva:</strong> Se aplicará esta operación simultáneamente a los <strong>${users.length} inversionistas</strong> registrados.
           </div>
 
           <!-- Tipo de Operación -->
@@ -669,20 +678,21 @@ export class WalletView {
                 Tipo de Operación: *
               </label>
               <select id="m-request-type" class="form-control" style="width: 100%; padding: 0.6rem; background: var(--bg-dark); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: var(--radius-sm);" required>
-                <option value="bonus_grant" selected>🎁 Recargar Bonos de Consumo (Marketing / Tienda)</option>
-                <option value="recharge">📥 Recarga de Saldo Billetera (Dinero en Cuenta)</option>
-                <option value="withdrawal">📤 Retiro de Dinero (Debitar Billetera)</option>
-                <option value="consumption">🥩 Retiro / Canje de Carne (Despacho)</option>
+                <option value="consumption" selected>🥩 Venta de Carne en Granja (Cobro a Cuenta Agro)</option>
+                <option value="recharge">📥 Recargar Saldo Cuenta Agro (Abonar Dinero)</option>
+                <option value="withdrawal">📤 Retiro de Dinero (Debitar Cuenta Agro)</option>
+                <option value="bonus_grant">🎁 Abonar Bonos de Consumo (Marketing / Fidelización)</option>
+                <option value="bonus_debit">🥩 Descontar Bonos de Consumo (Canje en Tienda)</option>
               </select>
             </div>
 
             <!-- Monto -->
             <div class="form-group">
               <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-primary); margin-bottom: 4px; display: block;" id="m-amount-label">
-                Monto por Usuario: *
+                Monto de la Operación: *
               </label>
               <input type="number" id="m-amount" class="form-control" placeholder="Ej: 50000" min="1000" step="1000" style="width: 100%; padding: 0.6rem; background: var(--bg-dark); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: var(--radius-sm);" required />
-              <div id="m-amount-preview" style="font-size: 0.75rem; color: var(--accent-green); font-weight: 700; margin-top: 3px;">$0</div>
+              <div id="m-amount-preview" style="font-size: 0.75rem; font-weight: 700; margin-top: 3px; color: var(--accent-red);">$0</div>
             </div>
           </div>
 
@@ -693,13 +703,12 @@ export class WalletView {
                 Concepto / Canal:
               </label>
               <select id="m-payment-method" class="form-control" style="width: 100%; padding: 0.6rem; background: var(--bg-dark); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: var(--radius-sm);">
+                <option value="DESPACHO_GRANJA" selected>Despacho en Granja / Tienda</option>
                 <option value="CAMPAÑA_MARKETING">Campaña de Marketing Granja</option>
                 <option value="BONO_FIDELIZACION">Bono de Fidelización / Bienvenida</option>
-                <option value="PROMOCION_GOURMET">Promoción Especial Gourmet</option>
                 <option value="BRE_B">Bre-B (Bancolombia)</option>
                 <option value="QR_CODE">Código QR Bancolombia</option>
                 <option value="TRANSFERENCIA">Transferencia Bancaria</option>
-                <option value="DESPACHO_GRANJA">Despacho en Granja / Tienda</option>
                 <option value="AJUSTE_AUDITORIA">Ajuste Contable de Auditoría</option>
               </select>
             </div>
@@ -708,16 +717,16 @@ export class WalletView {
               <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-primary); margin-bottom: 4px; display: block;">
                 Código de Referencia:
               </label>
-              <input type="text" id="m-reference" class="form-control" value="${defaultRef}" style="width: 100%; padding: 0.6rem; background: var(--bg-dark); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-family: monospace;" required />
+              <input type="text" id="m-reference" class="form-control" value="ADM-CRN-${Math.floor(100000 + Math.random() * 900000)}" style="width: 100%; padding: 0.6rem; background: var(--bg-dark); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-family: monospace;" required />
             </div>
           </div>
 
           <!-- Notas / Justificación -->
           <div class="form-group">
             <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-primary); margin-bottom: 4px; display: block;">
-              Notas / Descripción de Campaña:
+              Notas / Descripción:
             </label>
-            <textarea id="m-notes" class="form-control" rows="2" placeholder="Motivo del bono o detalles de la campaña (ej: Bono de $50.000 para compras en la tienda de carne)..." style="width: 100%; padding: 0.6rem; background: var(--bg-dark); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: var(--radius-sm); resize: vertical;"></textarea>
+            <textarea id="m-notes" class="form-control" rows="2" placeholder="Detalles de la compra de carne o concepto del movimiento..." style="width: 100%; padding: 0.6rem; background: var(--bg-dark); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: var(--radius-sm); resize: vertical;"></textarea>
           </div>
 
           <!-- Estado Inicial -->
@@ -726,7 +735,7 @@ export class WalletView {
               Estado al Guardar:
             </label>
             <select id="m-initial-status" class="form-control" style="width: 100%; padding: 0.6rem; background: var(--bg-dark); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: var(--radius-sm);">
-              <option value="approved" selected>🟢 Aprobar y Acreditar Inmediatamente (Recomendado para Bonos y Marketing)</option>
+              <option value="approved" selected>🟢 Procesar y Actualizar Balance Inmediatamente (Recomendado)</option>
               <option value="pending">🟡 Guardar como Pendiente (Para revisión posterior)</option>
             </select>
           </div>
@@ -745,13 +754,19 @@ export class WalletView {
         const methodSelect = modalBody.querySelector('#m-payment-method');
 
         const updatePreview = () => {
-          const val = Number(amountInput.value || 0);
+          const val = Math.abs(Number(amountInput.value || 0));
           const isMassive = modalBody.querySelector('input[name="m-target-mode"]:checked').value === 'all';
+          const type = typeSelect.value;
+          const isDebit = type === 'withdrawal' || type === 'consumption' || type === 'bonus_debit';
+          const sign = isDebit ? '-' : '+';
+          const color = isDebit ? 'var(--accent-red)' : 'var(--accent-green)';
+          const actionText = isDebit ? 'Se descontará del usuario' : 'Se acreditará al usuario';
+
           if (isMassive) {
             const total = val * users.length;
-            previewEl.innerHTML = `Valor por usuario: <strong>$${val.toLocaleString('es-CO')}</strong> | Total campaña (${users.length} usuarios): <strong style="color: var(--accent-gold);">$${total.toLocaleString('es-CO')}</strong>`;
+            previewEl.innerHTML = `Valor por usuario: <strong style="color: ${color};">${sign}$${val.toLocaleString('es-CO')}</strong> (${actionText}) | Total impacto: <strong style="color: var(--accent-gold);">${sign}$${total.toLocaleString('es-CO')}</strong>`;
           } else {
-            previewEl.textContent = `$${val.toLocaleString('es-CO')}`;
+            previewEl.innerHTML = `<strong style="color: ${color};">${sign}$${val.toLocaleString('es-CO')}</strong> <span style="font-size: 0.72rem; color: var(--text-muted);">(${actionText})</span>`;
           }
         };
 
@@ -760,7 +775,7 @@ export class WalletView {
             const isMassive = radio.value === 'all';
             userSelectCont.style.display = isMassive ? 'none' : 'block';
             massiveAlert.style.display = isMassive ? 'block' : 'none';
-            amountLabel.textContent = isMassive ? `Monto por Usuario (${users.length} usuarios): *` : 'Monto en Pesos: *';
+            amountLabel.textContent = isMassive ? `Monto por Usuario (${users.length} usuarios): *` : 'Monto de la Operación: *';
             updatePreview();
           });
         });
@@ -768,22 +783,26 @@ export class WalletView {
         // Actualizar referencia automática y canales al cambiar tipo
         typeSelect.addEventListener('change', () => {
           const type = typeSelect.value;
-          let prefix = 'BNO';
-          if (type === 'recharge') prefix = 'REC';
-          else if (type === 'withdrawal') prefix = 'RET';
-          else if (type === 'consumption') prefix = 'CRN';
-          
-          refInput.value = `ADM-${prefix}-${Math.floor(100000 + Math.random() * 900000)}`;
-
+          let prefix = 'CRN';
           if (type === 'bonus_grant') {
+            prefix = 'BNO';
             methodSelect.value = 'CAMPAÑA_MARKETING';
+          } else if (type === 'bonus_debit') {
+            prefix = 'CRN';
+            methodSelect.value = 'DESPACHO_GRANJA';
           } else if (type === 'recharge') {
+            prefix = 'REC';
             methodSelect.value = 'BRE_B';
           } else if (type === 'withdrawal') {
+            prefix = 'RET';
             methodSelect.value = 'TRANSFERENCIA';
           } else if (type === 'consumption') {
+            prefix = 'CRN';
             methodSelect.value = 'DESPACHO_GRANJA';
           }
+          
+          refInput.value = `ADM-${prefix}-${Math.floor(100000 + Math.random() * 900000)}`;
+          updatePreview();
         });
 
         amountInput.addEventListener('input', updatePreview);
@@ -791,7 +810,7 @@ export class WalletView {
       footerButtons: [
         { text: 'Cancelar', class: 'btn-secondary', onClick: (e, m) => m.close() },
         {
-          text: 'Ejecutar Solicitud',
+          text: 'Ejecutar Operación',
           class: 'btn-primary',
           onClick: async (e, m) => {
             const isMassive = document.querySelector('input[name="m-target-mode"]:checked').value === 'all';
@@ -816,10 +835,12 @@ export class WalletView {
               return;
             }
 
+            const isDebit = requestType === 'withdrawal' || requestType === 'consumption' || requestType === 'bonus_debit';
+
             if (isMassive) {
               const totalImpact = amount * users.length;
-              const typeDesc = requestType === 'bonus_grant' ? 'en Bonos de Consumo' : 'en Saldo';
-              if (!confirm(`¿Confirmar abono masivo de $${amount.toLocaleString('es-CO')} ${typeDesc} a los ${users.length} usuarios registrados?\n\nImpacto total de la campaña: $${totalImpact.toLocaleString('es-CO')}`)) {
+              const typeDesc = isDebit ? 'descuento masivo' : 'abono masivo';
+              if (!confirm(`¿Confirmar ${typeDesc} de $${amount.toLocaleString('es-CO')} a los ${users.length} usuarios registrados?\n\nImpacto total: $${totalImpact.toLocaleString('es-CO')}`)) {
                 return;
               }
             }
@@ -842,16 +863,16 @@ export class WalletView {
 
             if (res.success) {
               if (res.mass) {
-                toast.success(`¡Campaña de marketing aplicada exitosamente a ${res.count} usuarios!`);
+                toast.success(`¡Operación masiva aplicada exitosamente a ${res.count} usuarios!`);
               } else {
-                toast.success('¡Solicitud registrada exitosamente en tesorería!');
+                toast.success('¡Operación contable registrada y balance actualizado exitosamente!');
               }
               m.close();
               await this.refreshAllData();
             } else {
               toast.error('Error: ' + (res.error || 'No se pudo crear la solicitud'));
               btn.disabled = false;
-              btn.textContent = 'Ejecutar Solicitud';
+              btn.textContent = 'Ejecutar Operación';
             }
           }
         }

@@ -15,12 +15,13 @@ export const walletService = {
           client
             .from('wallet_requests')
             .select('*')
-            .or('request_type.eq.recharge,payment_method.not.is.null')
             .order('created_at', { ascending: false }),
           client.from('profiles').select('id, full_name, whatsapp, email, wallet_balance')
         ]);
 
-        const data = reqRes.data || [];
+        const rawData = reqRes.data || [];
+        // Filtrar exclusivamente recargas de saldo
+        const data = rawData.filter(r => r.request_type === 'recharge' || (!r.request_type && r.payment_method && r.wallet_type !== 'bono_consumo' && r.wallet_type !== 'consumo'));
         const profiles = profRes.data || [];
         const profileMap = {};
         profiles.forEach(p => { profileMap[p.id] = p; });
@@ -62,14 +63,13 @@ export const walletService = {
           client
             .from('wallet_requests')
             .select('*')
-            .eq('request_type', 'withdrawal')
             .order('created_at', { ascending: false }),
           client.from('profiles').select('id, full_name, whatsapp, email, wallet_balance')
         ]);
 
         const rawData = reqRes.data || [];
         // Filtrar exclusivamente retiros de dinero
-        const data = rawData.filter(r => r.wallet_type !== 'bono_consumo' && r.wallet_type !== 'consumo');
+        const data = rawData.filter(r => r.request_type === 'withdrawal');
         const profiles = profRes.data || [];
         const profileMap = {};
         profiles.forEach(p => { profileMap[p.id] = p; });
@@ -111,12 +111,19 @@ export const walletService = {
           client
             .from('wallet_requests')
             .select('*')
-            .or('request_type.eq.consumption,request_type.eq.meat,wallet_type.eq.bono_consumo,wallet_type.eq.consumo')
             .order('created_at', { ascending: false }),
           client.from('profiles').select('id, full_name, whatsapp, email, wallet_balance, referral_balance')
         ]);
 
-        const data = reqRes.data || [];
+        const rawData = reqRes.data || [];
+        // Filtrar solicitudes de carne o consumo
+        const data = rawData.filter(r =>
+          r.request_type === 'consumption' ||
+          r.request_type === 'meat' ||
+          r.request_type === 'bonus_debit' ||
+          r.wallet_type === 'bono_consumo' ||
+          r.wallet_type === 'consumo'
+        );
         const profiles = profRes.data || [];
         const profileMap = {};
         profiles.forEach(p => { profileMap[p.id] = p; });
@@ -124,6 +131,7 @@ export const walletService = {
         if (!reqRes.error && data) {
           return data.map((m) => {
             const user = profileMap[m.user_id] || {};
+            const isBonoWallet = m.wallet_type === 'bono_consumo' || m.wallet_type === 'consumo';
             return {
               id: m.id,
               userId: m.user_id,
@@ -132,11 +140,12 @@ export const walletService = {
               userEmail: user.email || (m.user_id ? `user_${m.user_id.substring(0, 6)}@piggy.co` : ''),
               userBalance: Number(user.wallet_balance || 0),
               userBonos: Number(user.referral_balance || 0),
+              walletType: isBonoWallet ? 'consumo' : 'dinero',
               amount: Number(m.amount || 0),
-              type: 'Canje / Retiro de Carne',
+              type: isBonoWallet ? 'Canje por Bonos' : 'Compra con Saldo Cuenta Agro',
               referenceCode: m.reference || `CRN-${m.id ? m.id.substring(0, 8).toUpperCase() : 'PEND'}`,
               status: m.status === 'processed' ? 'approved' : (m.status || 'pending'),
-              notes: m.notes || 'Canje de bonos por productos de carne / Gourmet',
+              notes: m.notes || 'Despacho de productos de carne / Granja Gourmet',
               createdAt: m.created_at || new Date().toISOString()
             };
           });
@@ -197,16 +206,39 @@ export const walletService = {
     const client = getClient();
     if (client) {
       try {
+        const numAmount = Math.abs(Number(amount));
+        const now = new Date().toISOString();
+
+        // 1. Actualizar estado de solicitud
         const { error } = await client
           .from('wallet_requests')
           .update({
             status: 'approved',
-            processed_at: new Date().toISOString(),
+            processed_at: now,
             processed_by: 'admin'
           })
           .eq('id', requestId);
 
         if (error) throw error;
+
+        // 2. Registrar transacción en wallet_transactions (monto positivo)
+        await client.from('wallet_transactions').insert({
+          user_id: userId,
+          amount: numAmount,
+          type: 'recharge',
+          description: 'Aprobación de Recarga de Saldo Cuenta Agro',
+          wallet_type: 'dinero',
+          simulation_status: 'APPROVED',
+          created_at: now
+        });
+
+        // 3. Acreditar saldo en profiles
+        const { data: profile } = await client.from('profiles').select('wallet_balance').eq('id', userId).single();
+        if (profile) {
+          const currentBal = Number(profile.wallet_balance || 0);
+          await client.from('profiles').update({ wallet_balance: currentBal + numAmount }).eq('id', userId);
+        }
+
         return { success: true };
       } catch (err) {
         return { success: false, error: err.message };
@@ -243,16 +275,39 @@ export const walletService = {
     const client = getClient();
     if (client) {
       try {
+        const numAmount = Math.abs(Number(amount));
+        const now = new Date().toISOString();
+
+        // 1. Actualizar estado de solicitud
         const { error } = await client
           .from('wallet_requests')
           .update({
-            status: 'processed',
-            processed_at: new Date().toISOString(),
+            status: 'approved',
+            processed_at: now,
             processed_by: 'admin'
           })
           .eq('id', requestId);
 
         if (error) throw error;
+
+        // 2. Registrar débito en wallet_transactions (monto negativo)
+        await client.from('wallet_transactions').insert({
+          user_id: userId,
+          amount: -numAmount,
+          type: 'withdrawal',
+          description: 'Retiro de Dinero Liquidado y Transferido',
+          wallet_type: 'dinero',
+          simulation_status: 'APPROVED',
+          created_at: now
+        });
+
+        // 3. Descontar saldo en profiles
+        const { data: profile } = await client.from('profiles').select('wallet_balance').eq('id', userId).single();
+        if (profile) {
+          const currentBal = Number(profile.wallet_balance || 0);
+          await client.from('profiles').update({ wallet_balance: Math.max(0, currentBal - numAmount) }).eq('id', userId);
+        }
+
         return { success: true };
       } catch (err) {
         return { success: false, error: err.message };
@@ -284,20 +339,50 @@ export const walletService = {
     return { success: false, error: 'No client' };
   },
 
-  async approveMeatRequest(requestId, userId, amount) {
+  async approveMeatRequest(requestId, userId, amount, walletType = 'dinero') {
     const client = getClient();
     if (client) {
       try {
+        const numAmount = Math.abs(Number(amount));
+        const now = new Date().toISOString();
+        const isBono = walletType === 'consumo' || walletType === 'bono_consumo';
+        const targetWallet = isBono ? 'consumo' : 'dinero';
+
+        // 1. Actualizar estado de solicitud a approved
         const { error } = await client
           .from('wallet_requests')
           .update({
-            status: 'processed',
-            processed_at: new Date().toISOString(),
+            status: 'approved',
+            processed_at: now,
             processed_by: 'admin'
           })
           .eq('id', requestId);
 
         if (error) throw error;
+
+        // 2. Registrar débito en wallet_transactions (monto negativo)
+        await client.from('wallet_transactions').insert({
+          user_id: userId,
+          amount: -numAmount,
+          type: 'debit',
+          description: isBono ? 'Canje de Bono de Consumo (Despacho Carne)' : 'Compra de Carne en Granja (Débito Cuenta Agro)',
+          wallet_type: targetWallet,
+          simulation_status: 'APPROVED',
+          created_at: now
+        });
+
+        // 3. Descontar balance respectivo en profiles
+        const { data: profile } = await client.from('profiles').select('wallet_balance, referral_balance').eq('id', userId).single();
+        if (profile) {
+          if (targetWallet === 'dinero') {
+            const currentBal = Number(profile.wallet_balance || 0);
+            await client.from('profiles').update({ wallet_balance: Math.max(0, currentBal - numAmount) }).eq('id', userId);
+          } else {
+            const currentBonos = Number(profile.referral_balance || 0);
+            await client.from('profiles').update({ referral_balance: Math.max(0, currentBonos - numAmount) }).eq('id', userId);
+          }
+        }
+
         return { success: true };
       } catch (err) {
         return { success: false, error: err.message };
@@ -346,16 +431,59 @@ export const walletService = {
     return [];
   },
 
-  async createManualRequest({ userId, userName, requestType, amount, paymentMethod, reference, bankName, notes, initialStatus = 'pending', isMassive = false }) {
+  async createManualRequest({ userId, userName, requestType, amount, paymentMethod, reference, bankName, notes, initialStatus = 'approved', isMassive = false }) {
     const client = getClient();
     if (!client) return { success: false, error: 'No client' };
 
     try {
       const isApproved = initialStatus === 'approved' || initialStatus === 'processed';
-      const numAmount = Number(amount);
-      const isBonusGrant = requestType === 'bonus_grant';
-      const walletType = isBonusGrant ? 'consumo' : (requestType === 'consumption' ? 'bono_consumo' : 'dinero');
+      const numAmount = Math.abs(Number(amount));
       const now = new Date().toISOString();
+
+      // Clasificación estricta de la operación
+      let isCredit = true;
+      let targetWallet = 'dinero';
+      let reqType = 'recharge';
+      let txType = 'recharge';
+      let prefix = 'REC';
+      let defaultDesc = 'Operación manual';
+
+      if (requestType === 'bonus_grant') {
+        isCredit = true;
+        targetWallet = 'consumo';
+        reqType = 'recharge';
+        txType = 'credit';
+        prefix = 'BNO';
+        defaultDesc = 'Bono de Consumo:';
+      } else if (requestType === 'bonus_debit') {
+        isCredit = false;
+        targetWallet = 'consumo';
+        reqType = 'consumption';
+        txType = 'debit';
+        prefix = 'CRN';
+        defaultDesc = 'Débito Bono de Consumo:';
+      } else if (requestType === 'recharge') {
+        isCredit = true;
+        targetWallet = 'dinero';
+        reqType = 'recharge';
+        txType = 'recharge';
+        prefix = 'REC';
+        defaultDesc = 'Recarga Manual Cuenta Agro:';
+      } else if (requestType === 'withdrawal') {
+        isCredit = false;
+        targetWallet = 'dinero';
+        reqType = 'withdrawal';
+        txType = 'withdrawal';
+        prefix = 'RET';
+        defaultDesc = 'Retiro Manual de Dinero:';
+      } else if (requestType === 'consumption') {
+        isCredit = false;
+        targetWallet = 'dinero'; // Cuenta Agro por defecto para compra de carne
+        reqType = 'consumption';
+        txType = 'debit';
+        prefix = 'CRN';
+        defaultDesc = 'Venta de Carne en Granja (Despacho):';
+      }
 
       // Caso 1: Abono Masivo a Todos los Usuarios Activos
       if (isMassive || userId === 'ALL') {
@@ -364,22 +492,23 @@ export const walletService = {
           return { success: false, error: 'No se encontraron usuarios para procesar el abono masivo' };
         }
 
-        const baseRef = reference || `MKT-BNO-${Math.floor(100000 + Math.random() * 900000)}`;
+        const baseRef = reference || `MKT-${prefix}-${Math.floor(100000 + Math.random() * 900000)}`;
         const reqInserts = [];
         const txInserts = [];
 
-        users.forEach((u, idx) => {
+        for (let idx = 0; idx < users.length; idx++) {
+          const u = users[idx];
           const userRef = `${baseRef}-${idx + 1}`;
           reqInserts.push({
             user_id: u.id,
             user_name: u.full_name || 'Inversionista',
-            request_type: isBonusGrant ? 'recharge' : requestType,
+            request_type: reqType,
             amount: numAmount,
             payment_method: paymentMethod || 'CAMPAÑA_MARKETING',
             reference: userRef,
             bank_name: null,
-            wallet_type: walletType,
-            notes: notes || 'Bono de consumo masivo por campaña de marketing granja',
+            wallet_type: targetWallet,
+            notes: notes || `${defaultDesc} Campaña de Marketing Granja`,
             status: isApproved ? 'approved' : 'pending',
             created_at: now,
             processed_at: isApproved ? now : null,
@@ -389,48 +518,56 @@ export const walletService = {
           if (isApproved) {
             txInserts.push({
               user_id: u.id,
-              amount: numAmount,
-              type: isBonusGrant ? 'credit' : (requestType === 'recharge' ? 'recharge' : 'credit'),
-              description: `Bono de Consumo: ${notes || 'Campaña de Marketing Granja'} [Ref: ${userRef}]`,
-              wallet_type: 'consumo',
+              amount: isCredit ? numAmount : -numAmount,
+              type: txType,
+              description: `${defaultDesc} ${notes || 'Campaña Masiva'} [Ref: ${userRef}]`.trim(),
+              wallet_type: targetWallet,
               payment_method: paymentMethod || 'MARKETING',
               simulation_status: 'APPROVED',
               created_at: now
             });
-          }
-        });
 
-        // Insertar en lotes de 50
+            // Actualizar balance de cada usuario
+            if (targetWallet === 'dinero') {
+              const currentVal = Number(u.wallet_balance || 0);
+              const updatedVal = isCredit ? (currentVal + numAmount) : Math.max(0, currentVal - numAmount);
+              await client.from('profiles').update({ wallet_balance: updatedVal }).eq('id', u.id);
+            } else if (targetWallet === 'consumo') {
+              const currentVal = Number(u.referral_balance || 0);
+              const updatedVal = isCredit ? (currentVal + numAmount) : Math.max(0, currentVal - numAmount);
+              await client.from('profiles').update({ referral_balance: updatedVal }).eq('id', u.id);
+            }
+          }
+        }
+
         const batchSize = 50;
         for (let i = 0; i < reqInserts.length; i += batchSize) {
-          const batch = reqInserts.slice(i, i + batchSize);
-          await client.from('wallet_requests').insert(batch);
+          await client.from('wallet_requests').insert(batchRequest);
         }
 
         if (isApproved && txInserts.length > 0) {
           for (let i = 0; i < txInserts.length; i += batchSize) {
-            const batch = txInserts.slice(i, i + batchSize);
-            await client.from('wallet_transactions').insert(batch);
+            await client.from('wallet_transactions').insert(txInserts.slice(i, i + batchSize));
           }
         }
 
         return { success: true, count: users.length, mass: true };
       }
 
-      // Caso 2: Solicitud / Abono a Usuario Individual
-      const singleRef = reference || `ADM-${isBonusGrant ? 'BNO' : requestType.substring(0, 3).toUpperCase()}-${Math.floor(100000 + Math.random() * 900000)}`;
+      // Caso 2: Solicitud / Operación a Usuario Individual
+      const singleRef = reference || `ADM-${prefix}-${Math.floor(100000 + Math.random() * 900000)}`;
 
       const insertData = {
         user_id: userId,
         user_name: userName || 'Usuario',
-        request_type: isBonusGrant ? 'recharge' : requestType,
+        request_type: reqType,
         amount: numAmount,
-        payment_method: paymentMethod || null,
+        payment_method: paymentMethod || (reqType === 'consumption' ? 'DESPACHO_GRANJA' : null),
         reference: singleRef,
-        bank_name: bankName || (requestType === 'withdrawal' ? 'Transferencia Bancaria' : null),
-        wallet_type: walletType,
-        notes: notes || (isBonusGrant ? 'Bono de consumo otorgado manualmente por administración' : 'Solicitud manual registrada desde panel administrativo'),
-        status: isApproved ? (requestType === 'recharge' || isBonusGrant ? 'approved' : 'processed') : 'pending',
+        bank_name: bankName || (reqType === 'withdrawal' ? 'Transferencia Bancaria' : null),
+        wallet_type: targetWallet,
+        notes: notes || `${defaultDesc} Registrada desde panel administrativo`,
+        status: isApproved ? 'approved' : 'pending',
         created_at: now,
         processed_at: isApproved ? now : null,
         processed_by: isApproved ? 'admin' : null
@@ -444,25 +581,36 @@ export const walletService = {
 
       if (error) throw error;
 
-      // Si está aprobado inmediatamente, insertar en wallet_transactions para reflejar saldo al instante
+      // Si está aprobado inmediatamente, insertar en wallet_transactions con signo correcto y actualizar profile
       if (isApproved) {
         try {
+          // 1. Insertar transacción contable (con monto negativo si es débito)
           await client.from('wallet_transactions').insert({
             user_id: userId,
-            amount: requestType === 'withdrawal' ? -numAmount : numAmount,
-            type: isBonusGrant ? 'credit' : (requestType === 'recharge' ? 'recharge' : 'credit'),
-            description: isBonusGrant
-              ? `Bono de Consumo: ${notes || 'Asignación Manual'} [Ref: ${singleRef}]`
-              : (requestType === 'recharge'
-                  ? `Recarga Manual ${paymentMethod || ''} [Ref: ${singleRef}] - ${notes || ''}`
-                  : `Retiro Manual Procesado [Ref: ${singleRef}] - ${notes || ''}`),
-            wallet_type: isBonusGrant ? 'consumo' : (walletType === 'bono_consumo' ? 'consumo' : walletType),
+            amount: isCredit ? numAmount : -numAmount,
+            type: txType,
+            description: `${defaultDesc} ${notes || ''} [Ref: ${singleRef}]`.trim(),
+            wallet_type: targetWallet,
             payment_method: paymentMethod || 'MANUAL_ADMIN',
             simulation_status: 'APPROVED',
             created_at: now
           });
+
+          // 2. Actualizar perfil
+          const { data: profile } = await client.from('profiles').select('wallet_balance, referral_balance').eq('id', userId).single();
+          if (profile) {
+            if (targetWallet === 'dinero') {
+              const currentVal = Number(profile.wallet_balance || 0);
+              const updatedVal = isCredit ? (currentVal + numAmount) : Math.max(0, currentVal - numAmount);
+              await client.from('profiles').update({ wallet_balance: updatedVal }).eq('id', userId);
+            } else if (targetWallet === 'consumo') {
+              const currentVal = Number(profile.referral_balance || 0);
+              const updatedVal = isCredit ? (currentVal + numAmount) : Math.max(0, currentVal - numAmount);
+              await client.from('profiles').update({ referral_balance: updatedVal }).eq('id', userId);
+            }
+          }
         } catch (txErr) {
-          console.warn('Advertencia insertando transacción complementaria:', txErr);
+          console.warn('Advertencia actualizando saldo o insertando transacción:', txErr);
         }
       }
 
