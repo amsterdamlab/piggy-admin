@@ -613,24 +613,41 @@ export class WalletView {
       return;
     }
 
-    const defaultRef = `ADM-REC-${Math.floor(100000 + Math.random() * 900000)}`;
+    const defaultRef = `MKT-BNO-${Math.floor(100000 + Math.random() * 900000)}`;
 
     modal.open({
-      title: 'Crear Solicitud Manual en Tesorería',
+      title: 'Crear Solicitud / Abono en Tesorería',
       size: 'medium',
       contentHtml: `
         <form id="form-manual-wallet-request" style="display: flex; flex-direction: column; gap: 1rem;">
           
           <div style="background: rgba(255, 184, 0, 0.08); border: 1px solid var(--accent-gold); padding: 0.75rem; border-radius: var(--radius-sm); font-size: 0.8rem; color: var(--text-secondary);">
-            <strong style="color: var(--accent-gold);">${icons.shieldCheck} Control de Auditoría:</strong> Esta herramienta inserta directamente en la tabla contable <code>wallet_requests</code> manteniendo integridad con las veedurías y triggers automáticos de Supabase.
+            <strong style="color: var(--accent-gold);">${icons.shieldCheck} Control de Auditoría:</strong> Registra solicitudes o abonos de marketing directamente en <code>wallet_requests</code> y <code>wallet_transactions</code> con total trazabilidad.
           </div>
 
-          <!-- Usuario -->
+          <!-- Modo de Destinatario: Individual o Masivo -->
           <div class="form-group">
-            <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-primary); margin-bottom: 4px; display: block;">
-              Seleccionar Usuario / Inversionista: *
+            <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-primary); margin-bottom: 6px; display: block;">
+              Alcance de la Operación: *
             </label>
-            <select id="m-user-id" class="form-control" style="width: 100%; padding: 0.6rem; background: var(--bg-dark); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: var(--radius-sm);" required>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+              <label style="display: flex; align-items: center; gap: 8px; padding: 0.6rem 0.8rem; background: var(--bg-dark); border: 1px solid var(--border-color); border-radius: var(--radius-sm); cursor: pointer; font-size: 0.85rem;">
+                <input type="radio" name="m-target-mode" value="single" checked style="accent-color: var(--accent-green);" />
+                <span>${icons.users} Usuario Individual</span>
+              </label>
+              <label style="display: flex; align-items: center; gap: 8px; padding: 0.6rem 0.8rem; background: var(--bg-dark); border: 1px solid var(--border-color); border-radius: var(--radius-sm); cursor: pointer; font-size: 0.85rem;">
+                <input type="radio" name="m-target-mode" value="all" style="accent-color: var(--accent-gold);" />
+                <span>${icons.gift} Todos (${users.length} usuarios)</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Selector de Usuario Individual -->
+          <div class="form-group" id="m-user-select-container">
+            <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-primary); margin-bottom: 4px; display: block;">
+              Seleccionar Inversionista: *
+            </label>
+            <select id="m-user-id" class="form-control" style="width: 100%; padding: 0.6rem; background: var(--bg-dark); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: var(--radius-sm);">
               <option value="" disabled selected>-- Elige un usuario --</option>
               ${users.map(u => `
                 <option value="${u.id}" data-name="${u.full_name || ''}" data-balance="${u.wallet_balance || 0}" data-bonos="${u.referral_balance || 0}">
@@ -640,41 +657,49 @@ export class WalletView {
             </select>
           </div>
 
+          <!-- Banner Masivo (Oculto por defecto) -->
+          <div id="m-massive-alert" style="display: none; background: rgba(0, 209, 178, 0.08); border: 1px solid var(--accent-green); padding: 0.75rem; border-radius: var(--radius-sm); font-size: 0.8rem; color: var(--text-primary);">
+            <strong>${icons.gift} Estrategia Masiva de Marketing:</strong> Se aplicará este abono simultáneamente a los <strong>${users.length} inversionistas</strong> registrados en la plataforma.
+          </div>
+
           <!-- Tipo de Operación -->
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
             <div class="form-group">
               <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-primary); margin-bottom: 4px; display: block;">
-                Tipo de Solicitud: *
+                Tipo de Operación: *
               </label>
               <select id="m-request-type" class="form-control" style="width: 100%; padding: 0.6rem; background: var(--bg-dark); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: var(--radius-sm);" required>
-                <option value="recharge">📥 Recarga de Saldo (Abonar a Billetera)</option>
+                <option value="bonus_grant" selected>🎁 Recargar Bonos de Consumo (Marketing / Tienda)</option>
+                <option value="recharge">📥 Recarga de Saldo Billetera (Dinero en Cuenta)</option>
                 <option value="withdrawal">📤 Retiro de Dinero (Debitar Billetera)</option>
-                <option value="consumption">🥩 Retiro / Canje de Carne (Bonos)</option>
+                <option value="consumption">🥩 Retiro / Canje de Carne (Despacho)</option>
               </select>
             </div>
 
             <!-- Monto -->
             <div class="form-group">
-              <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-primary); margin-bottom: 4px; display: block;">
-                Monto en Pesos: *
+              <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-primary); margin-bottom: 4px; display: block;" id="m-amount-label">
+                Monto por Usuario: *
               </label>
-              <input type="number" id="m-amount" class="form-control" placeholder="Ej: 500000" min="1000" step="1000" style="width: 100%; padding: 0.6rem; background: var(--bg-dark); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: var(--radius-sm);" required />
+              <input type="number" id="m-amount" class="form-control" placeholder="Ej: 50000" min="1000" step="1000" style="width: 100%; padding: 0.6rem; background: var(--bg-dark); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: var(--radius-sm);" required />
               <div id="m-amount-preview" style="font-size: 0.75rem; color: var(--accent-green); font-weight: 700; margin-top: 3px;">$0</div>
             </div>
           </div>
 
-          <!-- Método / Destino y Referencia -->
+          <!-- Método / Canal y Referencia -->
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
             <div class="form-group">
               <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-primary); margin-bottom: 4px; display: block;">
-                Método / Canal:
+                Concepto / Canal:
               </label>
               <select id="m-payment-method" class="form-control" style="width: 100%; padding: 0.6rem; background: var(--bg-dark); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: var(--radius-sm);">
+                <option value="CAMPAÑA_MARKETING">Campaña de Marketing Granja</option>
+                <option value="BONO_FIDELIZACION">Bono de Fidelización / Bienvenida</option>
+                <option value="PROMOCION_GOURMET">Promoción Especial Gourmet</option>
                 <option value="BRE_B">Bre-B (Bancolombia)</option>
                 <option value="QR_CODE">Código QR Bancolombia</option>
                 <option value="TRANSFERENCIA">Transferencia Bancaria</option>
                 <option value="DESPACHO_GRANJA">Despacho en Granja / Tienda</option>
-                <option value="EFECTIVO">Caja / Efectivo</option>
                 <option value="AJUSTE_AUDITORIA">Ajuste Contable de Auditoría</option>
               </select>
             </div>
@@ -690,9 +715,9 @@ export class WalletView {
           <!-- Notas / Justificación -->
           <div class="form-group">
             <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-primary); margin-bottom: 4px; display: block;">
-              Notas / Justificación de Auditoría:
+              Notas / Descripción de Campaña:
             </label>
-            <textarea id="m-notes" class="form-control" rows="2" placeholder="Describe el motivo de la operación o datos bancarios/de entrega..." style="width: 100%; padding: 0.6rem; background: var(--bg-dark); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: var(--radius-sm); resize: vertical;"></textarea>
+            <textarea id="m-notes" class="form-control" rows="2" placeholder="Motivo del bono o detalles de la campaña (ej: Bono de $50.000 para compras en la tienda de carne)..." style="width: 100%; padding: 0.6rem; background: var(--bg-dark); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: var(--radius-sm); resize: vertical;"></textarea>
           </div>
 
           <!-- Estado Inicial -->
@@ -701,8 +726,8 @@ export class WalletView {
               Estado al Guardar:
             </label>
             <select id="m-initial-status" class="form-control" style="width: 100%; padding: 0.6rem; background: var(--bg-dark); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: var(--radius-sm);">
-              <option value="pending">🟡 Guardar como Pendiente (Para revisión/aprobación posterior)</option>
-              <option value="approved">🟢 Aprobar y Procesar de Inmediato (Acredita o debita en tiempo real)</option>
+              <option value="approved" selected>🟢 Aprobar y Acreditar Inmediatamente (Recomendado para Bonos y Marketing)</option>
+              <option value="pending">🟡 Guardar como Pendiente (Para revisión posterior)</option>
             </select>
           </div>
 
@@ -713,30 +738,67 @@ export class WalletView {
         const refInput = modalBody.querySelector('#m-reference');
         const amountInput = modalBody.querySelector('#m-amount');
         const previewEl = modalBody.querySelector('#m-amount-preview');
+        const userSelectCont = modalBody.querySelector('#m-user-select-container');
+        const massiveAlert = modalBody.querySelector('#m-massive-alert');
+        const targetRadios = modalBody.querySelectorAll('input[name="m-target-mode"]');
+        const amountLabel = modalBody.querySelector('#m-amount-label');
+        const methodSelect = modalBody.querySelector('#m-payment-method');
 
-        // Actualizar referencia automática al cambiar tipo
+        const updatePreview = () => {
+          const val = Number(amountInput.value || 0);
+          const isMassive = modalBody.querySelector('input[name="m-target-mode"]:checked').value === 'all';
+          if (isMassive) {
+            const total = val * users.length;
+            previewEl.innerHTML = `Valor por usuario: <strong>$${val.toLocaleString('es-CO')}</strong> | Total campaña (${users.length} usuarios): <strong style="color: var(--accent-gold);">$${total.toLocaleString('es-CO')}</strong>`;
+          } else {
+            previewEl.textContent = `$${val.toLocaleString('es-CO')}`;
+          }
+        };
+
+        targetRadios.forEach(radio => {
+          radio.addEventListener('change', () => {
+            const isMassive = radio.value === 'all';
+            userSelectCont.style.display = isMassive ? 'none' : 'block';
+            massiveAlert.style.display = isMassive ? 'block' : 'none';
+            amountLabel.textContent = isMassive ? `Monto por Usuario (${users.length} usuarios): *` : 'Monto en Pesos: *';
+            updatePreview();
+          });
+        });
+
+        // Actualizar referencia automática y canales al cambiar tipo
         typeSelect.addEventListener('change', () => {
           const type = typeSelect.value;
-          const prefix = type === 'recharge' ? 'REC' : (type === 'withdrawal' ? 'RET' : 'CRN');
+          let prefix = 'BNO';
+          if (type === 'recharge') prefix = 'REC';
+          else if (type === 'withdrawal') prefix = 'RET';
+          else if (type === 'consumption') prefix = 'CRN';
+          
           refInput.value = `ADM-${prefix}-${Math.floor(100000 + Math.random() * 900000)}`;
+
+          if (type === 'bonus_grant') {
+            methodSelect.value = 'CAMPAÑA_MARKETING';
+          } else if (type === 'recharge') {
+            methodSelect.value = 'BRE_B';
+          } else if (type === 'withdrawal') {
+            methodSelect.value = 'TRANSFERENCIA';
+          } else if (type === 'consumption') {
+            methodSelect.value = 'DESPACHO_GRANJA';
+          }
         });
 
-        // Vista previa de monto formateado
-        amountInput.addEventListener('input', () => {
-          const val = Number(amountInput.value || 0);
-          previewEl.textContent = `$${val.toLocaleString('es-CO')}`;
-        });
+        amountInput.addEventListener('input', updatePreview);
       },
       footerButtons: [
         { text: 'Cancelar', class: 'btn-secondary', onClick: (e, m) => m.close() },
         {
-          text: 'Crear Solicitud',
+          text: 'Ejecutar Solicitud',
           class: 'btn-primary',
           onClick: async (e, m) => {
-            const userId = document.getElementById('m-user-id').value;
+            const isMassive = document.querySelector('input[name="m-target-mode"]:checked').value === 'all';
+            const userId = isMassive ? 'ALL' : document.getElementById('m-user-id').value;
             const userSelect = document.getElementById('m-user-id');
-            const selectedOption = userSelect.options[userSelect.selectedIndex];
-            const userName = selectedOption ? selectedOption.getAttribute('data-name') : 'Usuario';
+            const selectedOption = !isMassive && userSelect.selectedIndex >= 0 ? userSelect.options[userSelect.selectedIndex] : null;
+            const userName = isMassive ? 'Todos los Usuarios' : (selectedOption ? selectedOption.getAttribute('data-name') : 'Usuario');
             const requestType = document.getElementById('m-request-type').value;
             const amount = Number(document.getElementById('m-amount').value || 0);
             const paymentMethod = document.getElementById('m-payment-method').value;
@@ -744,7 +806,7 @@ export class WalletView {
             const notes = document.getElementById('m-notes').value.trim();
             const initialStatus = document.getElementById('m-initial-status').value;
 
-            if (!userId) {
+            if (!isMassive && !userId) {
               toast.error('Por favor selecciona un usuario');
               return;
             }
@@ -754,9 +816,17 @@ export class WalletView {
               return;
             }
 
+            if (isMassive) {
+              const totalImpact = amount * users.length;
+              const typeDesc = requestType === 'bonus_grant' ? 'en Bonos de Consumo' : 'en Saldo';
+              if (!confirm(`¿Confirmar abono masivo de $${amount.toLocaleString('es-CO')} ${typeDesc} a los ${users.length} usuarios registrados?\n\nImpacto total de la campaña: $${totalImpact.toLocaleString('es-CO')}`)) {
+                return;
+              }
+            }
+
             const btn = e.target;
             btn.disabled = true;
-            btn.textContent = 'Guardando...';
+            btn.textContent = 'Procesando...';
 
             const res = await walletService.createManualRequest({
               userId,
@@ -766,17 +836,22 @@ export class WalletView {
               paymentMethod,
               reference,
               notes,
-              initialStatus
+              initialStatus,
+              isMassive
             });
 
             if (res.success) {
-              toast.success('¡Solicitud manual registrada exitosamente en wallet_requests!');
+              if (res.mass) {
+                toast.success(`¡Campaña de marketing aplicada exitosamente a ${res.count} usuarios!`);
+              } else {
+                toast.success('¡Solicitud registrada exitosamente en tesorería!');
+              }
               m.close();
               await this.refreshAllData();
             } else {
               toast.error('Error: ' + (res.error || 'No se pudo crear la solicitud'));
               btn.disabled = false;
-              btn.textContent = 'Crear Solicitud';
+              btn.textContent = 'Ejecutar Solicitud';
             }
           }
         }

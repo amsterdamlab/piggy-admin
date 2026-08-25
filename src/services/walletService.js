@@ -346,27 +346,93 @@ export const walletService = {
     return [];
   },
 
-  async createManualRequest({ userId, userName, requestType, amount, paymentMethod, reference, bankName, notes, initialStatus = 'pending' }) {
+  async createManualRequest({ userId, userName, requestType, amount, paymentMethod, reference, bankName, notes, initialStatus = 'pending', isMassive = false }) {
     const client = getClient();
     if (!client) return { success: false, error: 'No client' };
 
     try {
       const isApproved = initialStatus === 'approved' || initialStatus === 'processed';
-      const walletType = requestType === 'consumption' ? 'bono_consumo' : 'dinero';
+      const numAmount = Number(amount);
+      const isBonusGrant = requestType === 'bonus_grant';
+      const walletType = isBonusGrant ? 'consumo' : (requestType === 'consumption' ? 'bono_consumo' : 'dinero');
+      const now = new Date().toISOString();
+
+      // Caso 1: Abono Masivo a Todos los Usuarios Activos
+      if (isMassive || userId === 'ALL') {
+        const users = await this.getUsersList();
+        if (!users || users.length === 0) {
+          return { success: false, error: 'No se encontraron usuarios para procesar el abono masivo' };
+        }
+
+        const baseRef = reference || `MKT-BNO-${Math.floor(100000 + Math.random() * 900000)}`;
+        const reqInserts = [];
+        const txInserts = [];
+
+        users.forEach((u, idx) => {
+          const userRef = `${baseRef}-${idx + 1}`;
+          reqInserts.push({
+            user_id: u.id,
+            user_name: u.full_name || 'Inversionista',
+            request_type: isBonusGrant ? 'recharge' : requestType,
+            amount: numAmount,
+            payment_method: paymentMethod || 'CAMPAÑA_MARKETING',
+            reference: userRef,
+            bank_name: null,
+            wallet_type: walletType,
+            notes: notes || 'Bono de consumo masivo por campaña de marketing granja',
+            status: isApproved ? 'approved' : 'pending',
+            created_at: now,
+            processed_at: isApproved ? now : null,
+            processed_by: isApproved ? 'admin' : null
+          });
+
+          if (isApproved) {
+            txInserts.push({
+              user_id: u.id,
+              amount: numAmount,
+              type: isBonusGrant ? 'credit' : (requestType === 'recharge' ? 'recharge' : 'credit'),
+              description: `Bono de Consumo: ${notes || 'Campaña de Marketing Granja'} [Ref: ${userRef}]`,
+              wallet_type: 'consumo',
+              payment_method: paymentMethod || 'MARKETING',
+              simulation_status: 'APPROVED',
+              created_at: now
+            });
+          }
+        });
+
+        // Insertar en lotes de 50
+        const batchSize = 50;
+        for (let i = 0; i < reqInserts.length; i += batchSize) {
+          const batch = reqInserts.slice(i, i + batchSize);
+          await client.from('wallet_requests').insert(batch);
+        }
+
+        if (isApproved && txInserts.length > 0) {
+          for (let i = 0; i < txInserts.length; i += batchSize) {
+            const batch = txInserts.slice(i, i + batchSize);
+            await client.from('wallet_transactions').insert(batch);
+          }
+        }
+
+        return { success: true, count: users.length, mass: true };
+      }
+
+      // Caso 2: Solicitud / Abono a Usuario Individual
+      const singleRef = reference || `ADM-${isBonusGrant ? 'BNO' : requestType.substring(0, 3).toUpperCase()}-${Math.floor(100000 + Math.random() * 900000)}`;
 
       const insertData = {
         user_id: userId,
         user_name: userName || 'Usuario',
-        request_type: requestType,
-        amount: Number(amount),
+        request_type: isBonusGrant ? 'recharge' : requestType,
+        amount: numAmount,
         payment_method: paymentMethod || null,
-        reference: reference || `ADM-${requestType.substring(0, 3).toUpperCase()}-${Math.floor(100000 + Math.random() * 900000)}`,
+        reference: singleRef,
         bank_name: bankName || (requestType === 'withdrawal' ? 'Transferencia Bancaria' : null),
         wallet_type: walletType,
-        notes: notes || 'Solicitud manual registrada desde panel administrativo',
-        status: isApproved ? (requestType === 'recharge' ? 'approved' : 'processed') : 'pending',
-        created_at: new Date().toISOString(),
-        processed_at: isApproved ? new Date().toISOString() : null,
+        notes: notes || (isBonusGrant ? 'Bono de consumo otorgado manualmente por administración' : 'Solicitud manual registrada desde panel administrativo'),
+        status: isApproved ? (requestType === 'recharge' || isBonusGrant ? 'approved' : 'processed') : 'pending',
+        created_at: now,
+        processed_at: isApproved ? now : null,
         processed_by: isApproved ? 'admin' : null
       };
 
@@ -377,6 +443,29 @@ export const walletService = {
         .single();
 
       if (error) throw error;
+
+      // Si está aprobado inmediatamente, insertar en wallet_transactions para reflejar saldo al instante
+      if (isApproved) {
+        try {
+          await client.from('wallet_transactions').insert({
+            user_id: userId,
+            amount: requestType === 'withdrawal' ? -numAmount : numAmount,
+            type: isBonusGrant ? 'credit' : (requestType === 'recharge' ? 'recharge' : 'credit'),
+            description: isBonusGrant
+              ? `Bono de Consumo: ${notes || 'Asignación Manual'} [Ref: ${singleRef}]`
+              : (requestType === 'recharge'
+                  ? `Recarga Manual ${paymentMethod || ''} [Ref: ${singleRef}] - ${notes || ''}`
+                  : `Retiro Manual Procesado [Ref: ${singleRef}] - ${notes || ''}`),
+            wallet_type: isBonusGrant ? 'consumo' : (walletType === 'bono_consumo' ? 'consumo' : walletType),
+            payment_method: paymentMethod || 'MANUAL_ADMIN',
+            simulation_status: 'APPROVED',
+            created_at: now
+          });
+        } catch (txErr) {
+          console.warn('Advertencia insertando transacción complementaria:', txErr);
+        }
+      }
+
       return { success: true, data };
     } catch (err) {
       console.error('Error in createManualRequest:', err);
