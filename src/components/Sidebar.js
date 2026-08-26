@@ -24,7 +24,7 @@ export class Sidebar {
       { id: '#piggies', label: 'Granja de Piggys', icon: icons.pig },
       { id: '#marketplace', label: 'Mercado de Piggys', icon: icons.marketplace },
       { id: '#gourmet-allies', label: 'Tienda & Aliados', icon: icons.store },
-      { id: '#missions', label: 'Misiones Flash & Ofertas', icon: icons.zap },
+      { id: '#marketing', label: 'Marketing', icon: icons.megaphone },
       {
         id: '#wallet',
         label: 'Pagos & Recargas',

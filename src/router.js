@@ -13,7 +13,7 @@ import { UsersView } from './views/UsersView.js';
 import { PiggiesView } from './views/PiggiesView.js';
 import { MarketplaceView } from './views/MarketplaceView.js';
 import { GourmetAlliesView } from './views/GourmetAlliesView.js';
-import { FlashMissionsView } from './views/FlashMissionsView.js';
+import { MarketingView } from './views/MarketingView.js';
 import { WalletView } from './views/WalletView.js';
 
 export class Router {
@@ -56,10 +56,15 @@ export class Router {
         title: 'Tienda & Aliados',
         subtitle: 'Catálogo de cortes, combos para canje y directorio de aliados'
       },
+      '#marketing': {
+        view: MarketingView,
+        title: 'Centro de Marketing',
+        subtitle: 'Gestión integral de noticias, misiones, promociones, cerditos exclusivos y tips de la app'
+      },
       '#missions': {
-        view: FlashMissionsView,
-        title: 'Misiones Flash & Ofertas',
-        subtitle: 'Campañas de aceleración y retos comunitarios'
+        view: MarketingView,
+        title: 'Centro de Marketing',
+        subtitle: 'Gestión integral de noticias, misiones, promociones, cerditos exclusivos y tips de la app'
       },
       '#wallet': {
         view: WalletView,
