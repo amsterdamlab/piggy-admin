@@ -4,6 +4,7 @@
    ========================================================================== */
 
 import { marketingService } from '../../services/marketingService.js';
+import { usersService } from '../../services/usersService.js';
 import { DataTable } from '../../components/DataTable.js';
 import { modal } from '../../components/Modal.js';
 import { toast } from '../../components/Toast.js';
@@ -13,7 +14,6 @@ export class MissionsTab {
   constructor(parentView) {
     this.parentView = parentView;
     this.dataTable = null;
-    this.viewMode = 'users'; // 'users' (panorama de progreso) | 'all' (listado completo)
   }
 
   render(data) {
@@ -23,7 +23,7 @@ export class MissionsTab {
     // Calcular panorama por usuario
     const userProgress = this.calculateUserProgress(rawMissions, profiles);
 
-    // Identificar misión con más usuarios estancados
+    // Identificar misión compleja (donde más se quedan los usuarios)
     const frictionMap = {};
     userProgress.forEach(u => {
       if (!u.all_completed && u.current_mission_title) {
@@ -32,12 +32,12 @@ export class MissionsTab {
       }
     });
 
-    let topFrictionMission = 'Ninguna (Todos completados)';
+    let topFrictionMissionName = 'Ninguna';
     let topFrictionCount = 0;
     Object.entries(frictionMap).forEach(([mission, count]) => {
       if (count > topFrictionCount) {
         topFrictionCount = count;
-        topFrictionMission = `${mission} (${count} usuarios)`;
+        topFrictionMissionName = mission;
       }
     });
 
@@ -51,20 +51,29 @@ export class MissionsTab {
           header: 'Nombre Usuario',
           render: (row) => `
             <div>
-              <div style="font-weight: 800; color: var(--text-primary);">${row.user_name || 'Inversionista'}</div>
-              <div style="font-size: 0.75rem; color: var(--text-muted); font-family: monospace;">${row.user_email || row.user_id}</div>
+              <div style="font-weight: 800; color: var(--text-primary); font-size: 0.95rem;">
+                ${row.user_name || 'Inversionista'}
+              </div>
+              <div style="font-size: 0.75rem; color: var(--text-muted); font-family: monospace; margin-top: 1px;">
+                ${row.user_email || row.user_id}
+              </div>
+              <div style="margin-top: 5px;">
+                <button class="btn btn-secondary btn-sm" data-action="view-user-profile" style="padding: 2px 8px; font-size: 0.72rem; display: inline-flex; align-items: center; gap: 4px; border-radius: var(--radius-sm);" title="Ver ficha completa en el CRM de Usuarios">
+                  ${icons.eye || icons.user} <span>Ver Detalle</span>
+                </button>
+              </div>
             </div>
           `
         },
         {
-          header: 'Estado Misión Actual',
+          header: 'Estado',
           render: (row) => row.all_completed ? `
             <span class="badge badge-success">
-              Todas Completadas 🎉
+              Completado
             </span>
           ` : `
             <span class="badge badge-warning">
-              En Curso (Pendiente)
+              Pendiente
             </span>
           `
         },
@@ -74,7 +83,7 @@ export class MissionsTab {
             <span class="badge badge-info" style="font-weight: 800; font-size: 0.85rem;">
               # ${row.current_mission_number}
             </span>
-          ` : '<span class="badge badge-success">Fin</span>'
+          ` : '<span class="badge badge-success">Finalizado</span>'
         },
         {
           header: 'Nombre de la Misión',
@@ -126,30 +135,43 @@ export class MissionsTab {
       <div class="missions-tab-container">
         <!-- Banner de análisis de fricción de misiones -->
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 1.25rem;">
+          
+          <!-- Bloque 1: Misión Compleja -->
           <div style="background: rgba(255, 75, 139, 0.08); border: 1px solid rgba(255, 75, 139, 0.25); border-radius: var(--radius-md); padding: 0.85rem 1rem;">
-            <div style="font-size: 0.72rem; text-transform: uppercase; color: var(--primary-pink); font-weight: 700; letter-spacing: 0.05em; margin-bottom: 0.2rem;">
-              ⚠️ Misión donde más se quedan los usuarios
+            <div style="font-size: 0.72rem; text-transform: uppercase; color: var(--primary-pink); font-weight: 700; letter-spacing: 0.05em; margin-bottom: 0.25rem;">
+              ⚠️ Misión Compleja
             </div>
-            <div style="font-size: 0.95rem; font-weight: 800; color: var(--text-primary);">
-              ${topFrictionMission}
+            <div style="font-size: 0.85rem; font-weight: 700; color: var(--text-primary); margin-bottom: 0.25rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${topFrictionMissionName}">
+              ${topFrictionMissionName}
+            </div>
+            <div style="font-size: 1.2rem; font-weight: 800; color: var(--text-primary);">
+              ${topFrictionCount} <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 500;">usuarios</span>
             </div>
           </div>
 
+          <!-- Bloque 2: Usuarios con Misiones en Curso -->
           <div style="background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.25); border-radius: var(--radius-md); padding: 0.85rem 1rem;">
-            <div style="font-size: 0.72rem; text-transform: uppercase; color: var(--accent-gold); font-weight: 700; letter-spacing: 0.05em; margin-bottom: 0.2rem;">
+            <div style="font-size: 0.72rem; text-transform: uppercase; color: var(--accent-gold); font-weight: 700; letter-spacing: 0.05em; margin-bottom: 0.25rem;">
               🎯 Usuarios con Misiones en Curso
             </div>
+            <div style="font-size: 0.85rem; font-weight: 700; color: var(--text-secondary); margin-bottom: 0.25rem;">
+              En progreso activo
+            </div>
             <div style="font-size: 1.2rem; font-weight: 800; color: var(--text-primary);">
-              ${activeUsersCount} <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 500;">inversionistas</span>
+              ${activeUsersCount} <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 500;">Usuarios</span>
             </div>
           </div>
 
+          <!-- Bloque 3: Usuarios con 100% Completado -->
           <div style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: var(--radius-md); padding: 0.85rem 1rem;">
-            <div style="font-size: 0.72rem; text-transform: uppercase; color: var(--accent-green); font-weight: 700; letter-spacing: 0.05em; margin-bottom: 0.2rem;">
+            <div style="font-size: 0.72rem; text-transform: uppercase; color: var(--accent-green); font-weight: 700; letter-spacing: 0.05em; margin-bottom: 0.25rem;">
               🏆 Usuarios con 100% Completado
             </div>
+            <div style="font-size: 0.85rem; font-weight: 700; color: var(--text-secondary); margin-bottom: 0.25rem;">
+              Funnel completado
+            </div>
             <div style="font-size: 1.2rem; font-weight: 800; color: var(--text-primary);">
-              ${completedUsersCount} <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 500;">graduados</span>
+              ${completedUsersCount} <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 500;">Finalizado</span>
             </div>
           </div>
         </div>
@@ -162,7 +184,8 @@ export class MissionsTab {
   calculateUserProgress(missions, profiles) {
     const profileMap = {};
     profiles.forEach(p => {
-      profileMap[p.id] = p;
+      const pid = p.id;
+      profileMap[pid] = p;
     });
 
     const userMap = {};
@@ -173,9 +196,10 @@ export class MissionsTab {
         const p = profileMap[uid] || {};
         userMap[uid] = {
           user_id: uid,
-          user_name: p.full_name || p.email || `Usuario ${uid.slice(0, 8)}`,
+          user_name: p.full_name || p.fullName || p.name || p.email || `Usuario ${uid.slice(0, 8)}`,
           user_email: p.email || '',
           user_phone: p.phone || p.whatsapp || '',
+          raw_user: p,
           missions: []
         };
       }
@@ -187,9 +211,10 @@ export class MissionsTab {
       if (!userMap[p.id]) {
         userMap[p.id] = {
           user_id: p.id,
-          user_name: p.full_name || p.email || 'Inversionista',
+          user_name: p.full_name || p.fullName || p.name || p.email || 'Inversionista',
           user_email: p.email || '',
           user_phone: p.phone || p.whatsapp || '',
+          raw_user: p,
           missions: []
         };
       }
@@ -208,13 +233,14 @@ export class MissionsTab {
         user_name: u.user_name,
         user_email: u.user_email,
         user_phone: u.user_phone,
+        raw_user: u.raw_user,
         total_missions: total,
         completed_missions: completed,
         progress_percent: total > 0 ? Math.round((completed / total) * 100) : 0,
         all_completed: allCompleted,
         current_mission_id: current?.id || null,
         current_mission_number: current ? (current.sort_order || current.mission_key || 1) : null,
-        current_mission_title: current ? current.title : (total === 0 ? 'Sin misiones asignadas' : 'Todas completadas 🎉'),
+        current_mission_title: current ? current.title : (total === 0 ? 'Sin misiones asignadas' : 'Todas completadas'),
         current_mission_reward: current ? current.reward : '-',
         missions_list: u.missions
       };
@@ -236,7 +262,105 @@ export class MissionsTab {
   handleAction(action, row) {
     if (action === 'view-details') {
       this.openUserMissionsModal(row);
+    } else if (action === 'view-user-profile') {
+      this.openUserProfileModal(row);
     }
+  }
+
+  openUserProfileModal(row) {
+    const user = row.raw_user || {};
+    const fullName = row.user_name || 'Inversionista';
+    const email = row.user_email || user.email || 'No registrado';
+    const whatsapp = row.user_phone || user.whatsapp || user.phone || 'No registrado';
+    const cedula = user.cedula || 'No registrada';
+    const refCode = user.referralCode || user.referral_code || 'Sin código';
+    const bankName = user.bankName || user.bank_name || 'No registrado';
+    const bankAccount = user.bankAccountNumber || user.bank_account_number || user.bank_account_type || 'No registrada';
+
+    modal.open({
+      title: `Detalle del Usuario: ${fullName}`,
+      contentHtml: `
+        <div style="display: flex; flex-direction: column; gap: 1.25rem;">
+          <!-- Tarjeta de Contacto -->
+          <div style="background: var(--bg-dark); padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+            <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em; margin-bottom: 0.4rem;">
+              Información de Identificación & Contacto
+            </div>
+            <div style="font-size: 1.25rem; font-weight: 800; color: var(--text-primary); margin-bottom: 0.85rem;">
+              ${fullName}
+            </div>
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.75rem; font-size: 0.85rem;">
+              <div>
+                <span style="color: var(--text-muted);">Email:</span>
+                <div style="font-weight: 700; color: var(--accent-blue); font-family: monospace;">${email}</div>
+              </div>
+              <div>
+                <span style="color: var(--text-muted);">WhatsApp:</span>
+                <div style="font-weight: 700; color: var(--accent-green);">${whatsapp}</div>
+              </div>
+              <div>
+                <span style="color: var(--text-muted);">Cédula:</span>
+                <div style="font-weight: 700; color: var(--text-primary);">${cedula}</div>
+              </div>
+              <div>
+                <span style="color: var(--text-muted);">Código Referido:</span>
+                <div style="font-weight: 700; color: var(--accent-gold); font-family: monospace;">${refCode}</div>
+              </div>
+              <div>
+                <span style="color: var(--text-muted);">Banco:</span>
+                <div style="font-weight: 700; color: var(--primary-pink);">${bankName}</div>
+              </div>
+              <div>
+                <span style="color: var(--text-muted);">Cuenta:</span>
+                <div style="font-weight: 700; color: var(--text-secondary);">${bankAccount}</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Progreso de Misiones -->
+          <div style="background: var(--bg-card); padding: 1.1rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+            <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em; margin-bottom: 0.4rem;">
+              Estado en el Centro de Marketing
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <div style="font-size: 1.1rem; font-weight: 800; color: ${row.all_completed ? 'var(--accent-green)' : 'var(--primary-pink)'};">
+                  ${row.completed_missions} de ${row.total_missions} misiones completadas (${row.progress_percent}%)
+                </div>
+                <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 2px;">
+                  Misión Actual: ${row.current_mission_title}
+                </div>
+              </div>
+              <button class="btn btn-secondary btn-sm" id="btn-open-missions-modal" style="display: inline-flex; align-items: center; gap: 4px;">
+                ${icons.target} <span>Ver Misiones</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      `,
+      footerButtons: [
+        {
+          text: 'Ir a Módulo de Usuarios',
+          class: 'btn-secondary',
+          onClick: (e, m) => {
+            m.close();
+            window.location.hash = '#users';
+          }
+        },
+        { text: 'Cerrar', class: 'btn-primary', onClick: (e, m) => m.close() }
+      ]
+    });
+
+    setTimeout(() => {
+      const btnOpenM = document.querySelector('#btn-open-missions-modal');
+      if (btnOpenM) {
+        btnOpenM.addEventListener('click', () => {
+          modal.close();
+          this.openUserMissionsModal(row);
+        });
+      }
+    }, 100);
   }
 
   openUserMissionsModal(userProgressRow) {
@@ -254,7 +378,7 @@ export class MissionsTab {
 
         <div style="display: flex; align-items: center; gap: 0.75rem; margin-left: 1rem;">
           <span class="badge ${m.is_completed ? 'badge-success' : 'badge-warning'}">
-            ${m.is_completed ? 'Completada' : 'Pendiente'}
+            ${m.is_completed ? 'Completado' : 'Pendiente'}
           </span>
           <button class="btn btn-secondary btn-sm toggle-single-mission" data-mission-id="${m.id}" data-current="${m.is_completed}">
             ${m.is_completed ? 'Reabrir' : 'Completar'}

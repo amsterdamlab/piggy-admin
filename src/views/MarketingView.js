@@ -8,6 +8,7 @@
    ========================================================================== */
 
 import { marketingService } from '../services/marketingService.js';
+import { usersService } from '../services/usersService.js';
 import { icons } from '../icons.js';
 
 import { NewsTab } from './marketing/NewsTab.js';
@@ -58,7 +59,7 @@ export class MarketingView {
       marketingService.getCycleMissions(),
       marketingService.getExclusiveConfigs(),
       marketingService.getDynamicTips(),
-      marketingService.getProfiles()
+      usersService.getUsers()
     ]);
 
     this.overview = overview;
