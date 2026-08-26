@@ -18,9 +18,9 @@ export class FlashMissionsView {
     this.campaigns = await missionsService.getCampaigns();
 
     this.dataTable = new DataTable({
-      searchPlaceholder: 'Buscar misiones...',
+      searchPlaceholder: 'Buscar misiones u ofertas...',
       actionButton: {
-        text: 'Nueva Misión Flash',
+        text: 'Nueva Misión / Oferta',
         icon: icons.plus,
         onClick: () => this.openCampaignModal()
       },
@@ -91,9 +91,9 @@ export class FlashMissionsView {
         <div class="card">
           <div class="card-header">
             <div>
-              <h2 class="card-title">${icons.zap} Misiones Flash & Gamificación</h2>
+              <h2 class="card-title">${icons.zap} Misiones Flash & Ofertas</h2>
               <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.2rem;">
-                Creación y control de retos temporales, bonos de alimentación y misiones comunitarias
+                Creación y control de retos temporales, bonos de alimentación y ofertas comunitarias
               </div>
             </div>
             <div>

@@ -115,7 +115,7 @@ export class PiggiesView {
         <div class="card">
           <div class="card-header">
             <div>
-              <h2 class="card-title">${icons.pig} Granja de Piggies (Supervisión de Engorde)</h2>
+              <h2 class="card-title">${icons.pig} Granja de Piggys (Supervisión de Engorde)</h2>
               <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.2rem;">
                 Control de pesaje semanal, bonos de aceleración y estados del ciclo biológico
               </div>

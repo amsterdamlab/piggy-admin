@@ -76,7 +76,7 @@ export class UsersView {
               </div>
               ${u.bonosConsumo > 0 ? `
                 <div style="font-size: 0.72rem; color: var(--accent-gold); font-weight: 700; margin-top: 2px; display: flex; align-items: center; gap: 3px;">
-                  <span>${icons.tag}</span> $${u.bonosConsumo.toLocaleString('es-CO')} Bonos Consumo
+                  <span>${icons.coupon}</span> $${u.bonosConsumo.toLocaleString('es-CO')} Bonos Consumo
                 </div>
               ` : ''}
             </div>
@@ -324,13 +324,13 @@ export class UsersView {
 
             <div style="background: var(--bg-dark); padding: 1.1rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
               <div style="font-size: 0.72rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; display: flex; align-items: center; gap: 4px;">
-                <span style="color: var(--accent-gold);">${icons.tag}</span> Bonos de Consumo Disponibles
+                <span style="color: var(--accent-gold);">${icons.coupon}</span> Bonos de Consumo Disponibles
               </div>
               <div style="font-size: 1.4rem; font-weight: 800; color: var(--accent-gold); margin-top: 0.3rem;">
                 $${user.bonosConsumo.toLocaleString('es-CO')}
               </div>
               <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.2rem;">
-                Para canjes en Piggy Gourmet & Aliados
+                Para canjes en Tienda & Aliados
               </div>
             </div>
 
@@ -342,7 +342,7 @@ export class UsersView {
                 $${user.totalCompraPiggies.toLocaleString('es-CO')}
               </div>
               <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.2rem;">
-                Capital total invertido en cerditos
+                Capital total invertido en Piggys
               </div>
             </div>
 

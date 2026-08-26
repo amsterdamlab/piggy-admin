@@ -27,16 +27,16 @@ export class GourmetAlliesView {
         <div class="card">
           <div class="card-header" style="flex-direction: column; align-items: flex-start; gap: 1rem;">
             <div>
-              <h2 class="card-title">${icons.gourmet} Gestión de Tienda Gourmet & Aliados</h2>
+              <h2 class="card-title">${icons.store} Gestión de Tienda & Aliados</h2>
               <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.2rem;">
-                Administración de cortes premium, combos para canje y red de restaurantes aliados
+                Administración de cortes premium, combos para canje y red de aliados comerciales
               </div>
             </div>
 
             <!-- Tabs -->
             <div class="tabs-container" style="width: 100%; margin-bottom: 0;">
               <button class="tab-btn ${this.currentTab === 'gourmet' ? 'active' : ''}" data-tab="gourmet" style="display: inline-flex; align-items: center; gap: 6px;">
-                ${icons.gourmet} <span>Piggy Gourmet (${this.gourmetProducts.length})</span>
+                ${icons.store} <span>Tienda Piggy (${this.gourmetProducts.length})</span>
               </button>
               <button class="tab-btn ${this.currentTab === 'allies' ? 'active' : ''}" data-tab="allies" style="display: inline-flex; align-items: center; gap: 6px;">
                 ${icons.allies} <span>Red de Aliados (${this.allies.length})</span>
@@ -64,9 +64,9 @@ export class GourmetAlliesView {
 
   renderGourmetTableHtml() {
     this.gourmetTable = new DataTable({
-      searchPlaceholder: 'Buscar corte o combo gourmet...',
+      searchPlaceholder: 'Buscar corte o combo...',
       actionButton: {
-        text: 'Nuevo Producto Gourmet',
+        text: 'Nuevo Producto / Combo',
         icon: icons.plus,
         onClick: () => this.openGourmetModal()
       },

@@ -21,7 +21,7 @@ export class MarketplaceView {
     this.dataTable = new DataTable({
       searchPlaceholder: 'Buscar en el catálogo...',
       actionButton: {
-        text: 'Nuevo Cerdito / Acelerador',
+        text: 'Nuevo Piggy / Acelerador',
         icon: icons.plus,
         onClick: () => this.openItemModal()
       },
@@ -97,7 +97,7 @@ export class MarketplaceView {
         <div class="card">
           <div class="card-header">
             <div>
-              <h2 class="card-title">${icons.marketplace} Catálogo del Mercado de Cerditos</h2>
+              <h2 class="card-title">${icons.marketplace} Mercado de Piggys</h2>
               <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.2rem;">
                 Administración de ofertas, aceleradores (+1%, +2% ROI) e inventario disponible
               </div>

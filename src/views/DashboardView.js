@@ -33,7 +33,7 @@ export class DashboardView {
           })}
 
           ${renderStatCard({
-            title: 'Piggies en Engorde Activo',
+            title: 'Piggys en Engorde Activo',
             value: `${metrics.activePiggies} <span style="font-size: 0.9rem; font-weight: 500; color: var(--text-secondary);">/ ${metrics.totalPiggies}</span>`,
             subtitle: 'Ciclo óptimo de 19 semanas',
             iconSvg: icons.pig,
@@ -53,7 +53,7 @@ export class DashboardView {
           ${renderStatCard({
             title: 'Solicitudes Pendientes',
             value: `<span style="color: ${metrics.pendingRequests > 0 ? 'var(--accent-red)' : 'var(--text-primary)'};">${metrics.pendingRequests}</span>`,
-            subtitle: metrics.pendingRequests > 0 ? 'Requiere revisión en tesorería' : 'Al día',
+            subtitle: metrics.pendingRequests > 0 ? 'Requiere revisión en pagos y recargas' : 'Al día',
             iconSvg: icons.wallet,
             color: metrics.pendingRequests > 0 ? 'purple' : 'blue',
             href: '#wallet'
@@ -66,7 +66,7 @@ export class DashboardView {
             <div>
               <h2 class="card-title">${icons.dashboard} Evolución de Capital y Activos</h2>
               <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.2rem;">
-                Crecimiento histórico de inversión y volumen de cerditos
+                Crecimiento histórico de inversión y volumen de Piggys
               </div>
             </div>
             <div style="display: flex; gap: 0.5rem;">
@@ -91,7 +91,7 @@ export class DashboardView {
                 <thead>
                   <tr>
                     <th>Inversionista</th>
-                    <th>Piggies</th>
+                    <th>Piggys</th>
                     <th>Inversión</th>
                     <th>Nivel ROI</th>
                   </tr>
@@ -103,7 +103,7 @@ export class DashboardView {
                         <div style="font-weight: 700;">${inv.name}</div>
                         <div style="font-size: 0.75rem; color: var(--text-muted);">${inv.contact}</div>
                       </td>
-                      <td style="font-weight: 800; color: var(--primary-pink);">${inv.piggiesCount} Cerditos</td>
+                      <td style="font-weight: 800; color: var(--primary-pink);">${inv.piggiesCount} Piggys</td>
                       <td style="font-weight: 700; color: var(--accent-green);">$${(inv.totalInvested).toLocaleString('es-CO')}</td>
                       <td><span class="badge badge-warning">${inv.roiTier}</span></td>
                     </tr>
@@ -116,14 +116,14 @@ export class DashboardView {
           <!-- Quick Actions & Protocol -->
           <div class="card">
             <div class="card-header">
-              <h3 class="card-title">${icons.zap} Acciones Rápidas & Tesorería</h3>
+              <h3 class="card-title">${icons.zap} Acciones Rápidas & Pagos</h3>
             </div>
             <div style="display: flex; flex-direction: column; gap: 0.85rem;">
               <a href="#wallet" class="btn btn-secondary" style="justify-content: space-between; padding: 1rem;">
                 <div style="display: flex; align-items: center; gap: 0.75rem;">
                   <span style="color: var(--accent-gold);">${icons.wallet}</span>
                   <div style="text-align: left;">
-                    <div style="font-weight: 700;">Revisar Comprobantes de Recarga</div>
+                    <div style="font-weight: 700;">Revisar Recargas de Saldo</div>
                     <div style="font-size: 0.75rem; color: var(--text-muted);">Aprobar transferencias Bre-B y pagos QR</div>
                   </div>
                 </div>
@@ -134,7 +134,7 @@ export class DashboardView {
                 <div style="display: flex; align-items: center; gap: 0.75rem;">
                   <span style="color: var(--primary-pink);">${icons.marketplace}</span>
                   <div style="text-align: left;">
-                    <div style="font-weight: 700;">Lanzar Nuevo Cerdito o Acelerador</div>
+                    <div style="font-weight: 700;">Lanzar Nuevo Piggy o Acelerador</div>
                     <div style="font-size: 0.75rem; color: var(--text-muted);">Crear oferta con bono ROI para usuarios</div>
                   </div>
                 </div>
@@ -146,7 +146,7 @@ export class DashboardView {
                   <span style="color: var(--accent-green);">${icons.pig}</span>
                   <div style="text-align: left;">
                     <div style="font-weight: 700;">Actualizar Pesaje de Granja</div>
-                    <div style="font-size: 0.75rem; color: var(--text-muted);">Ajustar el peso de los cerditos de los usuarios</div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted);">Ajustar el peso de los Piggys de los usuarios</div>
                   </div>
                 </div>
                 ${icons.arrowUpRight}
