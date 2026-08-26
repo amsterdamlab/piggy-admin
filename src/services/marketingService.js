@@ -13,6 +13,22 @@ import { getClient } from './supabase.js';
 
 export const marketingService = {
   // ==========================================================================
+  // 0. PERFILES DE USUARIOS (profiles)
+  // ==========================================================================
+  async getProfiles() {
+    const client = getClient();
+    if (!client) return [];
+    try {
+      const { data, error } = await client.from('profiles').select('id, full_name, email, phone, whatsapp, created_at');
+      if (error) throw error;
+      return data || [];
+    } catch (err) {
+      console.error('Error fetching profiles in marketingService:', err);
+      return [];
+    }
+  },
+
+  // ==========================================================================
   // 1. NOTICIAS Y BANNERS (news_billboard)
   // ==========================================================================
   async getNews() {
@@ -203,7 +219,7 @@ export const marketingService = {
       const payload = {
         title: item.title || '',
         icon: item.icon || 'target',
-        reward: Number(item.reward || 0),
+        reward: item.reward || '',
         sort_order: Number(item.sort_order || 0),
         is_completed: item.is_completed !== undefined ? Boolean(item.is_completed) : false
       };
@@ -224,7 +240,7 @@ export const marketingService = {
       const payload = {
         title: item.title,
         icon: item.icon,
-        reward: Number(item.reward || 0),
+        reward: item.reward,
         sort_order: Number(item.sort_order || 0),
         is_completed: Boolean(item.is_completed)
       };
@@ -276,7 +292,7 @@ export const marketingService = {
       const { data, error } = await client
         .from('exclusive_piggy_config')
         .select('*')
-        .order('id', { ascending: true });
+        .order('price', { ascending: true });
       if (error) throw error;
       return data || [];
     } catch (err) {
@@ -291,8 +307,7 @@ export const marketingService = {
     try {
       const payload = {
         price: Number(item.price || 0),
-        is_enabled: item.is_enabled !== undefined ? Boolean(item.is_enabled) : true,
-        updated_at: new Date().toISOString()
+        is_enabled: item.is_enabled !== undefined ? Boolean(item.is_enabled) : true
       };
       const { data, error } = await client.from('exclusive_piggy_config').insert([payload]).select().single();
       if (error) throw error;
@@ -323,10 +338,7 @@ export const marketingService = {
     const client = getClient();
     if (!client) return { success: false, error: 'Sin conexión a base de datos' };
     try {
-      const { error } = await client.from('exclusive_piggy_config').update({
-        is_enabled: isEnabled,
-        updated_at: new Date().toISOString()
-      }).eq('id', id);
+      const { error } = await client.from('exclusive_piggy_config').update({ is_enabled: isEnabled, updated_at: new Date().toISOString() }).eq('id', id);
       if (error) throw error;
       return { success: true };
     } catch (err) {
@@ -370,12 +382,13 @@ export const marketingService = {
     if (!client) return { success: false, error: 'Sin conexión a base de datos' };
     try {
       const payload = {
-        user_id: item.user_id || null,
-        piggy_id: item.piggy_id || null,
         price: Number(item.price || 0),
-        is_completed: item.is_completed !== undefined ? Boolean(item.is_completed) : false,
-        expires_at: item.expires_at ? new Date(item.expires_at).toISOString() : null
+        is_completed: item.is_completed !== undefined ? Boolean(item.is_completed) : false
       };
+      if (item.user_id) payload.user_id = item.user_id;
+      if (item.piggy_id) payload.piggy_id = item.piggy_id;
+      if (item.expires_at) payload.expires_at = item.expires_at;
+
       const { data, error } = await client.from('cycle_completion_missions').insert([payload]).select().single();
       if (error) throw error;
       return { success: true, data };
@@ -390,11 +403,11 @@ export const marketingService = {
     try {
       const payload = {
         price: Number(item.price || 0),
-        is_completed: Boolean(item.is_completed),
-        expires_at: item.expires_at ? new Date(item.expires_at).toISOString() : null
+        is_completed: Boolean(item.is_completed)
       };
-      if (item.user_id) payload.user_id = item.user_id;
-      if (item.piggy_id) payload.piggy_id = item.piggy_id;
+      if (item.user_id !== undefined) payload.user_id = item.user_id;
+      if (item.piggy_id !== undefined) payload.piggy_id = item.piggy_id;
+      if (item.expires_at !== undefined) payload.expires_at = item.expires_at;
 
       const { data, error } = await client.from('cycle_completion_missions').update(payload).eq('id', id).select().single();
       if (error) throw error;
@@ -429,7 +442,7 @@ export const marketingService = {
   },
 
   // ==========================================================================
-  // 6. TIPS Y CONSEJOS DINÁMICOS (dynamic_tips)
+  // 6. CONSEJOS Y TIPS DINÁMICOS (dynamic_tips)
   // ==========================================================================
   async getDynamicTips() {
     const client = getClient();
@@ -438,7 +451,7 @@ export const marketingService = {
       const { data, error } = await client
         .from('dynamic_tips')
         .select('*')
-        .order('priority', { ascending: true, nullsFirst: false });
+        .order('priority', { ascending: true });
       if (error) throw error;
       return data || [];
     } catch (err) {
@@ -454,10 +467,10 @@ export const marketingService = {
       const payload = {
         title: item.title || '',
         priority: Number(item.priority || 1),
-        icon: item.icon || 'lightbulb',
-        cta_url: item.cta_url || '',
         reward: Number(item.reward || 0),
+        icon: item.icon || 'lightbulb',
         color: item.color || '#F770B4',
+        cta_url: item.cta_url || '',
         is_active: item.is_active !== undefined ? Boolean(item.is_active) : true
       };
       const { data, error } = await client.from('dynamic_tips').insert([payload]).select().single();
@@ -475,10 +488,10 @@ export const marketingService = {
       const payload = {
         title: item.title,
         priority: Number(item.priority || 1),
-        icon: item.icon,
-        cta_url: item.cta_url,
         reward: Number(item.reward || 0),
+        icon: item.icon,
         color: item.color,
+        cta_url: item.cta_url,
         is_active: Boolean(item.is_active)
       };
       const { data, error } = await client.from('dynamic_tips').update(payload).eq('id', id).select().single();
@@ -514,28 +527,26 @@ export const marketingService = {
   },
 
   // ==========================================================================
-  // RESUMEN GLOBAL PARA MÉTRICAS
+  // 7. CONSOLIDADO DE MÉTRICAS GLOBALES DE MARKETING
   // ==========================================================================
   async getMarketingOverview() {
-    const [news, flashMissions, missions, exclusivePiggies, cycleMissions, tips] = await Promise.all([
+    const [news, flash, missions, cycles, exclusive, tips] = await Promise.all([
       this.getNews(),
       this.getUserFlashMissions(),
       this.getMissions(),
-      this.getExclusiveConfigs(),
       this.getCycleMissions(),
+      this.getExclusiveConfigs(),
       this.getDynamicTips()
     ]);
 
     return {
       newsCount: news.length,
       activeNewsCount: news.filter(n => n.is_active).length,
-      flashCount: flashMissions.length,
-      activeFlashCount: flashMissions.filter(f => f.is_active).length,
+      flashMissionsCount: flash.length,
+      activeFlashCount: flash.filter(f => f.is_active).length,
       missionsCount: missions.length,
-      completedMissionsCount: missions.filter(m => m.is_completed).length,
-      exclusiveCount: exclusivePiggies.length,
-      activeExclusiveCount: exclusivePiggies.filter(e => e.is_enabled).length,
-      cycleCount: cycleMissions.length,
+      cycleMissionsCount: cycles.length,
+      activeExclusiveCount: exclusive.filter(e => e.is_enabled).length,
       tipsCount: tips.length,
       activeTipsCount: tips.filter(t => t.is_active).length
     };

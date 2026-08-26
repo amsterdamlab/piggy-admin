@@ -27,6 +27,7 @@ export class MarketingView {
 
     this.overview = null;
     this.container = null;
+    this.profilesList = [];
 
     this.dataStore = {
       news_billboard: [],
@@ -49,14 +50,15 @@ export class MarketingView {
   }
 
   async render() {
-    const [overview, news, missions, flashMissions, cycleMissions, exclusiveConfigs, tips] = await Promise.all([
+    const [overview, news, missions, flashMissions, cycleMissions, exclusiveConfigs, tips, profiles] = await Promise.all([
       marketingService.getMarketingOverview(),
       marketingService.getNews(),
       marketingService.getMissions(),
       marketingService.getUserFlashMissions(),
       marketingService.getCycleMissions(),
       marketingService.getExclusiveConfigs(),
-      marketingService.getDynamicTips()
+      marketingService.getDynamicTips(),
+      marketingService.getProfiles()
     ]);
 
     this.overview = overview;
@@ -66,6 +68,7 @@ export class MarketingView {
     this.dataStore.cycle_completion_missions = cycleMissions;
     this.dataStore.exclusive_piggy_config = exclusiveConfigs;
     this.dataStore.dynamic_tips = tips;
+    this.profilesList = profiles || [];
 
     const totalMissions = this.dataStore.missions.length + this.dataStore.user_flash_missions.length;
     const totalCycles = this.dataStore.cycle_completion_missions.length + this.dataStore.exclusive_piggy_config.length;
@@ -88,7 +91,7 @@ export class MarketingView {
               <span class="stat-title">Misiones</span>
               <div class="stat-icon" style="color: var(--accent-gold);">${icons.target}</div>
             </div>
-            <div class="stat-value">${this.dataStore.missions.length} <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: 500;">globales + ${this.overview.activeFlashCount} flash</span></div>
+            <div class="stat-value">${this.dataStore.missions.length} <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: 500;">registradas + ${this.overview.activeFlashCount} flash</span></div>
             <div class="stat-subtitle">Retos y recompensas para usuarios</div>
           </div>
 
@@ -158,7 +161,7 @@ export class MarketingView {
         <div class="marketing-subtabs-wrapper">
           <button class="marketing-subtab-btn ${activeSub === 'global_missions' ? 'active' : ''}" data-subtab="global_missions">
             ${icons.target}
-            <span>Misiones Globales</span>
+            <span>Misiones Globales (Progreso Usuarios)</span>
             <span class="marketing-subtab-badge" id="badge-sub-missions">${this.dataStore.missions.length}</span>
           </button>
 
