@@ -53,13 +53,13 @@ export class WalletView {
             <!-- Tabs -->
             <div class="tabs-container" style="width: 100%; margin-bottom: 0; display: flex; flex-wrap: wrap; gap: 0.4rem;">
               <button class="tab-btn ${this.currentTab === 'recharges' ? 'active' : ''}" data-tab="recharges" style="display: inline-flex; align-items: center; gap: 6px;">
-                ${icons.download} <span>Comprobantes de Recarga</span> ${pendingRecharges > 0 ? `<span class="badge badge-danger" style="margin-left: 4px;">${pendingRecharges}</span>` : ''}
+                ${icons.download} <span>Recarga de Saldo</span> ${pendingRecharges > 0 ? `<span class="badge badge-danger" style="margin-left: 4px;">${pendingRecharges}</span>` : ''}
               </button>
               <button class="tab-btn ${this.currentTab === 'withdrawals' ? 'active' : ''}" data-tab="withdrawals" style="display: inline-flex; align-items: center; gap: 6px;">
-                ${icons.upload} <span>Retiros de Dinero</span> ${pendingWithdrawals > 0 ? `<span class="badge badge-warning" style="margin-left: 4px;">${pendingWithdrawals}</span>` : ''}
+                ${icons.upload} <span>Retiro de Saldo</span> ${pendingWithdrawals > 0 ? `<span class="badge badge-warning" style="margin-left: 4px;">${pendingWithdrawals}</span>` : ''}
               </button>
               <button class="tab-btn ${this.currentTab === 'meat' ? 'active' : ''}" data-tab="meat" style="display: inline-flex; align-items: center; gap: 6px;">
-                ${icons.meat} <span>Retiros de Carne (Gourmet)</span> ${pendingMeat > 0 ? `<span class="badge badge-info" style="margin-left: 4px;">${pendingMeat}</span>` : ''}
+                ${icons.coupon} <span>Bonos de Consumo</span> ${pendingMeat > 0 ? `<span class="badge badge-info" style="margin-left: 4px;">${pendingMeat}</span>` : ''}
               </button>
               <button class="tab-btn ${this.currentTab === 'ledger' ? 'active' : ''}" data-tab="ledger" style="display: inline-flex; align-items: center; gap: 6px;">
                 ${icons.wallet} <span>Libro Contable (Auditoría)</span>
@@ -297,41 +297,42 @@ export class WalletView {
 
   renderMeatTableHtml() {
     this.meatTable = new DataTable({
-      searchPlaceholder: 'Buscar por usuario, referencia o notas...',
+      searchPlaceholder: 'Buscar por usuario, referencia o concepto...',
       filters: [
         { label: 'Pendientes', value: 'pending' },
-        { label: 'Despachadas', value: 'approved' },
+        { label: 'Aprobadas', value: 'approved' },
         { label: 'Rechazadas', value: 'rejected' }
       ],
       columns: [
         {
-          header: 'Usuario / Solicitante',
+          header: 'Usuario / Inversionista',
           key: 'userName',
           sortValue: (m) => m.userName,
           render: (m) => `
             <div>
               <div style="font-weight: 700; color: var(--text-primary);">${m.userName}</div>
               <div style="font-size: 0.75rem; color: var(--text-muted);">${m.userPhone}</div>
-              <div style="font-size: 0.72rem; color: var(--accent-green); margin-top: 2px;">Saldo Cuenta Agro: $${m.userBalance.toLocaleString('es-CO')}</div>
-              <div style="font-size: 0.72rem; color: var(--accent-gold);">${icons.tag} Bonos: $${m.userBonos.toLocaleString('es-CO')}</div>
+              <div style="font-size: 0.72rem; color: var(--accent-gold); display: flex; align-items: center; gap: 4px; margin-top: 2px;">
+                ${icons.coupon} Bonos Disponibles: $${m.userBonos.toLocaleString('es-CO')}
+              </div>
             </div>
           `
         },
         {
-          header: 'Monto de la Compra / Despacho',
+          header: 'Operación & Monto',
           key: 'amount',
           sortValue: (m) => m.amount,
           render: (m) => `
-            <div style="font-size: 1.1rem; font-weight: 800; color: ${m.walletType === 'consumo' ? 'var(--accent-gold)' : 'var(--primary-pink)'};">
-              $${m.amount.toLocaleString('es-CO')}
+            <div style="font-size: 1.1rem; font-weight: 800; color: ${m.isCredit ? 'var(--accent-green)' : 'var(--accent-gold)'};">
+              ${m.isCredit ? '+' : '-'}$${m.amount.toLocaleString('es-CO')}
             </div>
-            <span class="badge ${m.walletType === 'consumo' ? 'badge-warning' : 'badge-success'}" style="font-size: 0.7rem;">
-              ${m.walletType === 'consumo' ? 'Bono de Consumo' : 'Saldo Cuenta Agro'}
+            <span class="badge ${m.isCredit ? 'badge-success' : 'badge-warning'}" style="font-size: 0.7rem;">
+              ${m.subtype || (m.isCredit ? 'Recarga de Bono' : 'Canje en Tienda')}
             </span>
           `
         },
         {
-          header: 'Referencia / Detalle de Despacho',
+          header: 'Referencia / Concepto',
           key: 'referenceCode',
           sortValue: (m) => m.referenceCode,
           render: (m) => `
@@ -356,9 +357,9 @@ export class WalletView {
           key: 'status',
           sortValue: (m) => m.status,
           render: (m) => {
-            if (m.status === 'pending') return `<span class="badge badge-warning">Pendiente Despacho</span>`;
-            if (m.status === 'approved') return `<span class="badge badge-success">Despachado / Entregado</span>`;
-            return `<span class="badge badge-danger">Cancelado</span>`;
+            if (m.status === 'pending') return `<span class="badge badge-warning">Pendiente</span>`;
+            if (m.status === 'approved') return `<span class="badge badge-success">Aprobado / Despachado</span>`;
+            return `<span class="badge badge-danger">Rechazado</span>`;
           }
         },
         {
@@ -369,16 +370,16 @@ export class WalletView {
             if (m.status === 'pending') {
               return `
                 <div style="display: flex; gap: 0.4rem; justify-content: flex-end;">
-                  <button class="btn btn-success btn-sm" data-action="approve-meat" title="Confirmar despacho y debitar saldo">
-                    ${icons.check} Despachar
+                  <button class="btn btn-success btn-sm" data-action="approve-meat" title="Aprobar operación de bono">
+                    ${icons.check} Aprobar
                   </button>
-                  <button class="btn btn-danger btn-sm" data-action="reject-meat" title="Rechazar o cancelar solicitud">
+                  <button class="btn btn-danger btn-sm" data-action="reject-meat" title="Rechazar solicitud de bono">
                     ${icons.x}
                   </button>
                 </div>
               `;
             }
-            return `<span style="font-size: 0.75rem; color: var(--text-muted);">Despachado</span>`;
+            return `<span style="font-size: 0.75rem; color: var(--text-muted);">Procesado</span>`;
           }
         }
       ],
@@ -578,35 +579,38 @@ export class WalletView {
 
   handleMeatAction(action, m) {
     if (action === 'approve-meat') {
-      const walletName = m.walletType === 'consumo' ? 'Bonos de Consumo' : 'Saldo Cuenta Agro';
-      if (confirm(`¿Confirmar despacho de productos de carne por $${m.amount.toLocaleString('es-CO')} para ${m.userName}?\n\nSe descontará directamente de su ${walletName}.`)) {
+      const opDesc = m.isCredit 
+        ? `acreditar $${m.amount.toLocaleString('es-CO')} en Bonos de Consumo` 
+        : `confirmar el débito/canje de $${m.amount.toLocaleString('es-CO')} en Bonos de Consumo`;
+
+      if (confirm(`¿Deseas ${opDesc} para ${m.userName}?`)) {
         walletService.approveMeatRequest(m.id, m.userId, m.amount, m.walletType).then(res => {
           if (res.success) {
-            toast.success('Despacho de carne confirmado y saldo debitado exitosamente');
+            toast.success('¡Operación de bono aprobada exitosamente!');
             m.status = 'approved';
-            if (m.walletType === 'consumo') {
-              m.userBonos = Math.max(0, m.userBonos - m.amount);
+            if (m.isCredit) {
+              m.userBonos += m.amount;
             } else {
-              m.userBalance = Math.max(0, m.userBalance - m.amount);
+              m.userBonos = Math.max(0, m.userBonos - m.amount);
             }
             this.meatTable.setData(this.meatRequests);
             this.updatePendingCount();
           } else {
-            toast.error(res.error || 'Error al procesar despacho');
+            toast.error(res.error || 'Error al procesar bono');
           }
         });
       }
     } else if (action === 'reject-meat') {
-      const reason = prompt('Motivo de rechazo/cancelación de retiro de carne:', 'Entrega cancelada o no coordinada');
+      const reason = prompt('Motivo de rechazo de la solicitud de bono:', 'Solicitud no procesada');
       if (reason) {
         walletService.rejectMeatRequest(m.id, m.userId, m.amount, reason).then(res => {
           if (res.success) {
-            toast.info('Solicitud de retiro de carne cancelada');
+            toast.info('Solicitud de bono rechazada');
             m.status = 'rejected';
             this.meatTable.setData(this.meatRequests);
             this.updatePendingCount();
           } else {
-            toast.error(res.error || 'Error al cancelar solicitud');
+            toast.error(res.error || 'Error al rechazar solicitud');
           }
         });
       }
@@ -625,10 +629,10 @@ export class WalletView {
     const defaultRef = `ADM-REC-${Math.floor(100000 + Math.random() * 900000)}`;
 
     modal.open({
-      title: 'Crear Operación Manual en Tesorería',
+      title: 'Crear Operación Manual en Pagos & Recargas',
       size: 'medium',
       contentHtml: `
-        <form id="form-manual-wallet-request" style="display: flex; flex-direction: column; gap: 1rem;">
+        <form id="form-manual-wallet-request" style="display: flex-direction: column; gap: 1rem;">
           
           <div style="background: rgba(255, 184, 0, 0.08); border: 1px solid var(--accent-gold); padding: 0.75rem; border-radius: var(--radius-sm); font-size: 0.8rem; color: var(--text-secondary);">
             <strong style="color: var(--accent-gold);">${icons.shieldCheck} Control de Auditoría:</strong> Registra recargas, ventas asistidas de carne, retiros o abonos de bonos con balance automático y total trazabilidad contable.
@@ -678,11 +682,11 @@ export class WalletView {
                 Tipo de Operación: *
               </label>
               <select id="m-request-type" class="form-control" style="width: 100%; padding: 0.6rem; background: var(--bg-dark); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: var(--radius-sm);" required>
-                <option value="consumption" selected>🥩 Venta de Carne en Granja (Cobro a Cuenta Agro)</option>
-                <option value="recharge">📥 Recargar Saldo Cuenta Agro (Abonar Dinero)</option>
-                <option value="withdrawal">📤 Retiro de Dinero (Debitar Cuenta Agro)</option>
-                <option value="bonus_grant">🎁 Abonar Bonos de Consumo (Marketing / Fidelización)</option>
-                <option value="bonus_debit">🥩 Descontar Bonos de Consumo (Canje en Tienda)</option>
+                <option value="consumption" selected>Venta de Carne en Granja (Cobro a Cuenta Agro)</option>
+                <option value="recharge">Recargar Saldo Cuenta Agro (Abonar Dinero)</option>
+                <option value="withdrawal">Retiro de Dinero (Debitar Cuenta Agro)</option>
+                <option value="bonus_grant">Abonar Bonos de Consumo (Marketing / Fidelización)</option>
+                <option value="bonus_debit">Descontar Bonos de Consumo (Canje en Tienda)</option>
               </select>
             </div>
 
@@ -735,8 +739,8 @@ export class WalletView {
               Estado al Guardar:
             </label>
             <select id="m-initial-status" class="form-control" style="width: 100%; padding: 0.6rem; background: var(--bg-dark); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: var(--radius-sm);">
-              <option value="approved" selected>🟢 Procesar y Actualizar Balance Inmediatamente (Recomendado)</option>
-              <option value="pending">🟡 Guardar como Pendiente (Para revisión posterior)</option>
+              <option value="approved" selected>Procesar y Actualizar Balance Inmediatamente (Recomendado)</option>
+              <option value="pending">Guardar como Pendiente (Para revisión posterior)</option>
             </select>
           </div>
 
@@ -902,13 +906,13 @@ export class WalletView {
       const meatBtn = this.container.querySelector('[data-tab="meat"]');
 
       if (recBtn) {
-        recBtn.innerHTML = `${icons.download} <span>Comprobantes de Recarga</span> ${pendingRecharges > 0 ? `<span class="badge badge-danger" style="margin-left: 4px;">${pendingRecharges}</span>` : ''}`;
+        recBtn.innerHTML = `${icons.download} <span>Recarga de Saldo</span> ${pendingRecharges > 0 ? `<span class="badge badge-danger" style="margin-left: 4px;">${pendingRecharges}</span>` : ''}`;
       }
       if (withBtn) {
-        withBtn.innerHTML = `${icons.upload} <span>Retiros de Dinero</span> ${pendingWithdrawals > 0 ? `<span class="badge badge-warning" style="margin-left: 4px;">${pendingWithdrawals}</span>` : ''}`;
+        withBtn.innerHTML = `${icons.upload} <span>Retiro de Saldo</span> ${pendingWithdrawals > 0 ? `<span class="badge badge-warning" style="margin-left: 4px;">${pendingWithdrawals}</span>` : ''}`;
       }
       if (meatBtn) {
-        meatBtn.innerHTML = `${icons.meat} <span>Retiros de Carne (Gourmet)</span> ${pendingMeat > 0 ? `<span class="badge badge-info" style="margin-left: 4px;">${pendingMeat}</span>` : ''}`;
+        meatBtn.innerHTML = `${icons.coupon} <span>Bonos de Consumo</span> ${pendingMeat > 0 ? `<span class="badge badge-info" style="margin-left: 4px;">${pendingMeat}</span>` : ''}`;
       }
     }
   }
