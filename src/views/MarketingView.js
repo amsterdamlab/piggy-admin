@@ -162,7 +162,7 @@ export class MarketingView {
         <div class="marketing-subtabs-wrapper">
           <button class="marketing-subtab-btn ${activeSub === 'global_missions' ? 'active' : ''}" data-subtab="global_missions">
             ${icons.target}
-            <span>Misiones Globales (Progreso Usuarios)</span>
+            <span>Misiones Globales</span>
             <span class="marketing-subtab-badge" id="badge-sub-missions">${this.dataStore.missions.length}</span>
           </button>
 

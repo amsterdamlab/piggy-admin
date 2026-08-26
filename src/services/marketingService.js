@@ -135,8 +135,11 @@ export const marketingService = {
         campaign_id: item.campaign_id || null,
         title: item.title || '',
         description: item.description || '',
-        icon: item.icon || 'zap',
+        piggy_type: item.piggy_type || 'dorado',
         price: Number(item.price || 0),
+        scheduled_at: item.scheduled_at || null,
+        is_purchased: Boolean(item.is_purchased),
+        purchased_at: item.purchased_at || null,
         is_active: item.is_active !== undefined ? Boolean(item.is_active) : true
       };
       const { data, error } = await client.from('user_flash_missions').insert([payload]).select().single();
@@ -154,12 +157,15 @@ export const marketingService = {
       const payload = {
         title: item.title,
         description: item.description,
-        icon: item.icon,
+        piggy_type: item.piggy_type || 'dorado',
         price: Number(item.price || 0),
         is_active: Boolean(item.is_active)
       };
-      if (item.user_id) payload.user_id = item.user_id;
-      if (item.campaign_id) payload.campaign_id = item.campaign_id;
+      if (item.user_id !== undefined) payload.user_id = item.user_id;
+      if (item.campaign_id !== undefined) payload.campaign_id = item.campaign_id;
+      if (item.scheduled_at !== undefined) payload.scheduled_at = item.scheduled_at;
+      if (item.is_purchased !== undefined) payload.is_purchased = item.is_purchased;
+      if (item.purchased_at !== undefined) payload.purchased_at = item.purchased_at;
 
       const { data, error } = await client.from('user_flash_missions').update(payload).eq('id', id).select().single();
       if (error) throw error;
