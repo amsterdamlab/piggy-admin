@@ -1,3 +1,8 @@
+/* ==========================================================================
+   PIGGY MASTER ADMIN DASHBOARD - CLIENT SPA ROUTER
+   Handles hash routes, layout assembly, and authentication guards
+   ========================================================================== */
+
 import { store } from './state.js';
 import { Sidebar } from './components/Sidebar.js';
 import { Header } from './components/Header.js';
@@ -38,28 +43,28 @@ export class Router {
       },
       '#piggies': {
         view: PiggiesView,
-        title: 'Granja de Piggies',
+        title: 'Granja de Piggys',
         subtitle: 'Control de pesaje, estados de engorde y asignaciones'
       },
       '#marketplace': {
         view: MarketplaceView,
-        title: 'Mercado de Cerditos',
+        title: 'Mercado de Piggys',
         subtitle: 'Catálogo de cerdos, aceleradores y stock disponible'
       },
       '#gourmet-allies': {
         view: GourmetAlliesView,
-        title: 'Piggy Gourmet & Aliados',
+        title: 'Tienda & Aliados',
         subtitle: 'Catálogo de cortes, combos para canje y directorio de aliados'
       },
       '#missions': {
         view: FlashMissionsView,
-        title: 'Misiones Flash & Gamificación',
+        title: 'Misiones Flash & Ofertas',
         subtitle: 'Campañas de aceleración y retos comunitarios'
       },
       '#wallet': {
         view: WalletView,
-        title: 'Tesorería & Billeteras',
-        subtitle: 'Aprobación de comprobantes de recarga y liquidación de retiros'
+        title: 'Pagos & Recargas',
+        subtitle: 'Aprobación de recargas de saldo, liquidación de retiros y bonos de consumo'
       }
     };
 
@@ -73,6 +78,7 @@ export class Router {
   async navigate() {
     let hash = window.location.hash || '#dashboard';
 
+    // Auth Guard Check
     const isAuthenticated = store.isAuthenticated();
     if (!isAuthenticated) {
       if (hash !== '#login') {
@@ -93,6 +99,7 @@ export class Router {
     store.setActiveRoute(hash);
     const routeConfig = this.routes[hash];
 
+    // Clean up previous view if needed
     if (this.currentViewInstance && typeof this.currentViewInstance.destroy === 'function') {
       this.currentViewInstance.destroy();
     }
@@ -100,11 +107,13 @@ export class Router {
     this.currentViewInstance = new routeConfig.view();
 
     if (hash === '#login') {
+      // Full screen login
       this.appContainer.innerHTML = `<div id="view-content">${this.currentViewInstance.render()}</div>`;
       this.currentViewInstance.attachEvents(this.appContainer.querySelector('#view-content'));
       return;
     }
 
+    // Authenticated Admin Layout
     const isFirstLayoutRender = !this.appContainer.querySelector('.admin-layout');
 
     if (isFirstLayoutRender) {
@@ -129,6 +138,7 @@ export class Router {
       this.sidebar.updateActiveRoute(hash);
     }
 
+    // Render View Content
     const viewContainer = this.appContainer.querySelector('#view-content');
     if (viewContainer) {
       viewContainer.innerHTML = `

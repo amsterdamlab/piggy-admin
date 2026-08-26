@@ -20,8 +20,14 @@ export const walletService = {
         ]);
 
         const rawData = reqRes.data || [];
-        // Filtrar exclusivamente recargas de saldo
-        const data = rawData.filter(r => r.request_type === 'recharge' || (!r.request_type && r.payment_method && r.wallet_type !== 'bono_consumo' && r.wallet_type !== 'consumo'));
+        // Filtrar exclusivamente recargas de saldo de Cuenta Agro (excluyendo bonos)
+        const data = rawData.filter(r => 
+          (r.request_type === 'recharge' || (!r.request_type && r.payment_method)) &&
+          r.wallet_type !== 'bono_consumo' &&
+          r.wallet_type !== 'consumo' &&
+          r.request_type !== 'bonus_grant' &&
+          r.request_type !== 'bonus_debit'
+        );
         const profiles = profRes.data || [];
         const profileMap = {};
         profiles.forEach(p => { profileMap[p.id] = p; });
@@ -68,8 +74,12 @@ export const walletService = {
         ]);
 
         const rawData = reqRes.data || [];
-        // Filtrar exclusivamente retiros de dinero
-        const data = rawData.filter(r => r.request_type === 'withdrawal');
+        // Filtrar exclusivamente retiros de dinero de Cuenta Agro
+        const data = rawData.filter(r => 
+          r.request_type === 'withdrawal' &&
+          r.wallet_type !== 'bono_consumo' &&
+          r.wallet_type !== 'consumo'
+        );
         const profiles = profRes.data || [];
         const profileMap = {};
         profiles.forEach(p => { profileMap[p.id] = p; });
@@ -85,7 +95,7 @@ export const walletService = {
               userEmail: user.email || (w.user_id ? `user_${w.user_id.substring(0, 6)}@piggy.co` : ''),
               userBalance: Number(user.wallet_balance || 0),
               amount: Number(w.amount || 0),
-              type: 'Retiro Dinero (Bancario)',
+              type: 'Retiro Saldo (Bancario)',
               bankInfo: w.bank_name || 'Bancolombia / Cuenta de Ahorros',
               referenceCode: w.reference || `RET-${w.id ? w.id.substring(0, 8).toUpperCase() : 'PEND'}`,
               status: w.status === 'processed' ? 'approved' : (w.status || 'pending'),
@@ -103,7 +113,7 @@ export const walletService = {
     return [];
   },
 
-  async getMeatRequests() {
+  async getBonusRequests() {
     const client = getClient();
     if (client) {
       try {
@@ -116,11 +126,12 @@ export const walletService = {
         ]);
 
         const rawData = reqRes.data || [];
-        // Filtrar solicitudes de carne o consumo
+        // Filtrar todas las solicitudes relacionadas con Bonos de Consumo (abonos y canjes/débitos)
         const data = rawData.filter(r =>
+          r.request_type === 'bonus_grant' ||
+          r.request_type === 'bonus_debit' ||
           r.request_type === 'consumption' ||
           r.request_type === 'meat' ||
-          r.request_type === 'bonus_debit' ||
           r.wallet_type === 'bono_consumo' ||
           r.wallet_type === 'consumo'
         );
@@ -129,34 +140,43 @@ export const walletService = {
         profiles.forEach(p => { profileMap[p.id] = p; });
 
         if (!reqRes.error && data) {
-          return data.map((m) => {
-            const user = profileMap[m.user_id] || {};
-            const isBonoWallet = m.wallet_type === 'bono_consumo' || m.wallet_type === 'consumo';
+          return data.map((b) => {
+            const user = profileMap[b.user_id] || {};
+            const isCredit = b.request_type === 'bonus_grant' || (b.request_type === 'recharge' && (b.wallet_type === 'consumo' || b.wallet_type === 'bono_consumo'));
+            const isMeat = b.request_type === 'consumption' || b.request_type === 'meat';
+            const subtype = isCredit ? 'Recarga de Bono' : (isMeat ? 'Canje de Carne' : 'Débito de Bono');
+
             return {
-              id: m.id,
-              userId: m.user_id,
-              userName: user.full_name || `Usuario ${m.user_id ? m.user_id.substring(0, 8) : 'N/A'}...`,
+              id: b.id,
+              userId: b.user_id,
+              userName: user.full_name || `Usuario ${b.user_id ? b.user_id.substring(0, 8) : 'N/A'}...`,
               userPhone: user.whatsapp || 'No registrado',
-              userEmail: user.email || (m.user_id ? `user_${m.user_id.substring(0, 6)}@piggy.co` : ''),
+              userEmail: user.email || (b.user_id ? `user_${b.user_id.substring(0, 6)}@piggy.co` : ''),
               userBalance: Number(user.wallet_balance || 0),
               userBonos: Number(user.referral_balance || 0),
-              walletType: isBonoWallet ? 'consumo' : 'dinero',
-              amount: Number(m.amount || 0),
-              type: isBonoWallet ? 'Canje por Bonos' : 'Compra con Saldo Cuenta Agro',
-              referenceCode: m.reference || `CRN-${m.id ? m.id.substring(0, 8).toUpperCase() : 'PEND'}`,
-              status: m.status === 'processed' ? 'approved' : (m.status || 'pending'),
-              notes: m.notes || 'Despacho de productos de carne / Granja Gourmet',
-              createdAt: m.created_at || new Date().toISOString()
+              walletType: 'consumo',
+              isCredit: isCredit,
+              subtype: subtype,
+              amount: Number(b.amount || 0),
+              type: subtype,
+              referenceCode: b.reference || (isCredit ? `BNO-${b.id ? b.id.substring(0, 8).toUpperCase() : 'PEND'}` : `CRN-${b.id ? b.id.substring(0, 8).toUpperCase() : 'PEND'}`),
+              status: b.status === 'processed' ? 'approved' : (b.status || 'pending'),
+              notes: b.notes || (isCredit ? 'Abono de Bono de Consumo' : 'Canje de Bono en Tienda'),
+              createdAt: b.created_at || new Date().toISOString()
             };
           });
         }
-        if (reqRes.error) console.warn('Meat requests error:', reqRes.error.message);
+        if (reqRes.error) console.warn('Bonus requests error:', reqRes.error.message);
       } catch (e) {
-        console.error('Wallet meat requests exception:', e);
+        console.error('Wallet bonus requests exception:', e);
       }
     }
 
     return [];
+  },
+
+  async getMeatRequests() {
+    return this.getBonusRequests();
   },
 
   /**

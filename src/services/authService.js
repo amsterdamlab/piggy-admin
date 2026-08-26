@@ -1,16 +1,27 @@
+/* ==========================================================================
+   PIGGY MASTER ADMIN DASHBOARD - AUTH SERVICE
+   Handles admin authentication, role verification & session persistence
+   ========================================================================== */
+
 import { getClient, isUsingMockData } from './supabase.js';
 import { store } from '../state.js';
 
 export const authService = {
+  /**
+   * Log in admin with email & password or Master PIN
+   * @param {string} email
+   * @param {string} password
+   */
   async login(email, password) {
     const cleanEmail = (email || '').trim().toLowerCase();
     const cleanPass = (password || '').trim();
 
+    // 1. Check Master Admin Emergency Access
     if (cleanPass === 'piggy2025' || cleanPass === 'admin123' || cleanPass === '7777' || cleanPass === 'piggyadmin') {
       const adminData = {
         id: 'admin-master-id',
         email: cleanEmail || 'admin@piggyapp.co',
-        full_name: 'Master Admin 👑',
+        full_name: 'Master Admin',
         role: 'superadmin',
         login_at: new Date().toISOString()
       };
@@ -20,6 +31,7 @@ export const authService = {
 
     const client = getClient();
     if (!client || isUsingMockData()) {
+      // Mock login fallback
       const adminData = {
         id: 'admin-local-id',
         email: cleanEmail || 'admin@piggyapp.co',
@@ -37,7 +49,9 @@ export const authService = {
         password: cleanPass
       });
 
-      if (error) throw error;
+      if (error) {
+        throw error;
+      }
 
       const user = data.user;
       const adminData = {
@@ -51,6 +65,7 @@ export const authService = {
       store.setAdmin(adminData);
       return { success: true, user: adminData };
     } catch (err) {
+      console.error('Login error:', err);
       return {
         success: false,
         error: err.message || 'Credenciales inválidas. Verifica tu correo y contraseña.'
@@ -58,6 +73,9 @@ export const authService = {
     }
   },
 
+  /**
+   * Log out admin
+   */
   async logout() {
     const client = getClient();
     if (client) {
@@ -71,6 +89,9 @@ export const authService = {
     return { success: true };
   },
 
+  /**
+   * Check current session
+   */
   async checkSession() {
     const current = store.getAdmin();
     if (current) return current;

@@ -21,10 +21,10 @@ export class Sidebar {
     const navItems = [
       { id: '#dashboard', label: 'Dashboard', icon: icons.dashboard },
       { id: '#users', label: 'Usuarios', icon: icons.users },
-      { id: '#piggies', label: 'Granja de Piggies', icon: icons.pig },
-      { id: '#marketplace', label: 'Mercado de Cerdos', icon: icons.marketplace },
-      { id: '#gourmet-allies', label: 'Gourmet & Aliados', icon: icons.gourmet },
-      { id: '#missions', label: 'Misiones Flash', icon: icons.zap },
+      { id: '#piggies', label: 'Granja de Piggys', icon: icons.pig },
+      { id: '#marketplace', label: 'Mercado de Piggys', icon: icons.marketplace },
+      { id: '#gourmet-allies', label: 'Tienda & Aliados', icon: icons.store },
+      { id: '#missions', label: 'Misiones Flash & Ofertas', icon: icons.zap },
       {
         id: '#wallet',
         label: 'Pagos & Recargas',
