@@ -275,7 +275,7 @@ export class MissionsTab {
     const cedula = user.cedula || 'No registrada';
     const refCode = user.referralCode || user.referral_code || 'Sin código';
     const bankName = user.bankName || user.bank_name || 'No registrado';
-    const bankAccount = user.bankAccountNumber || user.bank_account_number || user.bank_account_type || 'No registrada';
+    const bankBreveKey = user.bankBreveKey || user.bank_breve_key || 'No registrada';
 
     modal.open({
       title: `Detalle del Usuario: ${fullName}`,
@@ -312,8 +312,8 @@ export class MissionsTab {
                 <div style="font-weight: 700; color: var(--primary-pink);">${bankName}</div>
               </div>
               <div>
-                <span style="color: var(--text-muted);">Cuenta:</span>
-                <div style="font-weight: 700; color: var(--text-secondary);">${bankAccount}</div>
+                <span style="color: var(--text-muted);">Llave Bre-B:</span>
+                <div style="font-weight: 700; color: var(--accent-gold);">${bankBreveKey}</div>
               </div>
             </div>
           </div>
