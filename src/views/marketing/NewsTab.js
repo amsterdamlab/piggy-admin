@@ -1,5 +1,5 @@
 /* ==========================================================================
-   MARKETING - TAB 1: NOTICIAS & BANNERS (news_billboard)
+   MARKETING - TAB 1: BANNERS (news_billboard)
    ========================================================================== */
 
 import { marketingService } from '../../services/marketingService.js';
@@ -16,9 +16,9 @@ export class NewsTab {
 
   render(data) {
     this.dataTable = new DataTable({
-      searchPlaceholder: 'Buscar noticias o enlaces...',
+      searchPlaceholder: 'Buscar banners o enlaces...',
       actionButton: {
-        text: 'Nueva Noticia / Banner',
+        text: 'Nuevo Banner',
         icon: icons.plus,
         onClick: () => this.openModal()
       },
@@ -91,7 +91,7 @@ export class NewsTab {
       marketingService.toggleNewsStatus(row.id, newStatus).then(res => {
         if (res.success) {
           row.is_active = newStatus;
-          toast.success(newStatus ? 'Noticia activada' : 'Noticia pausada');
+          toast.success(newStatus ? 'Banner activado' : 'Banner pausado');
           this.dataTable.setData(this.parentView.dataStore.news_billboard);
         } else {
           toast.error(res.error || 'Error al cambiar estado');
@@ -100,10 +100,10 @@ export class NewsTab {
     } else if (action === 'edit') {
       this.openModal(row);
     } else if (action === 'delete') {
-      if (confirm('¿Eliminar este banner de noticias?')) {
+      if (confirm('¿Eliminar este banner?')) {
         marketingService.deleteNews(row.id).then(res => {
           if (res.success) {
-            toast.success('Noticia eliminada');
+            toast.success('Banner eliminado');
             this.parentView.dataStore.news_billboard = this.parentView.dataStore.news_billboard.filter(item => item.id !== row.id);
             this.dataTable.setData(this.parentView.dataStore.news_billboard);
             this.parentView.updateBadges();
@@ -118,7 +118,7 @@ export class NewsTab {
   openModal(item = null) {
     const isEdit = Boolean(item);
     modal.open({
-      title: isEdit ? 'Editar Noticia / Banner' : 'Nueva Noticia / Banner',
+      title: isEdit ? 'Editar Banner' : 'Nuevo Banner',
       contentHtml: `
         <form id="news-form">
           <div class="form-group">
@@ -150,7 +150,7 @@ export class NewsTab {
       footerButtons: [
         { text: 'Cancelar', class: 'btn-secondary', onClick: (e, m) => m.close() },
         {
-          text: isEdit ? 'Guardar Cambios' : 'Publicar Noticia',
+          text: isEdit ? 'Guardar Cambios' : 'Publicar Banner',
           class: 'btn-primary',
           onClick: async (e, m) => {
             const image_url = document.querySelector('#news-image').value.trim();
@@ -172,7 +172,7 @@ export class NewsTab {
             }
 
             if (res.success) {
-              toast.success(isEdit ? 'Noticia actualizada' : 'Noticia creada con éxito');
+              toast.success(isEdit ? 'Banner actualizado' : 'Banner creado con éxito');
               this.parentView.dataStore.news_billboard = await marketingService.getNews();
               this.dataTable.setData(this.parentView.dataStore.news_billboard);
               this.parentView.updateBadges();

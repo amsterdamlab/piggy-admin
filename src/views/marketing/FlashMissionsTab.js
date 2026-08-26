@@ -1,5 +1,5 @@
 /* ==========================================================================
-   MARKETING - TAB 2: MISIONES FLASH DE USUARIOS (user_flash_missions)
+   MARKETING - MISIONES: SUB-TAB 2: MISIONES FLASH MANUALES (user_flash_missions)
    ========================================================================== */
 
 import { marketingService } from '../../services/marketingService.js';
@@ -16,7 +16,7 @@ export class FlashMissionsTab {
 
   render(data) {
     this.dataTable = new DataTable({
-      searchPlaceholder: 'Buscar misiones flash...',
+      searchPlaceholder: 'Buscar misiones flash disparadas...',
       actionButton: {
         text: 'Nueva Misión Flash',
         icon: icons.plus,
@@ -53,7 +53,7 @@ export class FlashMissionsTab {
           `
         },
         {
-          header: 'Fecha',
+          header: 'Fecha Disparo',
           render: (row) => `<span style="font-size: 0.75rem; color: var(--text-muted);">${row.created_at ? new Date(row.created_at).toLocaleDateString('es-CO') : '-'}</span>`
         },
         {

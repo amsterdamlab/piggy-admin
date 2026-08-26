@@ -1,5 +1,5 @@
 /* ==========================================================================
-   MARKETING - TAB 6: CONSEJOS & TIPS DINÁMICOS (dynamic_tips)
+   MARKETING - TAB 4: CONSEJOS & TIPS DINÁMICOS (dynamic_tips)
    ========================================================================== */
 
 import { marketingService } from '../../services/marketingService.js';

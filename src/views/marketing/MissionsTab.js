@@ -1,5 +1,5 @@
 /* ==========================================================================
-   MARKETING - TAB 3: CATÁLOGO GENERAL DE MISIONES (missions)
+   MARKETING - MISIONES: SUB-TAB 1: MISIONES GLOBALES (missions)
    ========================================================================== */
 
 import { marketingService } from '../../services/marketingService.js';
@@ -16,15 +16,15 @@ export class MissionsTab {
 
   render(data) {
     this.dataTable = new DataTable({
-      searchPlaceholder: 'Buscar misiones permanentes...',
+      searchPlaceholder: 'Buscar misiones globales del sistema...',
       actionButton: {
-        text: 'Nueva Misión General',
+        text: 'Nueva Misión Global',
         icon: icons.plus,
         onClick: () => this.openModal()
       },
       columns: [
         {
-          header: 'Misión',
+          header: 'Misión del Sistema',
           render: (row) => `
             <div style="font-weight: 800; color: var(--text-primary);">${row.title || 'Misión'}</div>
           `
@@ -117,7 +117,7 @@ export class MissionsTab {
   openModal(item = null) {
     const isEdit = Boolean(item);
     modal.open({
-      title: isEdit ? 'Editar Misión' : 'Nueva Misión',
+      title: isEdit ? 'Editar Misión Global' : 'Nueva Misión Global',
       contentHtml: `
         <form id="mission-catalog-form">
           <div class="form-group">
@@ -144,7 +144,7 @@ export class MissionsTab {
             </div>
 
             <div class="form-group">
-              <label class="form-label" for="mission-completed">Estado de Ejecución</label>
+              <label class="form-label" for="mission-completed">Estado</label>
               <select id="mission-completed" class="form-select">
                 <option value="false" ${item?.is_completed === false ? 'selected' : ''}>Pendiente / Activa</option>
                 <option value="true" ${item?.is_completed === true ? 'selected' : ''}>Completada</option>

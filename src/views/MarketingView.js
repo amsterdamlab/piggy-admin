@@ -1,68 +1,74 @@
 /* ==========================================================================
    PIGGY MASTER ADMIN DASHBOARD - MARKETING OPERATIONS CENTER VIEW
-   Unified control center orchestrating the 6 marketing sub-tabs:
-   1. news_billboard
-   2. user_flash_missions
-   3. missions
-   4. exclusive_piggy_config
-   5. cycle_completion_missions
-   6. dynamic_tips
+   4 Main Tabs:
+   1. Banners (news_billboard)
+   2. Misiones (Misiones Globales + Misiones Flash)
+   3. Ciclos Completados (Granja Piggys Exclusivos + Piggys Exclusivos Config)
+   4. Tips Dinámicos (dynamic_tips)
    ========================================================================== */
 
 import { marketingService } from '../services/marketingService.js';
 import { icons } from '../icons.js';
 
 import { NewsTab } from './marketing/NewsTab.js';
-import { FlashMissionsTab } from './marketing/FlashMissionsTab.js';
 import { MissionsTab } from './marketing/MissionsTab.js';
-import { ExclusiveConfigTab } from './marketing/ExclusiveConfigTab.js';
+import { FlashMissionsTab } from './marketing/FlashMissionsTab.js';
 import { CycleMissionsTab } from './marketing/CycleMissionsTab.js';
+import { ExclusiveConfigTab } from './marketing/ExclusiveConfigTab.js';
 import { DynamicTipsTab } from './marketing/DynamicTipsTab.js';
 
 export class MarketingView {
   constructor() {
-    this.currentTab = 'news_billboard';
+    this.mainTab = 'banners'; // 'banners' | 'missions' | 'cycles' | 'tips'
+    this.subTabs = {
+      missions: 'global_missions', // 'global_missions' | 'flash_missions'
+      cycles: 'exclusive_farm'     // 'exclusive_farm' | 'exclusive_config'
+    };
+
     this.overview = null;
     this.container = null;
 
     this.dataStore = {
       news_billboard: [],
-      user_flash_missions: [],
       missions: [],
-      exclusive_piggy_config: [],
+      user_flash_missions: [],
       cycle_completion_missions: [],
+      exclusive_piggy_config: [],
       dynamic_tips: []
     };
 
     // Sub-tab controllers
-    this.tabs = {
+    this.controllers = {
       news_billboard: new NewsTab(this),
-      user_flash_missions: new FlashMissionsTab(this),
       missions: new MissionsTab(this),
-      exclusive_piggy_config: new ExclusiveConfigTab(this),
+      user_flash_missions: new FlashMissionsTab(this),
       cycle_completion_missions: new CycleMissionsTab(this),
+      exclusive_piggy_config: new ExclusiveConfigTab(this),
       dynamic_tips: new DynamicTipsTab(this)
     };
   }
 
   async render() {
-    const [overview, news, flashMissions, missions, exclusiveConfigs, cycleMissions, tips] = await Promise.all([
+    const [overview, news, missions, flashMissions, cycleMissions, exclusiveConfigs, tips] = await Promise.all([
       marketingService.getMarketingOverview(),
       marketingService.getNews(),
-      marketingService.getUserFlashMissions(),
       marketingService.getMissions(),
-      marketingService.getExclusiveConfigs(),
+      marketingService.getUserFlashMissions(),
       marketingService.getCycleMissions(),
+      marketingService.getExclusiveConfigs(),
       marketingService.getDynamicTips()
     ]);
 
     this.overview = overview;
     this.dataStore.news_billboard = news;
-    this.dataStore.user_flash_missions = flashMissions;
     this.dataStore.missions = missions;
-    this.dataStore.exclusive_piggy_config = exclusiveConfigs;
+    this.dataStore.user_flash_missions = flashMissions;
     this.dataStore.cycle_completion_missions = cycleMissions;
+    this.dataStore.exclusive_piggy_config = exclusiveConfigs;
     this.dataStore.dynamic_tips = tips;
+
+    const totalMissions = this.dataStore.missions.length + this.dataStore.user_flash_missions.length;
+    const totalCycles = this.dataStore.cycle_completion_missions.length + this.dataStore.exclusive_piggy_config.length;
 
     return `
       <div class="marketing-view">
@@ -70,7 +76,7 @@ export class MarketingView {
         <div class="marketing-header-metrics">
           <div class="stat-card" style="border-left: 4px solid var(--primary-pink);">
             <div class="stat-header">
-              <span class="stat-title">Noticias & Banners</span>
+              <span class="stat-title">Banners Activos</span>
               <div class="stat-icon" style="color: var(--primary-pink);">${icons.megaphone}</div>
             </div>
             <div class="stat-value">${this.overview.activeNewsCount} <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: 500;">/ ${this.overview.newsCount} total</span></div>
@@ -79,20 +85,20 @@ export class MarketingView {
 
           <div class="stat-card" style="border-left: 4px solid var(--accent-gold);">
             <div class="stat-header">
-              <span class="stat-title">Misiones Flash</span>
-              <div class="stat-icon" style="color: var(--accent-gold);">${icons.zap}</div>
+              <span class="stat-title">Misiones</span>
+              <div class="stat-icon" style="color: var(--accent-gold);">${icons.target}</div>
             </div>
-            <div class="stat-value">${this.overview.activeFlashCount} <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: 500;">/ ${this.overview.flashCount} total</span></div>
-            <div class="stat-subtitle">Retos activos para usuarios</div>
+            <div class="stat-value">${this.dataStore.missions.length} <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: 500;">globales + ${this.overview.activeFlashCount} flash</span></div>
+            <div class="stat-subtitle">Retos y recompensas para usuarios</div>
           </div>
 
           <div class="stat-card" style="border-left: 4px solid var(--accent-purple);">
             <div class="stat-header">
-              <span class="stat-title">Piggys Exclusivos</span>
-              <div class="stat-icon" style="color: var(--accent-purple);">${icons.sparkles}</div>
+              <span class="stat-title">Ciclos Completados</span>
+              <div class="stat-icon" style="color: var(--accent-purple);">${icons.award}</div>
             </div>
-            <div class="stat-value">${this.overview.activeExclusiveCount} <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: 500;">/ ${this.overview.exclusiveCount} conf</span></div>
-            <div class="stat-subtitle">Planes especiales en venta</div>
+            <div class="stat-value">${this.dataStore.cycle_completion_missions.length} <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: 500;">ofertas (${this.dataStore.exclusive_piggy_config.length} config)</span></div>
+            <div class="stat-subtitle">Piggys exclusivos post-ciclo</div>
           </div>
 
           <div class="stat-card" style="border-left: 4px solid var(--accent-green);">
@@ -105,105 +111,200 @@ export class MarketingView {
           </div>
         </div>
 
-        <!-- Barra de Viñetas / Pestañas de Marketing -->
+        <!-- 4 Viñetas Principales de Marketing -->
         <div class="marketing-tabs-wrapper">
-          <button class="marketing-tab-btn ${this.currentTab === 'news_billboard' ? 'active' : ''}" data-tab="news_billboard">
+          <button class="marketing-tab-btn ${this.mainTab === 'banners' ? 'active' : ''}" data-maintab="banners">
             ${icons.megaphone}
-            <span>Noticias & Banners</span>
-            <span class="marketing-tab-badge" id="badge-news_billboard">${this.dataStore.news_billboard.length}</span>
+            <span>Banners</span>
+            <span class="marketing-tab-badge" id="badge-main-banners">${this.dataStore.news_billboard.length}</span>
           </button>
 
-          <button class="marketing-tab-btn ${this.currentTab === 'user_flash_missions' ? 'active' : ''}" data-tab="user_flash_missions">
-            ${icons.zap}
-            <span>Misiones Flash</span>
-            <span class="marketing-tab-badge" id="badge-user_flash_missions">${this.dataStore.user_flash_missions.length}</span>
-          </button>
-
-          <button class="marketing-tab-btn ${this.currentTab === 'missions' ? 'active' : ''}" data-tab="missions">
+          <button class="marketing-tab-btn ${this.mainTab === 'missions' ? 'active' : ''}" data-maintab="missions">
             ${icons.target}
-            <span>Catálogo de Misiones</span>
-            <span class="marketing-tab-badge" id="badge-missions">${this.dataStore.missions.length}</span>
+            <span>Misiones</span>
+            <span class="marketing-tab-badge" id="badge-main-missions">${totalMissions}</span>
           </button>
 
-          <button class="marketing-tab-btn ${this.currentTab === 'exclusive_piggy_config' ? 'active' : ''}" data-tab="exclusive_piggy_config">
-            ${icons.sparkles}
-            <span>Piggys Exclusivos</span>
-            <span class="marketing-tab-badge" id="badge-exclusive_piggy_config">${this.dataStore.exclusive_piggy_config.length}</span>
-          </button>
-
-          <button class="marketing-tab-btn ${this.currentTab === 'cycle_completion_missions' ? 'active' : ''}" data-tab="cycle_completion_missions">
+          <button class="marketing-tab-btn ${this.mainTab === 'cycles' ? 'active' : ''}" data-maintab="cycles">
             ${icons.award}
-            <span>Ciclos de Maduración</span>
-            <span class="marketing-tab-badge" id="badge-cycle_completion_missions">${this.dataStore.cycle_completion_missions.length}</span>
+            <span>Ciclos Completados</span>
+            <span class="marketing-tab-badge" id="badge-main-cycles">${totalCycles}</span>
           </button>
 
-          <button class="marketing-tab-btn ${this.currentTab === 'dynamic_tips' ? 'active' : ''}" data-tab="dynamic_tips">
+          <button class="marketing-tab-btn ${this.mainTab === 'tips' ? 'active' : ''}" data-maintab="tips">
             ${icons.lightbulb}
             <span>Tips Dinámicos</span>
-            <span class="marketing-tab-badge" id="badge-dynamic_tips">${this.dataStore.dynamic_tips.length}</span>
+            <span class="marketing-tab-badge" id="badge-main-tips">${this.dataStore.dynamic_tips.length}</span>
           </button>
         </div>
 
-        <!-- Contenedor Principal de la Tabla Activa -->
+        <!-- Contenedor Principal con Sub-pestañas y Tabla -->
         <div class="card">
+          <div id="marketing-subtabs-container">
+            ${this.renderSubTabsHtml()}
+          </div>
           <div id="marketing-datatable-container">
-            ${this.renderCurrentTabHtml()}
+            ${this.renderActiveTableHtml()}
           </div>
         </div>
       </div>
     `;
   }
 
-  renderCurrentTabHtml() {
-    const activeController = this.tabs[this.currentTab];
-    if (activeController) {
-      return activeController.render(this.dataStore[this.currentTab]);
+  renderSubTabsHtml() {
+    if (this.mainTab === 'missions') {
+      const activeSub = this.subTabs.missions;
+      return `
+        <div class="marketing-subtabs-wrapper">
+          <button class="marketing-subtab-btn ${activeSub === 'global_missions' ? 'active' : ''}" data-subtab="global_missions">
+            ${icons.target}
+            <span>Misiones Globales</span>
+            <span class="marketing-subtab-badge" id="badge-sub-missions">${this.dataStore.missions.length}</span>
+          </button>
+
+          <button class="marketing-subtab-btn ${activeSub === 'flash_missions' ? 'active' : ''}" data-subtab="flash_missions">
+            ${icons.zap}
+            <span>Misiones Flash</span>
+            <span class="marketing-subtab-badge" id="badge-sub-flash">${this.dataStore.user_flash_missions.length}</span>
+          </button>
+        </div>
+      `;
     }
-    return '<div class="p-4 text-center">Selecciona una viñeta</div>';
+
+    if (this.mainTab === 'cycles') {
+      const activeSub = this.subTabs.cycles;
+      return `
+        <div class="marketing-subtabs-wrapper">
+          <button class="marketing-subtab-btn ${activeSub === 'exclusive_farm' ? 'active' : ''}" data-subtab="exclusive_farm">
+            ${icons.pig}
+            <span>Granja Piggys Exclusivos</span>
+            <span class="marketing-subtab-badge" id="badge-sub-cycle-missions">${this.dataStore.cycle_completion_missions.length}</span>
+          </button>
+
+          <button class="marketing-subtab-btn ${activeSub === 'exclusive_config' ? 'active' : ''}" data-subtab="exclusive_config">
+            ${icons.sparkles}
+            <span>Piggys Exclusivos</span>
+            <span class="marketing-subtab-badge" id="badge-sub-exclusive-config">${this.dataStore.exclusive_piggy_config.length}</span>
+          </button>
+        </div>
+      `;
+    }
+
+    return '';
+  }
+
+  getActiveKey() {
+    if (this.mainTab === 'banners') return 'news_billboard';
+    if (this.mainTab === 'tips') return 'dynamic_tips';
+    if (this.mainTab === 'missions') {
+      return this.subTabs.missions === 'global_missions' ? 'missions' : 'user_flash_missions';
+    }
+    if (this.mainTab === 'cycles') {
+      return this.subTabs.cycles === 'exclusive_farm' ? 'cycle_completion_missions' : 'exclusive_piggy_config';
+    }
+    return 'news_billboard';
+  }
+
+  renderActiveTableHtml() {
+    const key = this.getActiveKey();
+    const controller = this.controllers[key];
+    if (controller) {
+      return controller.render(this.dataStore[key]);
+    }
+    return '<div class="p-4 text-center">Selecciona una opción</div>';
   }
 
   attachEvents(container) {
     this.container = container;
 
-    const tabButtons = container.querySelectorAll('.marketing-tab-btn');
-    tabButtons.forEach(btn => {
+    // Main Tab Switching
+    const mainTabButtons = container.querySelectorAll('.marketing-tab-btn');
+    mainTabButtons.forEach(btn => {
       btn.addEventListener('click', () => {
-        const selectedTab = btn.getAttribute('data-tab');
-        if (selectedTab && selectedTab !== this.currentTab) {
-          this.currentTab = selectedTab;
-          tabButtons.forEach(b => b.classList.remove('active'));
+        const selectedMain = btn.getAttribute('data-maintab');
+        if (selectedMain && selectedMain !== this.mainTab) {
+          this.mainTab = selectedMain;
+          mainTabButtons.forEach(b => b.classList.remove('active'));
           btn.classList.add('active');
-          this.switchTab();
+          this.updateView();
         }
       });
     });
 
-    this.attachActiveTabEvents();
+    this.attachSubTabEvents();
+    this.attachActiveTableEvents();
   }
 
-  switchTab() {
+  attachSubTabEvents() {
+    const subTabButtons = this.container.querySelectorAll('.marketing-subtab-btn');
+    subTabButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const sub = btn.getAttribute('data-subtab');
+        if (this.mainTab === 'missions') {
+          this.subTabs.missions = sub;
+        } else if (this.mainTab === 'cycles') {
+          this.subTabs.cycles = sub;
+        }
+        subTabButtons.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+
+        const tableContainer = this.container.querySelector('#marketing-datatable-container');
+        if (tableContainer) {
+          tableContainer.innerHTML = this.renderActiveTableHtml();
+          this.attachActiveTableEvents();
+        }
+      });
+    });
+  }
+
+  updateView() {
+    const subContainer = this.container.querySelector('#marketing-subtabs-container');
     const tableContainer = this.container.querySelector('#marketing-datatable-container');
+
+    if (subContainer) {
+      subContainer.innerHTML = this.renderSubTabsHtml();
+      this.attachSubTabEvents();
+    }
+
     if (tableContainer) {
-      tableContainer.innerHTML = this.renderCurrentTabHtml();
-      this.attachActiveTabEvents();
+      tableContainer.innerHTML = this.renderActiveTableHtml();
+      this.attachActiveTableEvents();
     }
   }
 
-  attachActiveTabEvents() {
+  attachActiveTableEvents() {
     const tableContainer = this.container.querySelector('#marketing-datatable-container');
-    const activeController = this.tabs[this.currentTab];
-    if (activeController && tableContainer) {
-      activeController.attachEvents(tableContainer);
+    const key = this.getActiveKey();
+    const controller = this.controllers[key];
+    if (controller && tableContainer) {
+      controller.attachEvents(tableContainer);
     }
   }
 
   updateBadges() {
     if (!this.container) return;
-    Object.keys(this.dataStore).forEach(key => {
-      const badge = this.container.querySelector('#badge-' + key);
-      if (badge) {
-        badge.textContent = this.dataStore[key].length;
-      }
-    });
+    const badgeBanners = this.container.querySelector('#badge-main-banners');
+    if (badgeBanners) badgeBanners.textContent = this.dataStore.news_billboard.length;
+
+    const badgeMissions = this.container.querySelector('#badge-main-missions');
+    if (badgeMissions) badgeMissions.textContent = this.dataStore.missions.length + this.dataStore.user_flash_missions.length;
+
+    const badgeCycles = this.container.querySelector('#badge-main-cycles');
+    if (badgeCycles) badgeCycles.textContent = this.dataStore.cycle_completion_missions.length + this.dataStore.exclusive_piggy_config.length;
+
+    const badgeTips = this.container.querySelector('#badge-main-tips');
+    if (badgeTips) badgeTips.textContent = this.dataStore.dynamic_tips.length;
+
+    const badgeSubMissions = this.container.querySelector('#badge-sub-missions');
+    if (badgeSubMissions) badgeSubMissions.textContent = this.dataStore.missions.length;
+
+    const badgeSubFlash = this.container.querySelector('#badge-sub-flash');
+    if (badgeSubFlash) badgeSubFlash.textContent = this.dataStore.user_flash_missions.length;
+
+    const badgeSubCycle = this.container.querySelector('#badge-sub-cycle-missions');
+    if (badgeSubCycle) badgeSubCycle.textContent = this.dataStore.cycle_completion_missions.length;
+
+    const badgeSubConfig = this.container.querySelector('#badge-sub-exclusive-config');
+    if (badgeSubConfig) badgeSubConfig.textContent = this.dataStore.exclusive_piggy_config.length;
   }
 }

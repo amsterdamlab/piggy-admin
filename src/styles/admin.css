@@ -377,29 +377,20 @@ button, input, select, textarea {
   color: #fff;
   box-shadow: var(--shadow-glow-pink);
 }
-.btn-primary:hover { background-color: var(--primary-pink-hover); }
 
 .btn-secondary {
   background-color: rgba(255, 255, 255, 0.05);
   border-color: var(--border-color);
   color: var(--text-primary);
 }
+
 .btn-secondary:hover {
   background-color: rgba(255, 255, 255, 0.1);
   border-color: var(--border-color-light);
 }
 
-.btn-success {
-  background-color: var(--accent-green);
-  color: #fff;
-}
-.btn-success:hover { background-color: #0D9668; }
-
-.btn-danger {
-  background-color: var(--accent-red);
-  color: #fff;
-}
-.btn-danger:hover { background-color: #DC2626; }
+.btn-success { background-color: var(--accent-green); color: #fff; }
+.btn-danger { background-color: var(--accent-red); color: #fff; }
 
 .btn-sm {
   padding: 0.35rem 0.75rem;
@@ -628,10 +619,6 @@ button, input, select, textarea {
   background-color: rgba(255, 255, 255, 0.02);
 }
 
-.data-table tr:last-child td {
-  border-bottom: none;
-}
-
 /* Badges */
 .badge {
   display: inline-flex;
@@ -644,26 +631,11 @@ button, input, select, textarea {
   text-transform: capitalize;
 }
 
-.badge-success {
-  background-color: var(--accent-green-light);
-  color: var(--accent-green);
-}
-.badge-warning {
-  background-color: var(--accent-gold-light);
-  color: var(--accent-gold);
-}
-.badge-danger {
-  background-color: var(--accent-red-light);
-  color: var(--accent-red);
-}
-.badge-info {
-  background-color: var(--accent-blue-light);
-  color: var(--accent-blue);
-}
-.badge-neutral {
-  background-color: rgba(255, 255, 255, 0.08);
-  color: var(--text-secondary);
-}
+.badge-success { background-color: var(--accent-green-light); color: var(--accent-green); }
+.badge-warning { background-color: var(--accent-gold-light); color: var(--accent-gold); }
+.badge-danger { background-color: var(--accent-red-light); color: var(--accent-red); }
+.badge-info { background-color: var(--accent-blue-light); color: var(--accent-blue); }
+.badge-neutral { background-color: rgba(255, 255, 255, 0.08); color: var(--text-secondary); }
 
 /* Image Preview Box */
 .image-preview-container {
@@ -802,25 +774,13 @@ button, input, select, textarea {
 }
 
 @keyframes slideIn {
-  from {
-    transform: translateX(100%);
-    opacity: 0;
-  }
-  to {
-    transform: translateX(0);
-    opacity: 1;
-  }
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
 }
 
-.toast-success {
-  border-left: 4px solid var(--accent-green);
-}
-.toast-error {
-  border-left: 4px solid var(--accent-red);
-}
-.toast-info {
-  border-left: 4px solid var(--accent-blue);
-}
+.toast-success { border-left: 4px solid var(--accent-green); }
+.toast-error { border-left: 4px solid var(--accent-red); }
+.toast-info { border-left: 4px solid var(--accent-blue); }
 
 .toast-message {
   font-size: 0.85rem;
@@ -896,14 +856,8 @@ button, input, select, textarea {
   transition: all 0.2s ease;
 }
 
-.tab-btn:hover {
-  color: var(--text-primary);
-}
-
-.tab-btn.active {
-  color: var(--primary-pink);
-  border-bottom-color: var(--primary-pink);
-}
+.tab-btn:hover { color: var(--text-primary); }
+.tab-btn.active { color: var(--primary-pink); border-bottom-color: var(--primary-pink); }
 
 /* ==========================================================================
    MARKETING OPERATIONS CENTER STYLES
@@ -968,24 +922,66 @@ button, input, select, textarea {
   color: #fff;
 }
 
+.marketing-subtabs-wrapper {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+  padding: 0.25rem;
+  background: var(--bg-sidebar);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  width: fit-content;
+}
+
+.marketing-subtab-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.45rem 0.9rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.marketing-subtab-btn:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.marketing-subtab-btn.active {
+  background: var(--bg-card);
+  color: var(--primary-pink);
+  border-color: var(--border-color-light);
+  box-shadow: var(--shadow-sm);
+}
+
+.marketing-subtab-badge {
+  font-size: 0.68rem;
+  padding: 0.1rem 0.45rem;
+  border-radius: var(--radius-full);
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-secondary);
+  font-weight: 700;
+}
+
+.marketing-subtab-btn.active .marketing-subtab-badge {
+  background: var(--primary-pink);
+  color: #fff;
+}
 
 /* ==========================================================================
    RESPONSIVE
    ========================================================================== */
 @media (max-width: 900px) {
-  .admin-sidebar {
-    transform: translateX(-100%);
-  }
-  .admin-sidebar.open {
-    transform: translateX(0);
-  }
-  .admin-main-wrapper {
-    margin-left: 0;
-    width: 100%;
-  }
-  .header-left .mobile-menu-btn {
-    display: block;
-  }
+  .admin-sidebar { transform: translateX(-100%); }
+  .admin-sidebar.open { transform: translateX(0); }
+  .admin-main-wrapper { margin-left: 0; width: 100%; }
+  .header-left .mobile-menu-btn { display: block; }
 }
 
 .mobile-menu-btn {

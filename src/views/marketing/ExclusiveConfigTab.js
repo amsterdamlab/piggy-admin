@@ -1,5 +1,6 @@
 /* ==========================================================================
-   MARKETING - TAB 4: CONFIGURACIÓN DE PIGGYS EXCLUSIVOS (exclusive_piggy_config)
+   MARKETING - CICLOS: SUB-TAB 2: PIGGYS EXCLUSIVOS CONFIG (exclusive_piggy_config)
+   Configuración de precios y cerditos a disparar según granja del usuario
    ========================================================================== */
 
 import { marketingService } from '../../services/marketingService.js';
@@ -16,9 +17,9 @@ export class ExclusiveConfigTab {
 
   render(data) {
     this.dataTable = new DataTable({
-      searchPlaceholder: 'Buscar configuraciones exclusivas...',
+      searchPlaceholder: 'Buscar configuraciones de piggys exclusivos...',
       actionButton: {
-        text: 'Nueva Configuración Exclusiva',
+        text: 'Nueva Configuración',
         icon: icons.plus,
         onClick: () => this.openModal()
       },
@@ -28,7 +29,7 @@ export class ExclusiveConfigTab {
           render: (row) => `<span style="font-weight: 800; font-family: monospace;"># ${row.id}</span>`
         },
         {
-          header: 'Precio de Venta',
+          header: 'Precio de Venta / Adquisición',
           render: (row) => `
             <div style="font-weight: 800; color: var(--primary-pink); font-size: 0.95rem;">
               $${Number(row.price || 0).toLocaleString('es-CO')}
@@ -36,10 +37,10 @@ export class ExclusiveConfigTab {
           `
         },
         {
-          header: 'Estado',
+          header: 'Disponibilidad en App',
           render: (row) => `
             <span class="badge ${row.is_enabled ? 'badge-success' : 'badge-neutral'}">
-              ${row.is_enabled ? 'Habilitado en App' : 'Deshabilitado'}
+              ${row.is_enabled ? 'Habilitado para disparar' : 'Deshabilitado'}
             </span>
           `
         },
@@ -123,7 +124,7 @@ export class ExclusiveConfigTab {
           <div class="form-group">
             <label class="form-label" for="exclusive-enabled">Disponibilidad en la App</label>
             <select id="exclusive-enabled" class="form-select">
-              <option value="true" ${item?.is_enabled !== false ? 'selected' : ''}>Habilitado (Disponible para compra)</option>
+              <option value="true" ${item?.is_enabled !== false ? 'selected' : ''}>Habilitado (Disponible para disparar)</option>
               <option value="false" ${item?.is_enabled === false ? 'selected' : ''}>Deshabilitado (Agotado u oculto)</option>
             </select>
           </div>

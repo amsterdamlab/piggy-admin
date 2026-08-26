@@ -1,5 +1,6 @@
 /* ==========================================================================
-   MARKETING - TAB 5: MISIONES POR CICLO COMPLETO (cycle_completion_missions)
+   MARKETING - CICLOS: SUB-TAB 1: GRANJA PIGGYS EXCLUSIVOS (cycle_completion_missions)
+   Muestra cerditos puestos a disposición al completar ciclo y estado de compra
    ========================================================================== */
 
 import { marketingService } from '../../services/marketingService.js';
@@ -16,19 +17,33 @@ export class CycleMissionsTab {
 
   render(data) {
     this.dataTable = new DataTable({
-      searchPlaceholder: 'Buscar misiones de ciclo...',
+      searchPlaceholder: 'Buscar cerditos de ciclo completado...',
       actionButton: {
-        text: 'Nueva Misión de Ciclo',
+        text: 'Nueva Oferta de Ciclo',
         icon: icons.plus,
         onClick: () => this.openModal()
       },
       columns: [
         {
-          header: 'ID / Referencia',
+          header: 'ID Oferta',
           render: (row) => `<span style="font-weight: 800; font-family: monospace;"># ${row.id}</span>`
         },
         {
-          header: 'Bono / Recompensa',
+          header: 'Usuario / Inversionista',
+          render: (row) => row.user_id ? `
+            <div style="font-family: monospace; font-size: 0.8rem; color: var(--text-primary); max-width: 140px; overflow: hidden; text-overflow: ellipsis;">
+              ${row.user_id}
+            </div>
+          ` : '<span style="color: var(--text-muted); font-size: 0.8rem;">Global / Todos</span>'
+        },
+        {
+          header: 'Piggy ID / Tipo',
+          render: (row) => row.piggy_id ? `
+            <span class="badge badge-info" style="font-family: monospace;"># ${row.piggy_id}</span>
+          ` : '<span style="color: var(--text-muted); font-size: 0.8rem;">Automático</span>'
+        },
+        {
+          header: 'Bono / Valor Piggy',
           render: (row) => `
             <div style="font-weight: 800; color: var(--accent-gold); font-size: 0.9rem;">
               $${Number(row.price || 0).toLocaleString('es-CO')}
@@ -36,10 +51,10 @@ export class CycleMissionsTab {
           `
         },
         {
-          header: 'Estado',
+          header: 'Estado de Compra',
           render: (row) => `
-            <span class="badge ${row.is_completed ? 'badge-success' : 'badge-info'}">
-              ${row.is_completed ? 'Completada' : 'En Progreso'}
+            <span class="badge ${row.is_completed ? 'badge-success' : 'badge-warning'}">
+              ${row.is_completed ? 'Comprado' : 'Disponible (No comprado)'}
             </span>
           `
         },
@@ -48,7 +63,7 @@ export class CycleMissionsTab {
           render: (row) => `<span style="font-size: 0.75rem; color: var(--text-muted);">${row.expires_at ? new Date(row.expires_at).toLocaleDateString('es-CO') : 'Sin expiración'}</span>`
         },
         {
-          header: 'Creado',
+          header: 'Fecha Disparo',
           render: (row) => `<span style="font-size: 0.75rem; color: var(--text-muted);">${row.created_at ? new Date(row.created_at).toLocaleDateString('es-CO') : '-'}</span>`
         },
         {
@@ -56,7 +71,7 @@ export class CycleMissionsTab {
           style: 'text-align: right;',
           render: (row) => `
             <div style="display: flex; gap: 0.4rem; justify-content: flex-end;">
-              <button class="btn btn-secondary btn-sm" data-action="toggle" title="${row.is_completed ? 'Marcar En Progreso' : 'Marcar Completada'}">
+              <button class="btn btn-secondary btn-sm" data-action="toggle" title="${row.is_completed ? 'Marcar No Comprado' : 'Marcar Comprado'}">
                 ${row.is_completed ? 'Reabrir' : 'Completar'}
               </button>
               <button class="btn btn-secondary btn-sm" data-action="edit" title="Editar">
@@ -88,7 +103,7 @@ export class CycleMissionsTab {
       marketingService.toggleCycleMissionCompleted(row.id, newStatus).then(res => {
         if (res.success) {
           row.is_completed = newStatus;
-          toast.success(newStatus ? 'Ciclo completado' : 'Ciclo reabierto');
+          toast.success(newStatus ? 'Oferta marcada como Comprada' : 'Oferta reabierta como Disponible');
           this.dataTable.setData(this.parentView.dataStore.cycle_completion_missions);
         } else {
           toast.error(res.error || 'Error al cambiar estado');
@@ -97,10 +112,10 @@ export class CycleMissionsTab {
     } else if (action === 'edit') {
       this.openModal(row);
     } else if (action === 'delete') {
-      if (confirm(`¿Eliminar la misión de ciclo #${row.id}?`)) {
+      if (confirm(`¿Eliminar esta oferta de cerdito exclusivo #${row.id}?`)) {
         marketingService.deleteCycleMission(row.id).then(res => {
           if (res.success) {
-            toast.success('Misión de ciclo eliminada');
+            toast.success('Oferta eliminada');
             this.parentView.dataStore.cycle_completion_missions = this.parentView.dataStore.cycle_completion_missions.filter(item => item.id !== row.id);
             this.dataTable.setData(this.parentView.dataStore.cycle_completion_missions);
             this.parentView.updateBadges();
@@ -115,11 +130,11 @@ export class CycleMissionsTab {
   openModal(item = null) {
     const isEdit = Boolean(item);
     modal.open({
-      title: isEdit ? 'Editar Misión de Ciclo' : 'Nueva Misión de Ciclo Completo',
+      title: isEdit ? 'Editar Oferta de Granja Exclusiva' : 'Nueva Oferta de Granja Exclusiva',
       contentHtml: `
         <form id="cycle-form">
           <div class="form-group">
-            <label class="form-label" for="cycle-price">Bono / Recompensa de Maduración ($)</label>
+            <label class="form-label" for="cycle-price">Precio del Cerdito / Bono ($)</label>
             <input type="number" id="cycle-price" class="form-input" value="${item?.price || 100000}" step="5000" min="0" required />
           </div>
 
@@ -142,10 +157,10 @@ export class CycleMissionsTab {
             </div>
 
             <div class="form-group">
-              <label class="form-label" for="cycle-completed">Estado</label>
+              <label class="form-label" for="cycle-completed">Estado de Compra</label>
               <select id="cycle-completed" class="form-select">
-                <option value="false" ${item?.is_completed === false ? 'selected' : ''}>En Progreso</option>
-                <option value="true" ${item?.is_completed === true ? 'selected' : ''}>Completada</option>
+                <option value="false" ${item?.is_completed === false ? 'selected' : ''}>Disponible (No comprado)</option>
+                <option value="true" ${item?.is_completed === true ? 'selected' : ''}>Comprado / Completado</option>
               </select>
             </div>
           </div>
@@ -154,7 +169,7 @@ export class CycleMissionsTab {
       footerButtons: [
         { text: 'Cancelar', class: 'btn-secondary', onClick: (e, m) => m.close() },
         {
-          text: isEdit ? 'Guardar Cambios' : 'Crear Misión',
+          text: isEdit ? 'Guardar Cambios' : 'Disparar Oferta',
           class: 'btn-primary',
           onClick: async (e, m) => {
             const price = document.querySelector('#cycle-price').value;
@@ -179,7 +194,7 @@ export class CycleMissionsTab {
             }
 
             if (res.success) {
-              toast.success(isEdit ? 'Misión actualizada' : 'Misión de ciclo creada');
+              toast.success(isEdit ? 'Oferta actualizada' : 'Oferta de cerdito creada');
               this.parentView.dataStore.cycle_completion_missions = await marketingService.getCycleMissions();
               this.dataTable.setData(this.parentView.dataStore.cycle_completion_missions);
               this.parentView.updateBadges();
