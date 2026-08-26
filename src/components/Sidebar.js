@@ -40,8 +40,11 @@ export class Sidebar {
             <img src="/piggy-icon.png" alt="Piggy Logo" style="width: 38px; height: 38px; object-fit: contain; border-radius: 50%; display: block;" />
           </div>
           <div>
-            <div class="sidebar-brand-title">Piggy Admin <span class="sidebar-brand-badge">Master</span></div>
-            <div style="font-size: 0.7rem; color: var(--text-muted);">Panel de Control</div>
+            <div class="sidebar-brand-title">
+              <span>Piggy Admin</span>
+              <span class="sidebar-brand-badge">Master</span>
+            </div>
+            <div class="sidebar-brand-subtitle">Panel de Control</div>
           </div>
         </div>
 

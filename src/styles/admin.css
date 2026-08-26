@@ -152,22 +152,33 @@ button, input, select, textarea {
   font-size: 1.15rem;
   font-weight: 800;
   letter-spacing: -0.02em;
-  background: linear-gradient(to right, #fff, #CBD5E1);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  white-space: nowrap;
 }
 
 .sidebar-brand-badge {
-  font-size: 0.65rem;
-  background-color: var(--primary-pink-light);
+  font-size: 0.62rem;
+  background: rgba(255, 75, 139, 0.15);
+  border: 1px solid rgba(255, 75, 139, 0.35);
   color: var(--primary-pink);
-  padding: 0.15rem 0.45rem;
+  padding: 0.1rem 0.45rem;
   border-radius: var(--radius-full);
-  font-weight: 700;
+  font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin-left: 0.35rem;
-  vertical-align: middle;
+  letter-spacing: 0.06em;
+  display: inline-flex;
+  align-items: center;
+  line-height: 1.2;
+}
+
+.sidebar-brand-subtitle {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  font-weight: 500;
+  margin-top: 0.15rem;
 }
 
 .sidebar-nav {
@@ -366,9 +377,7 @@ button, input, select, textarea {
   color: #fff;
   box-shadow: var(--shadow-glow-pink);
 }
-.btn-primary:hover {
-  background-color: var(--primary-pink-hover);
-}
+.btn-primary:hover { background-color: var(--primary-pink-hover); }
 
 .btn-secondary {
   background-color: rgba(255, 255, 255, 0.05);
@@ -384,17 +393,13 @@ button, input, select, textarea {
   background-color: var(--accent-green);
   color: #fff;
 }
-.btn-success:hover {
-  background-color: #0D9668;
-}
+.btn-success:hover { background-color: #0D9668; }
 
 .btn-danger {
   background-color: var(--accent-red);
   color: #fff;
 }
-.btn-danger:hover {
-  background-color: #DC2626;
-}
+.btn-danger:hover { background-color: #DC2626; }
 
 .btn-sm {
   padding: 0.35rem 0.75rem;
