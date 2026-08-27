@@ -18,40 +18,70 @@ export class CycleMissionsTab {
   render(data) {
     const rawData = data || [];
     const profiles = this.parentView.profilesList || [];
+    const piggies = this.parentView.piggiesList || [];
 
     const profileMap = {};
     profiles.forEach(p => {
       profileMap[p.id] = p;
     });
 
-    // 1. Cálculos de Inteligencia de Negocio para las tarjetas de métricas
-    const totalOffers = rawData.length;
+    // 1. Cálculos para Tarjetas de Métricas
     const acceptedOffers = rawData.filter(r => r.is_completed === true);
     const acceptedCount = acceptedOffers.length;
-    const conversionRate = totalOffers > 0 ? Math.round((acceptedCount / totalOffers) * 100) : 0;
     const totalAcceptedVolume = acceptedOffers.reduce((sum, r) => sum + Number(r.price || 0), 0);
 
-    // Identificar top inversionista en ofertas de ciclos
-    const buyerMap = {};
-    const buyerVolumeMap = {};
+    // Identificar compradores y acumular estadísticas por usuario
+    const buyerStatsMap = {};
     acceptedOffers.forEach(r => {
       if (r.user_id) {
-        buyerMap[r.user_id] = (buyerMap[r.user_id] || 0) + 1;
-        buyerVolumeMap[r.user_id] = (buyerVolumeMap[r.user_id] || 0) + Number(r.price || 0);
+        if (!buyerStatsMap[r.user_id]) {
+          const p = profileMap[r.user_id] || {};
+          buyerStatsMap[r.user_id] = {
+            user_id: r.user_id,
+            name: p.fullName || p.full_name || p.name || `Usuario ${r.user_id.slice(0, 8)}`,
+            email: p.email || '',
+            phone: p.whatsapp || p.phone || '',
+            count: 0,
+            totalVolume: 0,
+            offers: []
+          };
+        }
+        buyerStatsMap[r.user_id].count += 1;
+        buyerStatsMap[r.user_id].totalVolume += Number(r.price || 0);
+        buyerStatsMap[r.user_id].offers.push(r);
       }
     });
 
     let topBuyerName = 'Ninguno';
     let topBuyerCount = 0;
     let topBuyerVolume = 0;
-    Object.entries(buyerMap).forEach(([uid, count]) => {
-      if (count > topBuyerCount) {
-        topBuyerCount = count;
-        topBuyerVolume = buyerVolumeMap[uid] || 0;
-        const p = profileMap[uid] || {};
-        topBuyerName = p.fullName || p.full_name || p.name || `Usuario ${uid.slice(0, 8)}`;
+    Object.values(buyerStatsMap).forEach(buyer => {
+      if (buyer.count > topBuyerCount) {
+        topBuyerCount = buyer.count;
+        topBuyerVolume = buyer.totalVolume;
+        topBuyerName = buyer.name;
       }
     });
+
+    // 2. Cálculo en tiempo real de Piggys por completar ciclo en <= 15 días
+    const now = new Date();
+    const activeEngordePiggies = piggies.filter(p => p.status === 'engorde' && p.end_date);
+    
+    const maturingPiggies = activeEngordePiggies.map(p => {
+      const endDate = new Date(p.end_date);
+      const diffMs = endDate.getTime() - now.getTime();
+      const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+      const user = profileMap[p.user_id] || {};
+      return {
+        ...p,
+        diffDays,
+        userName: user.fullName || user.full_name || user.name || p.full_name || 'Inversionista',
+        userEmail: user.email || '',
+        userPhone: user.whatsapp || user.phone || ''
+      };
+    }).sort((a, b) => a.diffDays - b.diffDays);
+
+    const maturingWithin15Days = maturingPiggies.filter(p => p.diffDays >= 0 && p.diffDays <= 15);
 
     this.dataTable = new DataTable({
       searchPlaceholder: 'Buscar ofertas por usuario o tipo de piggy...',
@@ -102,41 +132,10 @@ export class CycleMissionsTab {
               </div>
             `;
 
-            // Lógica de Estado de Compra:
-            // 1. is_completed === true -> Aceptada
-            // 2. !is_completed y dentro de fecha de expiración -> Pendiente
-            // 3. !is_completed y ya expiró -> Cancelada
-            let offerStatusHtml = '';
-            if (row.is_completed === true) {
-              const pDate = row.purchased_at ? new Date(row.purchased_at).toLocaleDateString('es-CO') : '';
-              offerStatusHtml = `
-                <div style="margin-top: 3px; display: flex; align-items: center; gap: 5px;">
-                  <span class="badge badge-success" style="padding: 1px 6px; font-size: 0.7rem;">Aceptada</span>
-                  ${pDate ? `<span style="font-size: 0.72rem; color: var(--text-muted); font-family: monospace;">${pDate}</span>` : ''}
-                </div>
-              `;
-            } else {
-              const isExpired = row.expires_at ? new Date(row.expires_at) <= new Date() : false;
-              if (isExpired) {
-                offerStatusHtml = `
-                  <div style="margin-top: 3px;">
-                    <span class="badge badge-danger" style="padding: 1px 6px; font-size: 0.7rem;">Cancelada</span>
-                  </div>
-                `;
-              } else {
-                offerStatusHtml = `
-                  <div style="margin-top: 3px;">
-                    <span class="badge badge-warning" style="padding: 1px 6px; font-size: 0.7rem;">Pendiente</span>
-                  </div>
-                `;
-              }
-            }
-
             return `
               <div>
                 ${piggyBadge}
                 ${priceHtml}
-                ${offerStatusHtml}
               </div>
             `;
           }
@@ -148,6 +147,26 @@ export class CycleMissionsTab {
               ${row.created_at ? new Date(row.created_at).toLocaleDateString('es-CO') : '-'}
             </span>
           `
+        },
+        {
+          header: 'Estado',
+          render: (row) => {
+            if (row.is_completed === true) {
+              const pDate = row.purchased_at ? new Date(row.purchased_at).toLocaleDateString('es-CO') : '';
+              return `
+                <div>
+                  <span class="badge badge-success">Aceptada</span>
+                  ${pDate ? `<div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 3px; font-family: monospace;">${pDate}</div>` : ''}
+                </div>
+              `;
+            }
+
+            const isExpired = row.expires_at ? new Date(row.expires_at) <= new Date() : false;
+            if (isExpired) {
+              return '<span class="badge badge-danger">Cancelada</span>';
+            }
+            return '<span class="badge badge-warning">Pendiente</span>';
+          }
         },
         {
           header: 'Acciones',
@@ -173,20 +192,27 @@ export class CycleMissionsTab {
         <!-- Bloques de Métricas de Ciclos Completados -->
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; margin-bottom: 1.25rem;">
           
-          <!-- Bloque 1: Ofertas Aceptadas -->
+          <!-- Bloque 1 (Izquierda): Volumen Total Adquirido (Verde con Botón Popup) -->
           <div style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: var(--radius-md); padding: 0.85rem 1rem;">
-            <div style="font-size: 0.72rem; text-transform: uppercase; color: var(--accent-green); font-weight: 700; letter-spacing: 0.05em; margin-bottom: 0.25rem;">
-              🏆 Ofertas Aceptadas Post-Ciclo
-            </div>
-            <div style="font-size: 1.2rem; font-weight: 800; color: var(--text-primary);">
-              ${acceptedCount} <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 500;">/ ${totalOffers} (${conversionRate}%)</span>
-            </div>
-            <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 2px;">
-              $${totalAcceptedVolume.toLocaleString('es-CO')} vendidos
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem;">
+              <div>
+                <div style="font-size: 0.72rem; text-transform: uppercase; color: var(--accent-green); font-weight: 700; letter-spacing: 0.05em; margin-bottom: 0.25rem;">
+                  🏆 Volumen Total Adquirido
+                </div>
+                <div style="font-size: 1.2rem; font-weight: 800; color: var(--accent-green);">
+                  $${totalAcceptedVolume.toLocaleString('es-CO')}
+                </div>
+                <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 2px;">
+                  ${acceptedCount} ofertas recompradas
+                </div>
+              </div>
+              <button class="btn btn-secondary btn-sm" id="btn-view-cycle-buyers" style="padding: 4px 10px; font-size: 0.75rem; display: inline-flex; align-items: center; gap: 5px; margin-top: 2px; border-color: rgba(16, 185, 129, 0.4); color: var(--accent-green);" title="Ver compradores y ofertas adquiridas">
+                ${icons.eye || icons.award} <span>Ver Compradores</span>
+              </button>
             </div>
           </div>
 
-          <!-- Bloque 2: Top Inversionista en Ofertas Post-Ciclo -->
+          <!-- Bloque 2 (Centro): Top Inversionista en Ofertas Post-Ciclo -->
           <div style="background: rgba(255, 75, 139, 0.08); border: 1px solid rgba(255, 75, 139, 0.25); border-radius: var(--radius-md); padding: 0.85rem 1rem;">
             <div style="font-size: 0.72rem; text-transform: uppercase; color: var(--primary-pink); font-weight: 700; letter-spacing: 0.05em; margin-bottom: 0.25rem;">
               🔥 Top Inversionista Post-Ciclo
@@ -199,16 +225,23 @@ export class CycleMissionsTab {
             </div>
           </div>
 
-          <!-- Bloque 3: Volumen Comprado -->
-          <div style="background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.25); border-radius: var(--radius-md); padding: 0.85rem 1rem;">
-            <div style="font-size: 0.72rem; text-transform: uppercase; color: var(--accent-gold); font-weight: 700; letter-spacing: 0.05em; margin-bottom: 0.25rem;">
-              💰 Volumen Total Adquirido
-            </div>
-            <div style="font-size: 1.2rem; font-weight: 800; color: var(--accent-gold);">
-              $${totalAcceptedVolume.toLocaleString('es-CO')}
-            </div>
-            <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 2px;">
-              En ${acceptedCount} recompras completadas
+          <!-- Bloque 3 (Derecha): Usuarios por Completar Ciclo (<= 15 Días) -->
+          <div style="background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.25); border-radius: var(--radius-md); padding: 0.85rem 1rem;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem;">
+              <div>
+                <div style="font-size: 0.72rem; text-transform: uppercase; color: var(--accent-blue); font-weight: 700; letter-spacing: 0.05em; margin-bottom: 0.25rem;">
+                  ⏳ Usuarios por Completar Ciclo
+                </div>
+                <div style="font-size: 1.2rem; font-weight: 800; color: var(--accent-blue);">
+                  ${maturingWithin15Days.length} <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 500;">en ≤ 15 días</span>
+                </div>
+                <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 2px;">
+                  ${maturingPiggies.length} cerditos en engorde
+                </div>
+              </div>
+              <button class="btn btn-secondary btn-sm" id="btn-view-maturing-piggies" style="padding: 4px 10px; font-size: 0.75rem; display: inline-flex; align-items: center; gap: 5px; margin-top: 2px; border-color: rgba(59, 130, 246, 0.4); color: var(--accent-blue);" title="Ver cerditos próximos a finalizar ciclo">
+                ${icons.clock || icons.calendar || icons.eye} <span>Ver Próximos</span>
+              </button>
             </div>
           </div>
 
@@ -223,6 +256,256 @@ export class CycleMissionsTab {
     if (this.dataTable) {
       this.dataTable.attachEvents(container);
     }
+
+    const btnBuyers = container.querySelector('#btn-view-cycle-buyers');
+    if (btnBuyers) {
+      btnBuyers.addEventListener('click', () => {
+        this.openBuyersModal();
+      });
+    }
+
+    const btnMaturing = container.querySelector('#btn-view-maturing-piggies');
+    if (btnMaturing) {
+      btnMaturing.addEventListener('click', () => {
+        this.openMaturingPiggiesModal();
+      });
+    }
+  }
+
+  openBuyersModal() {
+    const rawData = this.parentView.dataStore.cycle_completion_missions || [];
+    const profiles = this.parentView.profilesList || [];
+    const profileMap = {};
+    profiles.forEach(p => profileMap[p.id] = p);
+
+    const acceptedOffers = rawData.filter(r => r.is_completed === true);
+    const buyerStatsMap = {};
+
+    acceptedOffers.forEach(r => {
+      if (r.user_id) {
+        if (!buyerStatsMap[r.user_id]) {
+          const p = profileMap[r.user_id] || {};
+          buyerStatsMap[r.user_id] = {
+            user_id: r.user_id,
+            name: p.fullName || p.full_name || p.name || 'Inversionista',
+            email: p.email || '',
+            phone: p.whatsapp || p.phone || '',
+            count: 0,
+            totalVolume: 0,
+            userObj: p
+          };
+        }
+        buyerStatsMap[r.user_id].count += 1;
+        buyerStatsMap[r.user_id].totalVolume += Number(r.price || 0);
+      }
+    });
+
+    const buyersList = Object.values(buyerStatsMap).sort((a, b) => b.totalVolume - a.totalVolume);
+    const totalVolume = buyersList.reduce((sum, b) => sum + b.totalVolume, 0);
+
+    const listHtml = buyersList.length > 0 ? buyersList.map((buyer, idx) => `
+      <div style="display: flex; align-items: center; justify-content: space-between; padding: 0.85rem 1rem; margin-bottom: 0.6rem; background: var(--bg-sidebar); border: 1px solid var(--border-color); border-radius: var(--radius-md);">
+        <div style="display: flex; align-items: center; gap: 0.75rem; min-width: 0; flex: 1;">
+          <div style="width: 28px; height: 28px; border-radius: 50%; background: rgba(16, 185, 129, 0.15); color: var(--accent-green); font-weight: 800; font-size: 0.8rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+            ${idx + 1}
+          </div>
+          <div style="min-width: 0;">
+            <div style="font-weight: 800; color: var(--text-primary); font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+              ${buyer.name}
+            </div>
+            <div style="font-size: 0.75rem; color: var(--text-muted); font-family: monospace;">
+              ${buyer.email} ${buyer.phone ? `• ${buyer.phone}` : ''}
+            </div>
+          </div>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 1.25rem; margin-left: 1rem;">
+          <div style="text-align: right;">
+            <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Ofertas Adquiridas</div>
+            <div style="font-weight: 800; color: var(--primary-pink); font-size: 0.95rem;">
+              ${buyer.count} ${buyer.count === 1 ? 'oferta' : 'ofertas'}
+            </div>
+          </div>
+
+          <div style="text-align: right;">
+            <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Monto Recomprado</div>
+            <div style="font-weight: 800; color: var(--accent-green); font-size: 1.05rem;">
+              $${buyer.totalVolume.toLocaleString('es-CO')}
+            </div>
+          </div>
+
+          <button class="btn btn-secondary btn-sm view-cycle-user-btn" data-user-id="${buyer.user_id}" style="padding: 4px 8px; font-size: 0.72rem; display: inline-flex; align-items: center; gap: 4px;" title="Ver Detalle del Usuario">
+            ${icons.eye || icons.user} <span>Ver Detalle</span>
+          </button>
+        </div>
+      </div>
+    `).join('') : '<div class="p-4 text-center text-muted">No se han registrado compras de ofertas de ciclos aún.</div>';
+
+    modal.open({
+      title: 'Compradores de Ofertas Post-Ciclo',
+      contentHtml: `
+        <div>
+          <!-- Resumen -->
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; padding: 0.85rem 1.1rem; background: var(--bg-card); border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+            <div>
+              <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Total Recomprado</div>
+              <div style="font-weight: 800; font-size: 1.3rem; color: var(--accent-green);">
+                $${totalVolume.toLocaleString('es-CO')}
+              </div>
+            </div>
+            <div style="text-align: right;">
+              <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Inversionistas Compradores</div>
+              <div style="font-weight: 800; font-size: 1.1rem; color: var(--text-primary);">
+                ${buyersList.length} usuarios
+              </div>
+            </div>
+          </div>
+
+          <div style="max-height: 55vh; overflow-y: auto; padding-right: 0.25rem;">
+            ${listHtml}
+          </div>
+        </div>
+      `,
+      footerButtons: [
+        { text: 'Cerrar', class: 'btn-secondary', onClick: (e, m) => m.close() }
+      ]
+    });
+
+    setTimeout(() => {
+      const modalEl = document.querySelector('.modal-container');
+      if (modalEl) {
+        modalEl.querySelectorAll('.view-cycle-user-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const uid = btn.getAttribute('data-user-id');
+            const user = profileMap[uid] || {};
+            modal.close();
+            this.openUserProfileModal(user);
+          });
+        });
+      }
+    }, 100);
+  }
+
+  openMaturingPiggiesModal() {
+    const profiles = this.parentView.profilesList || [];
+    const piggies = this.parentView.piggiesList || [];
+    const profileMap = {};
+    profiles.forEach(p => profileMap[p.id] = p);
+
+    const now = new Date();
+    const activeEngordePiggies = piggies.filter(p => p.status === 'engorde' && p.end_date);
+
+    const maturingPiggies = activeEngordePiggies.map(p => {
+      const endDate = new Date(p.end_date);
+      const diffMs = endDate.getTime() - now.getTime();
+      const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+      const user = profileMap[p.user_id] || {};
+      return {
+        ...p,
+        diffDays,
+        userName: user.fullName || user.full_name || user.name || p.full_name || 'Inversionista',
+        userEmail: user.email || '',
+        userPhone: user.whatsapp || user.phone || ''
+      };
+    }).sort((a, b) => a.diffDays - b.diffDays);
+
+    const listHtml = maturingPiggies.length > 0 ? maturingPiggies.map((p, idx) => {
+      const isUrgent = p.diffDays <= 15;
+      const badgeStyle = isUrgent 
+        ? 'background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.35); color: var(--accent-gold); font-weight: 800;'
+        : 'background: rgba(59, 130, 246, 0.15); border: 1px solid rgba(59, 130, 246, 0.35); color: var(--accent-blue); font-weight: 700;';
+
+      const amountVal = Number(p.investment_amount || p.amount || 0);
+
+      return `
+        <div style="display: flex; align-items: center; justify-content: space-between; padding: 0.85rem 1rem; margin-bottom: 0.6rem; background: var(--bg-sidebar); border: 1px solid ${isUrgent ? 'rgba(245, 158, 11, 0.3)' : 'var(--border-color)'}; border-radius: var(--radius-md);">
+          <div style="display: flex; align-items: center; gap: 0.75rem; min-width: 0; flex: 1;">
+            <div style="width: 28px; height: 28px; border-radius: 50%; background: rgba(59, 130, 246, 0.15); color: var(--accent-blue); font-weight: 800; font-size: 0.8rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+              ${idx + 1}
+            </div>
+            <div style="min-width: 0;">
+              <div style="font-weight: 800; color: var(--text-primary); font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                ${p.userName}
+              </div>
+              <div style="font-size: 0.75rem; color: var(--text-muted); font-family: monospace;">
+                ${p.name || 'Piggy'} (${p.category || 'engorde'}) • ${p.userEmail}
+              </div>
+            </div>
+          </div>
+
+          <div style="display: flex; align-items: center; gap: 1.25rem; margin-left: 1rem;">
+            ${amountVal > 0 ? `
+              <div style="text-align: right;">
+                <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Inversión</div>
+                <div style="font-weight: 700; color: var(--primary-pink); font-size: 0.85rem;">
+                  $${amountVal.toLocaleString('es-CO')}
+                </div>
+              </div>
+            ` : ''}
+
+            <div style="text-align: right;">
+              <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Finaliza Ciclo</div>
+              <div style="font-size: 0.82rem; font-family: monospace; color: var(--text-primary); font-weight: 700;">
+                ${new Date(p.end_date).toLocaleDateString('es-CO')}
+              </div>
+            </div>
+
+            <div>
+              <span class="badge" style="${badgeStyle} font-size: 0.75rem; padding: 3px 8px;">
+                ${p.diffDays <= 0 ? '¡Hoy completa!' : `en ${p.diffDays} días`}
+              </span>
+            </div>
+
+            <button class="btn btn-secondary btn-sm direct-cycle-offer-btn" data-user-id="${p.user_id}" style="padding: 4px 8px; font-size: 0.72rem; display: inline-flex; align-items: center; gap: 4px;" title="Disparar Oferta de Granja Exclusiva">
+              ${icons.award || icons.plus} <span>Lanzar Oferta</span>
+            </button>
+          </div>
+        </div>
+      `;
+    }).join('') : '<div class="p-4 text-center text-muted">No hay cerditos en engorde activo en este momento.</div>';
+
+    modal.open({
+      title: 'Próximos Cerditos a Completar Ciclo',
+      contentHtml: `
+        <div>
+          <!-- Resumen -->
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; padding: 0.85rem 1.1rem; background: var(--bg-card); border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+            <div>
+              <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Cerditos en Engorde Activo</div>
+              <div style="font-weight: 800; font-size: 1.3rem; color: var(--accent-blue);">
+                ${maturingPiggies.length} piggies
+              </div>
+            </div>
+            <div style="text-align: right;">
+              <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Urgentes (≤ 15 Días)</div>
+              <div style="font-weight: 800; font-size: 1.1rem; color: var(--accent-gold);">
+                ${maturingPiggies.filter(p => p.diffDays <= 15).length} por madurar
+              </div>
+            </div>
+          </div>
+
+          <div style="max-height: 55vh; overflow-y: auto; padding-right: 0.25rem;">
+            ${listHtml}
+          </div>
+        </div>
+      `,
+      footerButtons: [
+        { text: 'Cerrar', class: 'btn-secondary', onClick: (e, m) => m.close() }
+      ]
+    });
+
+    setTimeout(() => {
+      const modalEl = document.querySelector('.modal-container');
+      if (modalEl) {
+        modalEl.querySelectorAll('.direct-cycle-offer-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const uid = btn.getAttribute('data-user-id');
+            modal.close();
+            this.openModal({ user_id: uid });
+          });
+        });
+      }
+    }, 100);
   }
 
   handleAction(action, row) {
@@ -347,7 +630,7 @@ export class CycleMissionsTab {
   }
 
   openModal(item = null) {
-    const isEdit = Boolean(item);
+    const isEdit = Boolean(item && item.id);
     const profiles = this.parentView.profilesList || [];
 
     const userOptions = profiles.map(p => {

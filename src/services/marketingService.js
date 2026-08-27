@@ -29,6 +29,25 @@ export const marketingService = {
   },
 
   // ==========================================================================
+  // 0.1. CERDITOS EN ENGORDE (piggies)
+  // ==========================================================================
+  async getPiggies() {
+    const client = getClient();
+    if (!client) return [];
+    try {
+      const { data, error } = await client
+        .from('piggies')
+        .select('*')
+        .order('end_date', { ascending: true });
+      if (error) throw error;
+      return data || [];
+    } catch (err) {
+      console.error('Error fetching piggies in marketingService:', err);
+      return [];
+    }
+  },
+
+  // ==========================================================================
   // 1. NOTICIAS Y BANNERS (news_billboard)
   // ==========================================================================
   async getNews() {

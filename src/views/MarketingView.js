@@ -29,6 +29,7 @@ export class MarketingView {
     this.overview = null;
     this.container = null;
     this.profilesList = [];
+    this.piggiesList = [];
 
     this.dataStore = {
       news_billboard: [],
@@ -51,7 +52,7 @@ export class MarketingView {
   }
 
   async render() {
-    const [overview, news, missions, flashMissions, cycleMissions, exclusiveConfigs, tips, profiles] = await Promise.all([
+    const [overview, news, missions, flashMissions, cycleMissions, exclusiveConfigs, tips, profiles, piggies] = await Promise.all([
       marketingService.getMarketingOverview(),
       marketingService.getNews(),
       marketingService.getMissions(),
@@ -59,7 +60,8 @@ export class MarketingView {
       marketingService.getCycleMissions(),
       marketingService.getExclusiveConfigs(),
       marketingService.getDynamicTips(),
-      usersService.getUsers()
+      usersService.getUsers(),
+      marketingService.getPiggies()
     ]);
 
     this.overview = overview;
@@ -70,6 +72,7 @@ export class MarketingView {
     this.dataStore.exclusive_piggy_config = exclusiveConfigs;
     this.dataStore.dynamic_tips = tips;
     this.profilesList = profiles || [];
+    this.piggiesList = piggies || [];
 
     const totalMissions = this.dataStore.missions.length + this.dataStore.user_flash_missions.length;
     const totalCycles = this.dataStore.cycle_completion_missions.length + this.dataStore.exclusive_piggy_config.length;
