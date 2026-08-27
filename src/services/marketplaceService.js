@@ -24,11 +24,14 @@ export const marketplaceService = {
             extraRoi: Number(item.extra_roi || 0),
             stock: Number(item.stock || 0),
             imageUrl: item.image_url || '',
-            badge: item.extra_roi > 0 ? `+${(Number(item.extra_roi) * 100).toFixed(0)}% ROI` : 'Estándar',
+            badge: item.extra_roi > 0 
+              ? `+${(Number(item.extra_roi) * 100).toFixed(0)}% ROI` 
+              : (Number(item.days_advanced || 0) > 0 ? `+${item.days_advanced}d Ahorro` : 'Estándar'),
             category: item.category || 'estandar',
-            daysAdvanced: item.days_advanced || 0,
-            daysRemaining: item.days_remaining || 144,
-            currentWeight: item.current_weight || 15.0
+            daysAdvanced: Number(item.days_advanced || 0),
+            daysRemaining: Number(item.days_remaining || 144),
+            currentWeight: Number(item.current_weight || 15.0),
+            currentMonth: Number(item.current_month || 1)
           }));
         }
         if (error) console.warn('Marketplace fetch error:', error.message);
@@ -42,6 +45,12 @@ export const marketplaceService = {
 
   async createItem(item) {
     const client = getClient();
+    const daysAdvanced = Number(item.daysAdvanced || 0);
+    const daysRemaining = Number(item.daysRemaining || (144 - daysAdvanced));
+    const currentMonth = Number(
+      item.currentMonth || (daysAdvanced >= 120 ? 5 : daysAdvanced >= 90 ? 4 : daysAdvanced >= 60 ? 3 : daysAdvanced >= 30 ? 2 : 1)
+    );
+
     const payload = {
       piggy_name: item.itemName,
       description: item.description || '',
@@ -50,22 +59,20 @@ export const marketplaceService = {
       stock: Number(item.stock || 10),
       image_url: item.imageUrl || '',
       category: item.category || 'estandar',
-      days_advanced: Number(item.daysAdvanced || 0),
-      days_remaining: Number(item.daysRemaining || 144),
+      days_advanced: daysAdvanced,
+      days_remaining: daysRemaining,
       current_weight: Number(item.currentWeight || 15.0),
-      current_month: 1
+      current_month: currentMonth
     };
 
     if (client) {
       try {
-        const { data, error } = await client
+        const { error } = await client
           .from('marketplace')
-          .insert(payload)
-          .select()
-          .single();
+          .insert([payload]);
 
         if (error) throw error;
-        return { success: true, data };
+        return { success: true };
       } catch (err) {
         return { success: false, error: err.message };
       }
@@ -84,18 +91,23 @@ export const marketplaceService = {
     if (item.stock !== undefined) payload.stock = Number(item.stock);
     if (item.imageUrl !== undefined) payload.image_url = item.imageUrl;
     if (item.category !== undefined) payload.category = item.category;
+    if (item.daysAdvanced !== undefined) {
+      const adv = Number(item.daysAdvanced);
+      payload.days_advanced = adv;
+      payload.days_remaining = Number(item.daysRemaining || (144 - adv));
+      payload.current_month = adv >= 120 ? 5 : adv >= 90 ? 4 : adv >= 60 ? 3 : adv >= 30 ? 2 : 1;
+    }
+    if (item.currentWeight !== undefined) payload.current_weight = Number(item.currentWeight);
 
     if (client) {
       try {
-        const { data, error } = await client
+        const { error } = await client
           .from('marketplace')
           .update(payload)
-          .eq('id', id)
-          .select()
-          .single();
+          .eq('id', id);
 
         if (error) throw error;
-        return { success: true, data };
+        return { success: true };
       } catch (err) {
         return { success: false, error: err.message };
       }

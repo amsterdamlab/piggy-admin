@@ -8,6 +8,7 @@ import { DataTable } from '../components/DataTable.js';
 import { modal } from '../components/Modal.js';
 import { toast } from '../components/Toast.js';
 import { icons } from '../icons.js';
+import { resolveImageUrl, getFallbackImageUrl } from '../utils/imageUtils.js';
 
 export class PiggiesView {
   constructor() {
@@ -33,12 +34,21 @@ export class PiggiesView {
       columns: [
         {
           header: 'Cerdito / Lote',
-          render: (p) => `
-            <div>
-              <div style="font-weight: 800; color: var(--primary-pink);">${p.name}</div>
-              <div style="font-size: 0.72rem; color: var(--text-muted);">ID: ${p.id.substring(0, 8)}...</div>
-            </div>
-          `
+          render: (p) => {
+            const resolvedSrc = resolveImageUrl(p.imageUrl || 'assets/piggies/stage1/et1-1.jpg');
+            const fallbackSrc = getFallbackImageUrl(p.imageUrl || 'assets/piggies/stage1/et1-1.jpg');
+            return `
+              <div style="display: flex; align-items: center; gap: 0.75rem;">
+                <div style="width: 40px; height: 40px; border-radius: var(--radius-md); overflow: hidden; background: var(--bg-dark); border: 1px solid var(--border-color); flex-shrink: 0; display: flex; align-items: center; justify-content: center;">
+                  <img src="${resolvedSrc}" alt="${p.name}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.onerror=null; this.src='${fallbackSrc}';" />
+                </div>
+                <div>
+                  <div style="font-weight: 800; color: var(--primary-pink);">${p.name}</div>
+                  <div style="font-size: 0.72rem; color: var(--text-muted);">ID: ${p.id.substring(0, 8)}...</div>
+                </div>
+              </div>
+            `;
+          }
         },
         {
           header: 'Dueño / Contacto',

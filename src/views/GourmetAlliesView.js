@@ -7,6 +7,7 @@ import { DataTable } from '../components/DataTable.js';
 import { modal } from '../components/Modal.js';
 import { toast } from '../components/Toast.js';
 import { icons } from '../icons.js';
+import { resolveImageUrl, getFallbackImageUrl } from '../utils/imageUtils.js';
 
 export class GourmetAlliesView {
   constructor() {
@@ -73,14 +74,18 @@ export class GourmetAlliesView {
       columns: [
         {
           header: 'Imagen',
-          render: (p) => `
-            <div style="width: 44px; height: 44px; border-radius: var(--radius-md); overflow: hidden; background: var(--bg-dark); border: 1px solid var(--border-color); display: flex; align-items: center; justify-content: center;">
-              ${p.imageUrl 
-                ? `<img src="${p.imageUrl}" alt="${p.name}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.onerror=null; this.src='https://placehold.co/100x100/151B28/FF4B8B?text=Corte';" />`
-                : `<span style="color: var(--primary-pink);">${icons.gourmet}</span>`
-              }
-            </div>
-          `
+          render: (p) => {
+            const resolved = resolveImageUrl(p.imageUrl);
+            const fallback = getFallbackImageUrl(p.imageUrl);
+            return `
+              <div style="width: 44px; height: 44px; border-radius: var(--radius-md); overflow: hidden; background: var(--bg-dark); border: 1px solid var(--border-color); display: flex; align-items: center; justify-content: center;">
+                ${p.imageUrl 
+                  ? `<img src="${resolved}" alt="${p.name}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.onerror=null; this.src='${fallback}';" />`
+                  : `<span style="color: var(--primary-pink);">${icons.gourmet}</span>`
+                }
+              </div>
+            `;
+          }
         },
         {
           header: 'Producto / Corte',

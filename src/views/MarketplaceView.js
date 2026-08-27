@@ -1,6 +1,6 @@
 /* ==========================================================================
    PIGGY MASTER ADMIN DASHBOARD - MARKETPLACE VIEW
-   CRUD for Piggy Marketplace & Accelerators (URL-based images)
+   CRUD for Piggy Marketplace, Accelerators & Fattening Stages (URL/Preset images)
    ========================================================================== */
 
 import { marketplaceService } from '../services/marketplaceService.js';
@@ -8,6 +8,19 @@ import { DataTable } from '../components/DataTable.js';
 import { modal } from '../components/Modal.js';
 import { toast } from '../components/Toast.js';
 import { icons } from '../icons.js';
+import { resolveImageUrl, getFallbackImageUrl, PIGGY_PRESET_IMAGES } from '../utils/imageUtils.js';
+
+const CATEGORY_DEFINITIONS = [
+  { value: 'estandar', label: 'Estándar (Base 8-10%)', defaultRoi: 0.00, defaultDays: 0, defaultWeight: 15.0 },
+  { value: 'plus', label: 'Plus (+1% ROI)', defaultRoi: 0.01, defaultDays: 0, defaultWeight: 15.0 },
+  { value: 'dorado', label: 'Dorado (+2% ROI)', defaultRoi: 0.02, defaultDays: 0, defaultWeight: 15.0 },
+  { value: 'premium', label: 'Premium (+3% ROI)', defaultRoi: 0.03, defaultDays: 0, defaultWeight: 15.0 },
+  { value: 'avanzado30', label: 'Avanzado 30 días (+30d)', defaultRoi: 0.00, defaultDays: 30, defaultWeight: 34.8 },
+  { value: 'avanzado45', label: 'Avanzado 45 días (+45d)', defaultRoi: 0.00, defaultDays: 45, defaultWeight: 45.0 },
+  { value: 'avanzado60', label: 'Avanzado 60 días (+60d)', defaultRoi: 0.00, defaultDays: 60, defaultWeight: 54.6 },
+  { value: 'avanzado75', label: 'Avanzado 75 días (+75d)', defaultRoi: 0.00, defaultDays: 75, defaultWeight: 64.5 },
+  { value: 'avanzado90', label: 'Avanzado 90 días (+90d)', defaultRoi: 0.00, defaultDays: 90, defaultWeight: 75.0 },
+];
 
 export class MarketplaceView {
   constructor() {
@@ -28,34 +41,44 @@ export class MarketplaceView {
       columns: [
         {
           header: 'Imagen',
-          render: (item) => `
-            <div style="width: 48px; height: 48px; border-radius: var(--radius-md); overflow: hidden; background: var(--bg-dark); border: 1px solid var(--border-color); display: flex; align-items: center; justify-content: center;">
-              ${item.imageUrl 
-                ? `<img src="${item.imageUrl}" alt="${item.itemName}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.onerror=null; this.src='https://placehold.co/100x100/151B28/FF4B8B?text=Piggy';" />`
-                : `<span style="color: var(--primary-pink);">${icons.pig}</span>`
-              }
-            </div>
-          `
+          render: (item) => {
+            const resolvedSrc = resolveImageUrl(item.imageUrl);
+            const fallbackSrc = getFallbackImageUrl(item.imageUrl);
+            return `
+              <div style="width: 48px; height: 48px; border-radius: var(--radius-md); overflow: hidden; background: var(--bg-dark); border: 1px solid var(--border-color); display: flex; align-items: center; justify-content: center;">
+                ${item.imageUrl 
+                  ? `<img src="${resolvedSrc}" alt="${item.itemName}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.onerror=null; this.src='${fallbackSrc}';" />`
+                  : `<span style="color: var(--primary-pink);">${icons.pig}</span>`
+                }
+              </div>
+            `;
+          }
         },
         {
           header: 'Producto / Acelerador',
           render: (item) => `
             <div>
               <div style="font-weight: 800; color: var(--text-primary);">${item.itemName}</div>
-              <div style="font-size: 0.75rem; color: var(--text-muted);">${item.description.substring(0, 60)}${item.description.length > 60 ? '...' : ''}</div>
+              <div style="font-size: 0.75rem; color: var(--text-muted);">${item.description ? item.description.substring(0, 60) + (item.description.length > 60 ? '...' : '') : 'Sin descripción'}</div>
             </div>
           `
         },
         {
-          header: 'Categoría & Bono',
-          render: (item) => `
-            <div>
-              <span class="badge ${item.extraRoi > 0 ? 'badge-warning' : 'badge-neutral'}">
-                ${item.badge}
-              </span>
-              <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 2px;">${item.category}</div>
-            </div>
-          `
+          header: 'Categoría & Ciclo',
+          render: (item) => {
+            const isBonus = item.extraRoi > 0;
+            const isAdvanced = item.daysAdvanced > 0;
+            const badgeClass = isBonus ? 'badge-warning' : (isAdvanced ? 'badge-info' : 'badge-neutral');
+            const cycleText = isAdvanced ? `${item.daysAdvanced}d avance · ${item.currentWeight || 15} kg` : `144 días ciclo · ${item.currentWeight || 15} kg`;
+            return `
+              <div>
+                <span class="badge ${badgeClass}">
+                  ${item.badge}
+                </span>
+                <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 2px;">${cycleText}</div>
+              </div>
+            `;
+          }
         },
         {
           header: 'Precio',
@@ -68,7 +91,7 @@ export class MarketplaceView {
         {
           header: 'Stock',
           render: (item) => `
-            <div style="font-weight: 700; color: ${item.stock <= 5 ? 'var(--accent-red)' : 'var(--text-primary)'};">
+            <div style="font-weight: 700; color: ${item.stock <= 3 ? 'var(--accent-red)' : 'var(--text-primary)'};">
               ${item.stock} unidades
             </div>
           `
@@ -99,7 +122,7 @@ export class MarketplaceView {
             <div>
               <h2 class="card-title">${icons.marketplace} Mercado de Piggys</h2>
               <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.2rem;">
-                Administración de ofertas, aceleradores (+1%, +2% ROI) e inventario disponible
+                Administración de ofertas activas, cerditos por etapa de engorde y aceleradores de ROI
               </div>
             </div>
             <div>
@@ -137,40 +160,48 @@ export class MarketplaceView {
       itemName: '',
       description: '',
       price: 1000000,
-      extraRoi: 0.01,
+      extraRoi: 0.00,
       stock: 10,
-      imageUrl: '',
-      category: 'Acelerador Gold'
+      imageUrl: 'assets/piggies/stage1/et1-1.jpg',
+      category: 'estandar',
+      daysAdvanced: 0,
+      currentWeight: 15.0
     };
+
+    const currentCat = (initial.category || 'estandar').toLowerCase();
+    const resolvedInitialImg = resolveImageUrl(initial.imageUrl);
+    const fallbackInitialImg = getFallbackImageUrl(initial.imageUrl);
 
     modal.open({
       title: isEdit ? `Editar Oferta: ${initial.itemName}` : 'Crear Nueva Oferta de Mercado',
       contentHtml: `
         <form id="marketplace-item-form">
           <div class="form-row">
-            <div class="form-group">
-              <label class="form-label" for="mk-name">Nombre del Producto</label>
-              <input type="text" id="mk-name" class="form-input" placeholder="Ej: Piggy Pietrain +2% ROI" value="${initial.itemName}" required />
+            <div class="form-group" style="flex: 2;">
+              <label class="form-label" for="mk-name">Nombre del Producto / Cerdito</label>
+              <input type="text" id="mk-name" class="form-input" placeholder="Ej: Piggy Lupe (Avanzado 30d)" value="${initial.itemName}" required />
             </div>
 
-            <div class="form-group">
-              <label class="form-label" for="mk-category">Categoría</label>
+            <div class="form-group" style="flex: 1.5;">
+              <label class="form-label" for="mk-category">Categoría del Ciclo</label>
               <select id="mk-category" class="form-select">
-                <option value="Acelerador Gold" ${initial.category === 'Acelerador Gold' ? 'selected' : ''}>Acelerador Gold (+2%)</option>
-                <option value="Acelerador Silver" ${initial.category === 'Acelerador Silver' ? 'selected' : ''}>Acelerador Silver (+1%)</option>
-                <option value="Estándar" ${initial.category === 'Estándar' ? 'selected' : ''}>Estándar (Base 8-10%)</option>
+                ${CATEGORY_DEFINITIONS.map(cat => `
+                  <option value="${cat.value}" ${currentCat === cat.value ? 'selected' : ''}>
+                    ${cat.label}
+                  </option>
+                `).join('')}
               </select>
             </div>
           </div>
 
           <div class="form-row">
             <div class="form-group">
-              <label class="form-label" for="mk-price">Precio</label>
+              <label class="form-label" for="mk-price">Precio de Compra</label>
               <input type="number" id="mk-price" class="form-input" value="${initial.price}" step="100000" required />
             </div>
 
             <div class="form-group">
-              <label class="form-label" for="mk-roi">Bono Extra ROI (ej: 0.02 = +2%)</label>
+              <label class="form-label" for="mk-roi">Bono Extra ROI (0.02 = +2%)</label>
               <input type="number" id="mk-roi" class="form-input" value="${initial.extraRoi}" step="0.005" min="0" max="0.1" required />
             </div>
 
@@ -180,28 +211,55 @@ export class MarketplaceView {
             </div>
           </div>
 
-          <div class="form-group">
-            <label class="form-label" for="mk-desc">Descripción del Cerdito</label>
-            <textarea id="mk-desc" class="form-textarea" placeholder="Detalles de genética, alimentación o características...">${initial.description}</textarea>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="mk-days-advanced">Días de Avance (Ahorro)</label>
+              <input type="number" id="mk-days-advanced" class="form-input" value="${initial.daysAdvanced || 0}" min="0" max="144" step="1" required />
+              <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 2px;">Días ahorrados del ciclo de 144 días</div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="mk-weight">Peso Inicial / Actual (kg)</label>
+              <input type="number" id="mk-weight" class="form-input" value="${initial.currentWeight || 15.0}" min="10" max="150" step="0.1" required />
+              <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 2px;">Peso real aproximado en granja</div>
+            </div>
           </div>
 
           <div class="form-group">
-            <label class="form-label" for="mk-image-url">URL Directa de la Imagen (GitHub / CDN)</label>
+            <label class="form-label" for="mk-desc">Descripción del Cerdito</label>
+            <textarea id="mk-desc" class="form-textarea" rows="2" placeholder="Detalles de genética, alimentación o características...">${initial.description}</textarea>
+          </div>
+
+          <!-- Selector de Imagen -->
+          <div class="form-group">
+            <label class="form-label">Seleccionar Cerdito Prediseñado (Etapas 1, 2 y 3)</label>
+            <div class="piggy-preset-gallery" id="mk-preset-gallery">
+              ${PIGGY_PRESET_IMAGES.map(p => `
+                <div class="piggy-preset-card ${initial.imageUrl === p.path ? 'active' : ''}" data-path="${p.path}" title="${p.label}">
+                  <img src="${resolveImageUrl(p.path)}" alt="${p.label}" onerror="this.onerror=null; this.src='${getFallbackImageUrl(p.path)}';" />
+                  <span class="piggy-preset-badge">${p.id}</span>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="mk-image-url">URL de la Imagen (Ruta Interna o Enlace Directo)</label>
             <input 
-              type="url" 
+              type="text" 
               id="mk-image-url" 
               class="form-input" 
-              placeholder="https://raw.githubusercontent.com/amsterdamlab/piggy-app-v2/main/img/..." 
+              placeholder="assets/piggies/stage2/et2-2.jpg o https://..." 
               value="${initial.imageUrl}" 
             />
             <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.25rem;">
-              Pega aquí el enlace directo de la imagen subida a GitHub.
+              Puedes seleccionar una miniatura arriba o pegar cualquier URL directa (GitHub, CDN, o Cloudinary).
             </div>
 
             <!-- Live Image Preview -->
             <div class="image-preview-container" id="mk-image-preview-box">
               ${initial.imageUrl 
-                ? `<img src="${initial.imageUrl}" class="image-preview-img" alt="Vista previa" onerror="this.parentElement.innerHTML='<span class=\\'image-preview-placeholder\\'>URL de imagen no válida</span>';" />` 
+                ? `<img src="${resolvedInitialImg}" class="image-preview-img" alt="Vista previa" onerror="this.onerror=null; this.src='${fallbackInitialImg}';" />` 
                 : `<span class="image-preview-placeholder">Vista previa de la imagen</span>`
               }
             </div>
@@ -211,16 +269,57 @@ export class MarketplaceView {
       onInit: (modalBody) => {
         const urlInput = modalBody.querySelector('#mk-image-url');
         const previewBox = modalBody.querySelector('#mk-image-preview-box');
+        const categorySelect = modalBody.querySelector('#mk-category');
+        const roiInput = modalBody.querySelector('#mk-roi');
+        const daysInput = modalBody.querySelector('#mk-days-advanced');
+        const weightInput = modalBody.querySelector('#mk-weight');
+        const gallery = modalBody.querySelector('#mk-preset-gallery');
 
-        if (urlInput && previewBox) {
-          urlInput.addEventListener('input', (e) => {
-            const url = e.target.value.trim();
-            if (url) {
-              previewBox.innerHTML = `
-                <img src="${url}" class="image-preview-img" alt="Vista previa" onerror="this.parentElement.innerHTML='<span class=\\'image-preview-placeholder\\'>Enlace inválido o imagen no encontrada</span>';" />
-              `;
-            } else {
-              previewBox.innerHTML = `<span class="image-preview-placeholder">Vista previa de la imagen</span>`;
+        const updatePreview = (val) => {
+          const clean = val.trim();
+          if (clean) {
+            const resolved = resolveImageUrl(clean);
+            const fallback = getFallbackImageUrl(clean);
+            previewBox.innerHTML = `
+              <img src="${resolved}" class="image-preview-img" alt="Vista previa" onerror="this.onerror=null; this.src='${fallback}'; this.onerror=function(){ this.parentElement.innerHTML='<span class=\\'image-preview-placeholder\\'>URL de imagen no válida</span>'; };" />
+            `;
+          } else {
+            previewBox.innerHTML = `<span class="image-preview-placeholder">Vista previa de la imagen</span>`;
+          }
+
+          // Actualizar estado activo en la galería
+          if (gallery) {
+            gallery.querySelectorAll('.piggy-preset-card').forEach(card => {
+              card.classList.toggle('active', card.getAttribute('data-path') === clean);
+            });
+          }
+        };
+
+        // Escuchar input manual de URL
+        if (urlInput) {
+          urlInput.addEventListener('input', (e) => updatePreview(e.target.value));
+        }
+
+        // Selección interactiva desde la galería
+        if (gallery && urlInput) {
+          gallery.querySelectorAll('.piggy-preset-card').forEach(card => {
+            card.addEventListener('click', () => {
+              const path = card.getAttribute('data-path');
+              urlInput.value = path;
+              updatePreview(path);
+            });
+          });
+        }
+
+        // Autocompletado inteligente según categoría elegida
+        if (categorySelect) {
+          categorySelect.addEventListener('change', (e) => {
+            const catKey = e.target.value;
+            const def = CATEGORY_DEFINITIONS.find(c => c.value === catKey);
+            if (def && !isEdit) {
+              if (roiInput) roiInput.value = def.defaultRoi;
+              if (daysInput) daysInput.value = def.defaultDays;
+              if (weightInput) weightInput.value = def.defaultWeight;
             }
           });
         }
@@ -236,6 +335,8 @@ export class MarketplaceView {
             const price = document.querySelector('#mk-price').value;
             const roi = document.querySelector('#mk-roi').value;
             const stock = document.querySelector('#mk-stock').value;
+            const daysAdvanced = document.querySelector('#mk-days-advanced').value;
+            const currentWeight = document.querySelector('#mk-weight').value;
             const desc = document.querySelector('#mk-desc').value.trim();
             const imageUrl = document.querySelector('#mk-image-url').value.trim();
 
@@ -250,6 +351,8 @@ export class MarketplaceView {
               price: Number(price),
               extraRoi: Number(roi),
               stock: Number(stock),
+              daysAdvanced: Number(daysAdvanced || 0),
+              currentWeight: Number(currentWeight || 15.0),
               description: desc,
               imageUrl
             };
