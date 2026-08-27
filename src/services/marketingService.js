@@ -389,11 +389,13 @@ export const marketingService = {
     try {
       const payload = {
         price: Number(item.price || 0),
+        piggy_type: item.piggy_type || 'plus',
         is_completed: item.is_completed !== undefined ? Boolean(item.is_completed) : false
       };
       if (item.user_id) payload.user_id = item.user_id;
       if (item.piggy_id) payload.piggy_id = item.piggy_id;
       if (item.expires_at) payload.expires_at = item.expires_at;
+      if (item.purchased_at) payload.purchased_at = item.purchased_at;
 
       const { data, error } = await client.from('cycle_completion_missions').insert([payload]).select().single();
       if (error) throw error;
@@ -413,7 +415,9 @@ export const marketingService = {
       };
       if (item.user_id !== undefined) payload.user_id = item.user_id;
       if (item.piggy_id !== undefined) payload.piggy_id = item.piggy_id;
+      if (item.piggy_type !== undefined) payload.piggy_type = item.piggy_type;
       if (item.expires_at !== undefined) payload.expires_at = item.expires_at;
+      if (item.purchased_at !== undefined) payload.purchased_at = item.purchased_at;
 
       const { data, error } = await client.from('cycle_completion_missions').update(payload).eq('id', id).select().single();
       if (error) throw error;
