@@ -1,6 +1,6 @@
 /* ==========================================================================
    MARKETING - MISIONES: SUB-TAB 2: MISIONES FLASH MANUALES (user_flash_missions)
-   Columnas: Nombre Usuario, Misión Flash, Tipo Piggy, Precio, Oferta, Caducidad, Estado, Creación, Acciones
+   Columnas: Nombre Usuario, Misión Flash, Tipo Piggy, Precio & Oferta, Estado & Caducidad, Creación, Acciones
    ========================================================================== */
 
 import { marketingService } from '../../services/marketingService.js';
@@ -76,42 +76,36 @@ export class FlashMissionsTab {
           `
         },
         {
-          header: 'Precio',
-          render: (row) => `
-            <div style="font-weight: 800; color: var(--accent-gold); font-size: 0.95rem;">
-              $${Number(row.price || 0).toLocaleString('es-CO')}
-            </div>
-          `
-        },
-        {
-          header: 'Oferta',
+          header: 'Precio & Oferta',
           render: (row) => {
-            if (row.is_purchased === true) {
-              const pDate = row.purchased_at ? new Date(row.purchased_at).toLocaleDateString('es-CO') : '';
-              return `
-                <div>
-                  <span class="badge badge-success">Aceptada</span>
-                  ${pDate ? `<div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 3px; font-family: monospace;">${pDate}</div>` : ''}
+            const offerBadge = row.is_purchased === true
+              ? `<div style="margin-top: 4px; display: flex; align-items: center; gap: 5px;">
+                   <span class="badge badge-success" style="padding: 1px 6px; font-size: 0.7rem;">Aceptada</span>
+                   ${row.purchased_at ? `<span style="font-size: 0.72rem; color: var(--text-muted); font-family: monospace;">${new Date(row.purchased_at).toLocaleDateString('es-CO')}</span>` : ''}
+                 </div>`
+              : '<div style="margin-top: 4px;"><span class="badge badge-danger" style="padding: 1px 6px; font-size: 0.7rem;">Cancelada</span></div>';
+
+            return `
+              <div>
+                <div style="font-weight: 800; color: var(--accent-gold); font-size: 0.95rem;">
+                  $${Number(row.price || 0).toLocaleString('es-CO')}
                 </div>
-              `;
-            }
-            return '<span class="badge badge-danger">Cancelada</span>';
+                ${offerBadge}
+              </div>
+            `;
           }
         },
         {
-          header: 'Caducidad',
-          render: (row) => row.scheduled_at ? `
-            <div style="font-size: 0.78rem; color: var(--text-primary); font-family: monospace;">
-              ${new Date(row.scheduled_at).toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' })}
-            </div>
-          ` : '<span style="font-size: 0.75rem; color: var(--text-muted);">Sin caducidad</span>'
-        },
-        {
-          header: 'Estado',
+          header: 'Estado & Caducidad',
           render: (row) => `
-            <span class="badge ${row.is_active ? 'badge-success' : 'badge-neutral'}">
-              ${row.is_active ? 'Activa' : 'Inactiva'}
-            </span>
+            <div>
+              <span class="badge ${row.is_active ? 'badge-success' : 'badge-neutral'}">
+                ${row.is_active ? 'Activa' : 'Inactiva'}
+              </span>
+              <div style="font-size: 0.73rem; color: var(--text-muted); margin-top: 4px; font-family: monospace;">
+                ${row.scheduled_at ? `Exp: ${new Date(row.scheduled_at).toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' })}` : 'Sin caducidad'}
+              </div>
+            </div>
           `
         },
         {
@@ -230,7 +224,7 @@ export class FlashMissionsTab {
               </div>
               <div>
                 <span style="color: var(--text-muted);">Llave Bre-B:</span>
-                <div style="font-weight: 700; color: var(--accent-gold); font-family: monospace;">${bankBreveKey}</div>
+                <div style="font-weight: 700; color: var(--accent-gold);">${bankBreveKey}</div>
               </div>
             </div>
           </div>
