@@ -36,6 +36,7 @@ export function resolveImageUrl(url) {
 
 /**
  * Gets a reliable remote CDN fallback for standard platform assets.
+ * Correctly swaps et1-2 and et1-4 if falling back to the remote server.
  */
 export function getFallbackImageUrl(url) {
   if (!url) return FALLBACK_PLACEHOLDER;
@@ -43,7 +44,15 @@ export function getFallbackImageUrl(url) {
   if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
     return trimmed;
   }
-  const cleanPath = trimmed.startsWith('/') ? trimmed.slice(1) : trimmed;
+  let cleanPath = trimmed.startsWith('/') ? trimmed.slice(1) : trimmed;
+
+  // Swap fallback mapping for et1-2 and et1-4 to match the correct piggy photos
+  if (cleanPath === 'assets/piggies/stage1/et1-2.jpg') {
+    cleanPath = 'assets/piggies/stage1/et1-4.jpg';
+  } else if (cleanPath === 'assets/piggies/stage1/et1-4.jpg') {
+    cleanPath = 'assets/piggies/stage1/et1-2.jpg';
+  }
+
   return `${CDN_BASE_URL}/${cleanPath}`;
 }
 
