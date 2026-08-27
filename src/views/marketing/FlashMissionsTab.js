@@ -185,7 +185,7 @@ export class FlashMissionsTab {
     return `
       <div class="flash-missions-tab-container">
         <!-- Bloques de Métricas e Inteligencia de Negocio para Ofertas Flash -->
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 1.25rem;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; margin-bottom: 1.25rem;">
           
           <!-- Bloque 1: Ofertas Aceptadas -->
           <div style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: var(--radius-md); padding: 0.85rem 1rem;">
@@ -200,20 +200,7 @@ export class FlashMissionsTab {
             </div>
           </div>
 
-          <!-- Bloque 2: Volumen Comprado -->
-          <div style="background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.25); border-radius: var(--radius-md); padding: 0.85rem 1rem;">
-            <div style="font-size: 0.72rem; text-transform: uppercase; color: var(--accent-gold); font-weight: 700; letter-spacing: 0.05em; margin-bottom: 0.25rem;">
-              💰 Volumen Comprado en Flash
-            </div>
-            <div style="font-size: 1.2rem; font-weight: 800; color: var(--accent-gold);">
-              $${totalAcceptedVolume.toLocaleString('es-CO')}
-            </div>
-            <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 2px;">
-              En ${acceptedCount} compras efectivas
-            </div>
-          </div>
-
-          <!-- Bloque 3: Top Comprador -->
+          <!-- Bloque 2: Top Comprador -->
           <div style="background: rgba(255, 75, 139, 0.08); border: 1px solid rgba(255, 75, 139, 0.25); border-radius: var(--radius-md); padding: 0.85rem 1rem;">
             <div style="font-size: 0.72rem; text-transform: uppercase; color: var(--primary-pink); font-weight: 700; letter-spacing: 0.05em; margin-bottom: 0.25rem;">
               🔥 Top Comprador de Ofertas
@@ -226,18 +213,26 @@ export class FlashMissionsTab {
             </div>
           </div>
 
-          <!-- Bloque 4: Capital Disponible en Billeteras -->
+          <!-- Bloque 3: Capital Disponible en Billeteras (Con Botón Popup) -->
           <div style="background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.25); border-radius: var(--radius-md); padding: 0.85rem 1rem;">
-            <div style="font-size: 0.72rem; text-transform: uppercase; color: var(--accent-blue); font-weight: 700; letter-spacing: 0.05em; margin-bottom: 0.25rem;">
-              ⚡ Saldo en Billeteras (Oportunidad)
-            </div>
-            <div style="font-size: 1.2rem; font-weight: 800; color: var(--accent-blue);">
-              $${totalAvailableWallet.toLocaleString('es-CO')}
-            </div>
-            <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 2px;">
-              ${usersWithBalanceCount} usuarios con saldo listo
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem;">
+              <div>
+                <div style="font-size: 0.72rem; text-transform: uppercase; color: var(--accent-blue); font-weight: 700; letter-spacing: 0.05em; margin-bottom: 0.25rem;">
+                  ⚡ Saldo en Billeteras (Oportunidad)
+                </div>
+                <div style="font-size: 1.2rem; font-weight: 800; color: var(--accent-blue);">
+                  $${totalAvailableWallet.toLocaleString('es-CO')}
+                </div>
+                <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 2px;">
+                  ${usersWithBalanceCount} usuarios con saldo listo
+                </div>
+              </div>
+              <button class="btn btn-secondary btn-sm" id="btn-view-wallet-users" style="padding: 4px 10px; font-size: 0.75rem; display: inline-flex; align-items: center; gap: 5px; margin-top: 2px; border-color: rgba(59, 130, 246, 0.4); color: var(--accent-blue);" title="Ver listado de usuarios con saldo disponible">
+                ${icons.eye || icons.wallet} <span>Ver Usuarios</span>
+              </button>
             </div>
           </div>
+
         </div>
 
         ${this.dataTable.render()}
@@ -249,6 +244,114 @@ export class FlashMissionsTab {
     if (this.dataTable) {
       this.dataTable.attachEvents(container);
     }
+
+    const btnWalletUsers = container.querySelector('#btn-view-wallet-users');
+    if (btnWalletUsers) {
+      btnWalletUsers.addEventListener('click', () => {
+        this.openWalletUsersModal();
+      });
+    }
+  }
+
+  openWalletUsersModal() {
+    const profiles = this.parentView.profilesList || [];
+    
+    // Filtrar y ordenar usuarios con saldo disponible de mayor a menor
+    const usersWithBalance = profiles
+      .filter(p => Number(p.walletBalance || p.wallet_balance || 0) > 0)
+      .sort((a, b) => Number(b.walletBalance || b.wallet_balance || 0) - Number(a.walletBalance || a.wallet_balance || 0));
+
+    const totalBalance = usersWithBalance.reduce((sum, p) => sum + Number(p.walletBalance || p.wallet_balance || 0), 0);
+
+    const listHtml = usersWithBalance.length > 0 ? usersWithBalance.map((user, idx) => {
+      const name = user.fullName || user.full_name || 'Inversionista';
+      const email = user.email || '';
+      const phone = user.whatsapp || user.phone || '';
+      const balance = Number(user.walletBalance || user.wallet_balance || 0);
+      const totalCompra = Number(user.totalCompraPiggies || user.total_compra_piggies || 0);
+
+      return `
+        <div style="display: flex; align-items: center; justify-content: space-between; padding: 0.85rem 1rem; margin-bottom: 0.6rem; background: var(--bg-sidebar); border: 1px solid var(--border-color); border-radius: var(--radius-md);">
+          <div style="display: flex; align-items: center; gap: 0.75rem; min-width: 0; flex: 1;">
+            <div style="width: 28px; height: 28px; border-radius: 50%; background: rgba(59, 130, 246, 0.15); color: var(--accent-blue); font-weight: 800; font-size: 0.8rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+              ${idx + 1}
+            </div>
+            <div style="min-width: 0;">
+              <div style="font-weight: 800; color: var(--text-primary); font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                ${name}
+              </div>
+              <div style="font-size: 0.75rem; color: var(--text-muted); font-family: monospace;">
+                ${email} ${phone ? `• ${phone}` : ''}
+              </div>
+            </div>
+          </div>
+
+          <div style="display: flex; align-items: center; gap: 1.25rem; margin-left: 1rem;">
+            <div style="text-align: right;">
+              <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Saldo Billetera</div>
+              <div style="font-weight: 800; color: var(--accent-green); font-size: 1.05rem;">
+                $${balance.toLocaleString('es-CO')}
+              </div>
+            </div>
+
+            <div style="text-align: right; display: none; @media(min-width: 600px){display: block;}">
+              <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Piggys Comprados</div>
+              <div style="font-weight: 700; color: var(--primary-pink); font-size: 0.85rem;">
+                $${totalCompra.toLocaleString('es-CO')}
+              </div>
+            </div>
+
+            <button class="btn btn-secondary btn-sm launch-flash-user-btn" data-user-id="${user.id}" style="padding: 4px 8px; font-size: 0.72rem; display: inline-flex; align-items: center; gap: 4px;" title="Lanzar Misión Flash a este usuario">
+              ${icons.zap} <span>Lanzar Misión</span>
+            </button>
+          </div>
+        </div>
+      `;
+    }).join('') : '<div class="p-4 text-center text-muted">No hay usuarios con saldo disponible actualmente.</div>';
+
+    modal.open({
+      title: 'Usuarios con Saldo Disponible en Billetera',
+      contentHtml: `
+        <div>
+          <!-- Resumen de Capital -->
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; padding: 0.85rem 1.1rem; background: var(--bg-card); border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+            <div>
+              <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Capital Total Disponible</div>
+              <div style="font-weight: 800; font-size: 1.3rem; color: var(--accent-blue);">
+                $${totalBalance.toLocaleString('es-CO')}
+              </div>
+            </div>
+            <div style="text-align: right;">
+              <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Usuarios Listos</div>
+              <div style="font-weight: 800; font-size: 1.1rem; color: var(--text-primary);">
+                ${usersWithBalance.length} inversionistas
+              </div>
+            </div>
+          </div>
+
+          <div style="max-height: 55vh; overflow-y: auto; padding-right: 0.25rem;">
+            ${listHtml}
+          </div>
+        </div>
+      `,
+      footerButtons: [
+        { text: 'Cerrar', class: 'btn-secondary', onClick: (e, m) => m.close() }
+      ]
+    });
+
+    // Conectar botón para lanzar misión directa desde el modal
+    setTimeout(() => {
+      const modalEl = document.querySelector('.modal-container');
+      if (modalEl) {
+        modalEl.querySelectorAll('.launch-flash-user-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const uid = btn.getAttribute('data-user-id');
+            modal.close();
+            this.openModal({ user_id: uid });
+          });
+        });
+      }
+    }, 100);
   }
 
   handleAction(action, row) {
@@ -373,7 +476,7 @@ export class FlashMissionsTab {
   }
 
   openModal(item = null) {
-    const isEdit = Boolean(item);
+    const isEdit = Boolean(item && item.id);
     const profiles = this.parentView.profilesList || [];
 
     const userOptions = profiles.map(p => {
