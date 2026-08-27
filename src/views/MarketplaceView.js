@@ -101,10 +101,10 @@ export class MarketplaceView {
           style: 'text-align: right;',
           render: (item) => `
             <div style="display: flex; gap: 0.4rem; justify-content: flex-end;">
-              <button class="btn btn-secondary btn-sm" data-action="edit-item" title="Editar Producto">
+              <button type="button" class="btn btn-secondary btn-sm" data-action="edit-item" title="Editar Producto">
                 ${icons.edit}
               </button>
-              <button class="btn btn-secondary btn-sm" data-action="delete-item" style="color: var(--accent-red);" title="Eliminar">
+              <button type="button" class="btn btn-secondary btn-sm" data-action="delete-item" style="color: var(--accent-red);" title="Eliminar">
                 ${icons.trash}
               </button>
             </div>
@@ -276,7 +276,7 @@ export class MarketplaceView {
         const gallery = modalBody.querySelector('#mk-preset-gallery');
 
         const updatePreview = (val) => {
-          const clean = val.trim();
+          const clean = (val || '').trim();
           if (clean) {
             const resolved = resolveImageUrl(clean);
             const fallback = getFallbackImageUrl(clean);
@@ -330,15 +330,16 @@ export class MarketplaceView {
           text: isEdit ? 'Actualizar Oferta' : 'Crear Oferta',
           class: 'btn-primary',
           onClick: async (e, m) => {
-            const name = document.querySelector('#mk-name').value.trim();
-            const category = document.querySelector('#mk-category').value;
-            const price = document.querySelector('#mk-price').value;
-            const roi = document.querySelector('#mk-roi').value;
-            const stock = document.querySelector('#mk-stock').value;
-            const daysAdvanced = document.querySelector('#mk-days-advanced').value;
-            const currentWeight = document.querySelector('#mk-weight').value;
-            const desc = document.querySelector('#mk-desc').value.trim();
-            const imageUrl = document.querySelector('#mk-image-url').value.trim();
+            const root = m?.overlay || document;
+            const name = root.querySelector('#mk-name')?.value?.trim();
+            const category = root.querySelector('#mk-category')?.value;
+            const price = root.querySelector('#mk-price')?.value;
+            const roi = root.querySelector('#mk-roi')?.value;
+            const stock = root.querySelector('#mk-stock')?.value;
+            const daysAdvanced = root.querySelector('#mk-days-advanced')?.value;
+            const currentWeight = root.querySelector('#mk-weight')?.value;
+            const desc = root.querySelector('#mk-desc')?.value?.trim();
+            const imageUrl = root.querySelector('#mk-image-url')?.value?.trim();
 
             if (!name) {
               toast.error('El nombre del producto es obligatorio');
@@ -382,7 +383,7 @@ export class MarketplaceView {
     const res = await marketplaceService.deleteItem(id);
     if (res.success) {
       toast.success('Oferta eliminada del Mercado');
-      this.items = this.items.filter(i => i.id !== id);
+      this.items = await marketplaceService.getItems();
       this.dataTable.setData(this.items);
     } else {
       toast.error(res.error || 'Error al eliminar');
