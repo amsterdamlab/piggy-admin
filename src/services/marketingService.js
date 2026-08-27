@@ -331,7 +331,12 @@ export const marketingService = {
     if (!client) return { success: false, error: 'Sin conexión a base de datos' };
     try {
       const payload = {
+        piggy_label: item.piggy_label || '',
+        piggy_type: item.piggy_type || '',
+        extra_roi_bonus: Number(item.extra_roi_bonus || 0),
         price: Number(item.price || 0),
+        duration_hours: Number(item.duration_hours || 48),
+        min_piggies: Number(item.min_piggies || 1),
         is_enabled: item.is_enabled !== undefined ? Boolean(item.is_enabled) : true
       };
       const { data, error } = await client.from('exclusive_piggy_config').insert([payload]).select().single();
@@ -347,10 +352,16 @@ export const marketingService = {
     if (!client) return { success: false, error: 'Sin conexión a base de datos' };
     try {
       const payload = {
-        price: Number(item.price || 0),
-        is_enabled: Boolean(item.is_enabled),
         updated_at: new Date().toISOString()
       };
+      if (item.piggy_label !== undefined) payload.piggy_label = item.piggy_label;
+      if (item.piggy_type !== undefined) payload.piggy_type = item.piggy_type;
+      if (item.extra_roi_bonus !== undefined) payload.extra_roi_bonus = Number(item.extra_roi_bonus);
+      if (item.price !== undefined) payload.price = Number(item.price);
+      if (item.duration_hours !== undefined) payload.duration_hours = Number(item.duration_hours);
+      if (item.min_piggies !== undefined) payload.min_piggies = Number(item.min_piggies);
+      if (item.is_enabled !== undefined) payload.is_enabled = Boolean(item.is_enabled);
+
       const { data, error } = await client.from('exclusive_piggy_config').update(payload).eq('id', id).select().single();
       if (error) throw error;
       return { success: true, data };
