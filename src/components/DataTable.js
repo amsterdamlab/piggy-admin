@@ -47,7 +47,7 @@ export class DataTable {
 
     const actionBtnHtml = this.actionButton
       ? `
-        <button class="btn btn-primary dt-action-btn">
+        <button type="button" class="btn btn-primary dt-action-btn">
           ${this.actionButton.icon || icons.plus}
           <span>${this.actionButton.text}</span>
         </button>
@@ -218,7 +218,6 @@ export class DataTable {
       this.filteredData = filtered;
       if (tbody) {
         tbody.innerHTML = this.renderRows();
-        this.attachRowEvents(tbody);
       }
       if (counter) {
         counter.textContent = `Mostrando ${this.filteredData.length} registros`;
@@ -240,9 +239,11 @@ export class DataTable {
     }
 
     if (actionBtn && this.actionButton?.onClick) {
-      actionBtn.addEventListener('click', (e) => {
+      actionBtn.onclick = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
         this.actionButton.onClick(e);
-      });
+      };
     }
 
     // Sort header clicks
@@ -291,18 +292,21 @@ export class DataTable {
   attachRowEvents(tbody) {
     if (!tbody) return;
 
-    tbody.querySelectorAll('[data-action]').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const action = btn.getAttribute('data-action');
-        const tr = btn.closest('tr');
-        const index = parseInt(tr.getAttribute('data-index'), 10);
-        const rowData = this.filteredData[index];
-        if (this.onRowAction && rowData) {
-          this.onRowAction(action, rowData, index);
-        }
-      });
-    });
+    // Delegated click handler on tbody so it never drops clicks on inner SVG/path
+    tbody.onclick = (e) => {
+      const btn = e.target.closest('[data-action]');
+      if (!btn) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const action = btn.getAttribute('data-action');
+      const tr = btn.closest('tr');
+      if (!tr) return;
+      const index = parseInt(tr.getAttribute('data-index'), 10);
+      const rowData = this.filteredData[index];
+      if (this.onRowAction && rowData) {
+        this.onRowAction(action, rowData, index);
+      }
+    };
   }
 
   setData(newData) {
@@ -313,7 +317,6 @@ export class DataTable {
       const counter = this.container.querySelector('.dt-counter');
       if (tbody) {
         tbody.innerHTML = this.renderRows();
-        this.attachRowEvents(tbody);
       }
       if (counter) {
         counter.textContent = `Mostrando ${this.filteredData.length} registros`;

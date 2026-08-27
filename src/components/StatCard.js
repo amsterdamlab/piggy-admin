@@ -13,12 +13,11 @@ export function renderStatCard({ title, value, subtitle = '', iconSvg = '', colo
         <div class="stat-value">${value}</div>
         ${subtitle ? `<div class="stat-subtitle">${subtitle}</div>` : ''}
       </div>
-      ${href ? `<div class="stat-card-arrow">${iconSvg ? '' : ''}</div>` : ''}
     </div>
   `;
 
   if (href) {
-    return `<a href="${href}" style="text-decoration: none; color: inherit; display: block;">${content}</a>`;
+    return `<a href="${href}" style="text-decoration: none; color: inherit; display: block; height: 100%;">${content}</a>`;
   }
   return content;
 }
