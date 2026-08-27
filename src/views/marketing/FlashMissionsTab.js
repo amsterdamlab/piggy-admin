@@ -1,6 +1,6 @@
 /* ==========================================================================
    MARKETING - MISIONES: SUB-TAB 2: MISIONES FLASH MANUALES (user_flash_missions)
-   Columnas: Nombre Usuario, Misión Flash, Tipo Piggy, Precio & Oferta, Estado & Caducidad, Creación, Acciones
+   Columnas: Nombre Usuario, Misión Flash, Oferta (Tipo + Precio + Estado Compra), Estado (Activa + Caducidad + Creación), Acciones
    ========================================================================== */
 
 import { marketingService } from '../../services/marketingService.js';
@@ -24,6 +24,39 @@ export class FlashMissionsTab {
       profileMap[p.id] = p;
     });
 
+    // 1. Cálculos de Inteligencia de Negocio para las tarjetas de métricas
+    const totalFlash = rawData.length;
+    const acceptedMissions = rawData.filter(f => f.is_purchased === true);
+    const acceptedCount = acceptedMissions.length;
+    const conversionRate = totalFlash > 0 ? Math.round((acceptedCount / totalFlash) * 100) : 0;
+    const totalAcceptedVolume = acceptedMissions.reduce((sum, f) => sum + Number(f.price || 0), 0);
+
+    // Identificar top comprador de ofertas flash
+    const buyerMap = {};
+    const buyerVolumeMap = {};
+    acceptedMissions.forEach(f => {
+      if (f.user_id) {
+        buyerMap[f.user_id] = (buyerMap[f.user_id] || 0) + 1;
+        buyerVolumeMap[f.user_id] = (buyerVolumeMap[f.user_id] || 0) + Number(f.price || 0);
+      }
+    });
+
+    let topBuyerName = 'Ninguno';
+    let topBuyerCount = 0;
+    let topBuyerVolume = 0;
+    Object.entries(buyerMap).forEach(([uid, count]) => {
+      if (count > topBuyerCount) {
+        topBuyerCount = count;
+        topBuyerVolume = buyerVolumeMap[uid] || 0;
+        const p = profileMap[uid] || {};
+        topBuyerName = p.fullName || p.full_name || p.name || `Usuario ${uid.slice(0, 8)}`;
+      }
+    });
+
+    // Total de saldo disponible en billeteras de usuarios listos para comprar
+    const totalAvailableWallet = profiles.reduce((sum, p) => sum + Number(p.walletBalance || p.wallet_balance || 0), 0);
+    const usersWithBalanceCount = profiles.filter(p => Number(p.walletBalance || p.wallet_balance || 0) > 0).length;
+
     this.dataTable = new DataTable({
       searchPlaceholder: 'Buscar misiones flash, usuario o tipo de piggy...',
       actionButton: {
@@ -39,7 +72,7 @@ export class FlashMissionsTab {
               return '<span class="badge badge-neutral" style="font-weight: 700;">Global (Todos)</span>';
             }
             const p = profileMap[row.user_id] || {};
-            const name = p.full_name || p.fullName || p.name || 'Inversionista';
+            const name = p.fullName || p.full_name || p.name || 'Inversionista';
             const email = p.email || row.user_id;
             return `
               <div>
@@ -49,7 +82,7 @@ export class FlashMissionsTab {
                 <div style="font-size: 0.75rem; color: var(--text-muted); font-family: monospace; margin-top: 1px;">
                   ${email}
                 </div>
-                <div style="margin-top: 4px;">
+                <div style="margin-top: 5px;">
                   <button class="btn btn-secondary btn-sm" data-action="view-user-detail" data-uid="${row.user_id}" style="padding: 2px 8px; font-size: 0.72rem; display: inline-flex; align-items: center; gap: 4px; border-radius: var(--radius-sm);" title="Ver Detalle del Usuario">
                     ${icons.eye || icons.user} <span>Ver Detalle</span>
                   </button>
@@ -63,71 +96,82 @@ export class FlashMissionsTab {
           render: (row) => `
             <div>
               <div style="font-weight: 800; color: var(--text-primary); font-size: 0.9rem;">${row.title || row.mission_title || 'Misión Flash'}</div>
-              <div style="font-size: 0.75rem; color: var(--text-muted); max-width: 220px; margin-top: 2px;">${row.description || 'Sin descripción'}</div>
+              <div style="font-size: 0.75rem; color: var(--text-muted); max-width: 240px; margin-top: 2px;">${row.description || 'Sin descripción'}</div>
             </div>
           `
         },
         {
-          header: 'Tipo Piggy',
-          render: (row) => `
-            <span class="badge badge-info" style="font-weight: 800; text-transform: uppercase; font-size: 0.75rem;">
-              ${row.piggy_type || 'General'}
-            </span>
-          `
-        },
-        {
-          header: 'Precio & Oferta',
+          header: 'Oferta',
           render: (row) => {
+            const piggyBadge = `
+              <span class="badge badge-info" style="font-weight: 800; text-transform: uppercase; font-size: 0.72rem; padding: 1px 7px; margin-bottom: 3px; display: inline-block;">
+                ${row.piggy_type || 'General'}
+              </span>
+            `;
+
+            const priceHtml = `
+              <div style="font-weight: 800; color: var(--accent-gold); font-size: 0.95rem; margin-top: 1px;">
+                $${Number(row.price || 0).toLocaleString('es-CO')}
+              </div>
+            `;
+
             const offerBadge = row.is_purchased === true
-              ? `<div style="margin-top: 4px; display: flex; align-items: center; gap: 5px;">
+              ? `<div style="margin-top: 3px; display: flex; align-items: center; gap: 5px;">
                    <span class="badge badge-success" style="padding: 1px 6px; font-size: 0.7rem;">Aceptada</span>
                    ${row.purchased_at ? `<span style="font-size: 0.72rem; color: var(--text-muted); font-family: monospace;">${new Date(row.purchased_at).toLocaleDateString('es-CO')}</span>` : ''}
                  </div>`
-              : '<div style="margin-top: 4px;"><span class="badge badge-danger" style="padding: 1px 6px; font-size: 0.7rem;">Cancelada</span></div>';
+              : '<div style="margin-top: 3px;"><span class="badge badge-danger" style="padding: 1px 6px; font-size: 0.7rem;">Cancelada</span></div>';
 
             return `
               <div>
-                <div style="font-weight: 800; color: var(--accent-gold); font-size: 0.95rem;">
-                  $${Number(row.price || 0).toLocaleString('es-CO')}
-                </div>
+                ${piggyBadge}
+                ${priceHtml}
                 ${offerBadge}
               </div>
             `;
           }
         },
         {
-          header: 'Estado & Caducidad',
-          render: (row) => `
-            <div>
+          header: 'Estado',
+          render: (row) => {
+            const activeBadge = `
               <span class="badge ${row.is_active ? 'badge-success' : 'badge-neutral'}">
                 ${row.is_active ? 'Activa' : 'Inactiva'}
               </span>
-              <div style="font-size: 0.73rem; color: var(--text-muted); margin-top: 4px; font-family: monospace;">
-                ${row.scheduled_at ? `Exp: ${new Date(row.scheduled_at).toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' })}` : 'Sin caducidad'}
+            `;
+
+            const expHtml = row.scheduled_at ? `
+              <div style="margin-top: 4px;">
+                <span class="badge badge-info" style="font-size: 0.72rem; padding: 2px 7px; background: rgba(59, 130, 246, 0.15); border: 1px solid rgba(59, 130, 246, 0.3); color: var(--accent-blue); display: inline-flex; align-items: center; gap: 4px;">
+                  <span>⏳ Exp: ${new Date(row.scheduled_at).toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' })}</span>
+                </span>
               </div>
-            </div>
-          `
-        },
-        {
-          header: 'Creación',
-          render: (row) => `
-            <span style="font-size: 0.78rem; color: var(--text-muted); font-family: monospace;">
-              ${row.created_at ? new Date(row.created_at).toLocaleDateString('es-CO') : '-'}
-            </span>
-          `
+            ` : '<div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 4px;">Sin caducidad</div>';
+
+            const createdHtml = `
+              <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 3px; font-family: monospace;">
+                Creado: ${row.created_at ? new Date(row.created_at).toLocaleDateString('es-CO') : '-'}
+              </div>
+            `;
+
+            return `
+              <div>
+                ${activeBadge}
+                ${expHtml}
+                ${createdHtml}
+              </div>
+            `;
+          }
         },
         {
           header: 'Acciones',
           style: 'text-align: right;',
           render: (row) => `
             <div style="display: flex; gap: 0.4rem; justify-content: flex-end;">
-              <button class="btn btn-secondary btn-sm" data-action="toggle" title="${row.is_active ? 'Pausar Misión' : 'Activar Misión'}">
-                ${row.is_active ? 'Pausar' : 'Activar'}
-              </button>
-              <button class="btn btn-secondary btn-sm" data-action="edit" title="Editar">
+              <button class="btn btn-secondary btn-sm" data-action="edit" title="Editar Misión Flash">
                 ${icons.edit}
               </button>
-              <button class="btn btn-secondary btn-sm" data-action="delete" style="color: var(--accent-red);" title="Eliminar">
+              <button class="btn btn-secondary btn-sm" data-action="delete" style="color: var(--accent-red);" title="Eliminar Misión Flash">
                 ${icons.trash}
               </button>
             </div>
@@ -138,7 +182,67 @@ export class FlashMissionsTab {
       onRowAction: (action, row) => this.handleAction(action, row)
     });
 
-    return this.dataTable.render();
+    return `
+      <div class="flash-missions-tab-container">
+        <!-- Bloques de Métricas e Inteligencia de Negocio para Ofertas Flash -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 1.25rem;">
+          
+          <!-- Bloque 1: Ofertas Aceptadas -->
+          <div style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: var(--radius-md); padding: 0.85rem 1rem;">
+            <div style="font-size: 0.72rem; text-transform: uppercase; color: var(--accent-green); font-weight: 700; letter-spacing: 0.05em; margin-bottom: 0.25rem;">
+              🏆 Ofertas Aceptadas (Conversión)
+            </div>
+            <div style="font-size: 1.2rem; font-weight: 800; color: var(--text-primary);">
+              ${acceptedCount} <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 500;">/ ${totalFlash} (${conversionRate}%)</span>
+            </div>
+            <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 2px;">
+              $${totalAcceptedVolume.toLocaleString('es-CO')} vendidos
+            </div>
+          </div>
+
+          <!-- Bloque 2: Volumen Comprado -->
+          <div style="background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.25); border-radius: var(--radius-md); padding: 0.85rem 1rem;">
+            <div style="font-size: 0.72rem; text-transform: uppercase; color: var(--accent-gold); font-weight: 700; letter-spacing: 0.05em; margin-bottom: 0.25rem;">
+              💰 Volumen Comprado en Flash
+            </div>
+            <div style="font-size: 1.2rem; font-weight: 800; color: var(--accent-gold);">
+              $${totalAcceptedVolume.toLocaleString('es-CO')}
+            </div>
+            <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 2px;">
+              En ${acceptedCount} compras efectivas
+            </div>
+          </div>
+
+          <!-- Bloque 3: Top Comprador -->
+          <div style="background: rgba(255, 75, 139, 0.08); border: 1px solid rgba(255, 75, 139, 0.25); border-radius: var(--radius-md); padding: 0.85rem 1rem;">
+            <div style="font-size: 0.72rem; text-transform: uppercase; color: var(--primary-pink); font-weight: 700; letter-spacing: 0.05em; margin-bottom: 0.25rem;">
+              🔥 Top Comprador de Ofertas
+            </div>
+            <div style="font-size: 0.95rem; font-weight: 800; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${topBuyerName}">
+              ${topBuyerName}
+            </div>
+            <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 2px;">
+              ${topBuyerCount > 0 ? `${topBuyerCount} ofertas ($${topBuyerVolume.toLocaleString('es-CO')})` : 'Sin compras registradas'}
+            </div>
+          </div>
+
+          <!-- Bloque 4: Capital Disponible en Billeteras -->
+          <div style="background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.25); border-radius: var(--radius-md); padding: 0.85rem 1rem;">
+            <div style="font-size: 0.72rem; text-transform: uppercase; color: var(--accent-blue); font-weight: 700; letter-spacing: 0.05em; margin-bottom: 0.25rem;">
+              ⚡ Saldo en Billeteras (Oportunidad)
+            </div>
+            <div style="font-size: 1.2rem; font-weight: 800; color: var(--accent-blue);">
+              $${totalAvailableWallet.toLocaleString('es-CO')}
+            </div>
+            <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 2px;">
+              ${usersWithBalanceCount} usuarios con saldo listo
+            </div>
+          </div>
+        </div>
+
+        ${this.dataTable.render()}
+      </div>
+    `;
   }
 
   attachEvents(container) {
@@ -148,18 +252,7 @@ export class FlashMissionsTab {
   }
 
   handleAction(action, row) {
-    if (action === 'toggle') {
-      const newStatus = !row.is_active;
-      marketingService.toggleUserFlashMissionStatus(row.id, newStatus).then(res => {
-        if (res.success) {
-          row.is_active = newStatus;
-          toast.success(newStatus ? 'Misión flash activada' : 'Misión flash pausada');
-          this.dataTable.setData(this.parentView.dataStore.user_flash_missions);
-        } else {
-          toast.error(res.error || 'Error al cambiar estado');
-        }
-      });
-    } else if (action === 'edit') {
+    if (action === 'edit') {
       this.openModal(row);
     } else if (action === 'delete') {
       if (confirm(`¿Eliminar la misión flash "${row.title}"?`)) {
@@ -188,11 +281,17 @@ export class FlashMissionsTab {
     const refCode = user.referralCode || user.referral_code || 'Sin código';
     const bankName = user.bankName || user.bank_name || 'No registrado';
     const bankBreveKey = user.bankBreveKey || user.bank_breve_key || 'No registrada';
+    const walletBalance = Number(user.walletBalance || user.wallet_balance || 0);
+    const totalCompraPiggies = Number(user.totalCompraPiggies || user.total_compra_piggies || 0);
+    const activePiggiesCount = user.activePiggiesCount !== undefined ? user.activePiggiesCount : 0;
+    const totalPiggiesCount = user.totalPiggiesCount !== undefined ? user.totalPiggiesCount : 0;
 
     modal.open({
       title: `Detalle del Usuario: ${fullName}`,
       contentHtml: `
         <div style="display: flex; flex-direction: column; gap: 1.25rem;">
+          
+          <!-- 1. Información de Identificación & Contacto -->
           <div style="background: var(--bg-dark); padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
             <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em; margin-bottom: 0.4rem;">
               Información de Identificación & Contacto
@@ -224,9 +323,38 @@ export class FlashMissionsTab {
               </div>
               <div>
                 <span style="color: var(--text-muted);">Llave Bre-B:</span>
-                <div style="font-weight: 700; color: var(--accent-gold);">${bankBreveKey}</div>
+                <div style="font-weight: 700; color: var(--accent-gold); font-family: monospace;">${bankBreveKey}</div>
               </div>
             </div>
+          </div>
+
+          <!-- 2. Recuadros de Métricas Financieras (Igual que en Módulo Usuarios) -->
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+            
+            <div style="background: var(--bg-dark); padding: 1.1rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+              <div style="font-size: 0.72rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; display: flex; align-items: center; gap: 4px;">
+                <span style="color: var(--accent-green);">${icons.wallet || '💳'}</span> Saldo Disponible en Billetera
+              </div>
+              <div style="font-size: 1.35rem; font-weight: 800; color: var(--accent-green); margin-top: 0.3rem;">
+                $${walletBalance.toLocaleString('es-CO')}
+              </div>
+              <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.2rem;">
+                Listo para compra inmediata de ofertas
+              </div>
+            </div>
+
+            <div style="background: var(--bg-dark); padding: 1.1rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+              <div style="font-size: 0.72rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; display: flex; align-items: center; gap: 4px;">
+                <span style="color: var(--primary-pink);">${icons.pig || '🐷'}</span> Valor de Compra Piggys
+              </div>
+              <div style="font-size: 1.35rem; font-weight: 800; color: var(--primary-pink); margin-top: 0.3rem;">
+                $${totalCompraPiggies.toLocaleString('es-CO')}
+              </div>
+              <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.2rem;">
+                ${activePiggiesCount} en engorde (${totalPiggiesCount} total)
+              </div>
+            </div>
+
           </div>
         </div>
       `,
