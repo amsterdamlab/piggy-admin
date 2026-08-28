@@ -1,14 +1,16 @@
 /* ==========================================================================
    MARKETING - BONOS CONSUMO (user_marketing_bonuses)
    Vista unificada para asignación, seguimiento en tiempo real, caducidad y canjes
+   Sincronizado 100% con balances de usuarios y movimientos contables
    ========================================================================== */
 
 import { marketingService } from '../../services/marketingService.js';
+import { usersService } from '../../services/usersService.js';
 import { DataTable } from '../../components/DataTable.js';
 import { modal } from '../../components/Modal.js';
 import { toast } from '../../components/Toast.js';
 import { icons } from '../../icons.js';
-import { formatCurrency, parseCurrency, setupCurrencyInput } from '../../utils/formUtils.js';
+import { formatCurrency, parseCurrency, setupCurrencyInput, setupDateTimePicker } from '../../utils/formUtils.js';
 
 export class BonosConsumoTab {
   constructor(parentView) {
@@ -329,12 +331,12 @@ export class BonosConsumoTab {
     if (!item) return;
 
     if (action === 'mark-redeemed') {
-      if (confirm(`¿Marcar este bono de $${Number(item.amount || 0).toLocaleString('es-CO')} como Redimido / Canjeado por el usuario?`)) {
+      if (confirm(`¿Marcar este bono de $${Number(item.amount || 0).toLocaleString('es-CO')} como Redimido / Canjeado por el usuario? Se debitará del saldo de bonos del usuario y se registrará la transacción contable.`)) {
         const res = await marketingService.updateUserMarketingBonus(id, { status: 'redeemed' });
         if (res.success) {
-          toast.success('¡Bono marcado como redimido!');
+          toast.success('¡Bono marcado como redimido exitosamente!');
           item.status = 'redeemed';
-          this.parentView.updateView();
+          await this.refreshData();
         } else {
           toast.error('Error al actualizar: ' + res.error);
         }
@@ -376,7 +378,7 @@ export class BonosConsumoTab {
         if (res.success) {
           toast.success('Registro eliminado');
           this.parentView.dataStore.user_marketing_bonuses = this.parentView.dataStore.user_marketing_bonuses.filter(ub => ub.id !== id);
-          this.parentView.updateView();
+          await this.refreshData();
         } else {
           toast.error('Error al eliminar: ' + res.error);
         }
@@ -398,7 +400,7 @@ export class BonosConsumoTab {
         <form id="form-assign-user-bonus" style="display: flex; flex-direction: column; gap: 1rem;">
           
           <div style="background: rgba(0, 209, 178, 0.08); border: 1px solid var(--accent-green); padding: 0.75rem; border-radius: var(--radius-sm); font-size: 0.8rem; color: var(--text-primary);">
-            <strong style="color: var(--accent-green);">${icons.gift} Bonos de Consumo en Tiempo Real:</strong> Configura y asigna incentivos para compras en la granja. Puedes otorgarlo masivamente a toda la audiencia o a un inversionista específico.
+            <strong style="color: var(--accent-green);">${icons.gift} Bonos de Consumo en Tiempo Real:</strong> Configura y asigna incentivos para compras en la granja. El saldo se acreditará en la cuenta del usuario y se registrará en el historial financiero.
           </div>
 
           <div class="form-group">
@@ -454,7 +456,9 @@ export class BonosConsumoTab {
               <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-primary); margin-bottom: 4px; display: block;">
                 Fecha de Expiración (Opcional):
               </label>
-              <input type="datetime-local" id="uab-expires" class="form-control" style="width: 100%; padding: 0.6rem; background: var(--bg-dark); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: var(--radius-sm);" />
+              <div class="datetime-input-wrapper">
+                <input type="datetime-local" id="uab-expires" class="form-control form-input" style="width: 100%; padding: 0.6rem 2.8rem 0.6rem 0.6rem; background: var(--bg-dark); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: var(--radius-sm); color-scheme: dark;" />
+              </div>
             </div>
           </div>
 
@@ -473,6 +477,9 @@ export class BonosConsumoTab {
       onInit: (modalBody) => {
         const amtInput = modalBody.querySelector('#uab-amount');
         if (amtInput) setupCurrencyInput(amtInput);
+
+        const expInput = modalBody.querySelector('#uab-expires');
+        if (expInput) setupDateTimePicker(expInput);
 
         const audienceSelect = modalBody.querySelector('#uab-audience');
         const singleCont = modalBody.querySelector('#uab-single-user-cont');
@@ -557,8 +564,12 @@ export class BonosConsumoTab {
   }
 
   async refreshData() {
-    const userBonuses = await marketingService.getUserMarketingBonuses();
+    const [userBonuses, profiles] = await Promise.all([
+      marketingService.getUserMarketingBonuses(),
+      usersService.getUsers()
+    ]);
     this.parentView.dataStore.user_marketing_bonuses = userBonuses;
+    this.parentView.profilesList = profiles || [];
     this.parentView.updateView();
     this.parentView.updateBadges();
   }
