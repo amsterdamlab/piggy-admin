@@ -1,6 +1,6 @@
 /* ==========================================================================
-   MARKETING - BONOS CONSUMO: SUB-TAB 1: CAMPAÑAS DE BONOS (marketing_bonuses)
-   Lanzamiento, gestión de audiencias, vigencias y control de campañas activas
+   MARKETING - BONOS CONSUMO: SUB-TAB 1: CAMPAÑAS ACTIVAS
+   Control centralizado de campañas agrupadas a partir de user_marketing_bonuses
    ========================================================================== */
 
 import { marketingService } from '../../services/marketingService.js';
@@ -17,22 +17,70 @@ export class MarketingBonusesTab {
   }
 
   render(data) {
-    const rawData = data || [];
-    const userBonuses = this.parentView.dataStore.user_marketing_bonuses || [];
+    const rawUserBonuses = this.parentView.dataStore.user_marketing_bonuses || [];
     const profiles = this.parentView.profilesList || [];
+    const now = new Date();
 
-    // Métricas de campañas
-    const totalCampaigns = rawData.length;
-    const activeCampaigns = rawData.filter(c => c.is_active && (!c.expires_at || new Date(c.expires_at) > new Date())).length;
-    const totalAmountCommitted = rawData.filter(c => c.is_active).reduce((sum, c) => sum + Number(c.amount || 0), 0);
-    const totalAssignments = userBonuses.length;
-    const redeemedAssignments = userBonuses.filter(ub => ub.status === 'redeemed').length;
-    const globalConversionRate = totalAssignments > 0 ? Math.round((redeemedAssignments / totalAssignments) * 100) : 0;
+    // 1. Agrupar registros de user_marketing_bonuses por nombre de campaña
+    const campaignsMap = {};
+    rawUserBonuses.forEach(ub => {
+      const campName = (ub.campaign_name || 'Bono de Consumo General').trim();
+      if (!campaignsMap[campName]) {
+        campaignsMap[campName] = {
+          campaign_name: campName,
+          amount: Number(ub.amount || 0),
+          created_at: ub.created_at,
+          expires_at: ub.expires_at,
+          is_active: ub.is_active !== undefined ? ub.is_active : true,
+          records: []
+        };
+      }
+      campaignsMap[campName].records.push(ub);
+      // Mantener la fecha de vencimiento más representativa
+      if (ub.expires_at && !campaignsMap[campName].expires_at) {
+        campaignsMap[campName].expires_at = ub.expires_at;
+      }
+      // Mantener el monto más alto si varía
+      if (Number(ub.amount || 0) > campaignsMap[campName].amount) {
+        campaignsMap[campName].amount = Number(ub.amount || 0);
+      }
+      // Mantener estado activo si al menos un registro está activo
+      if (ub.is_active) {
+        campaignsMap[campName].is_active = true;
+      }
+    });
+
+    const campaignsList = Object.values(campaignsMap).map(c => {
+      const totalUsers = c.records.length;
+      const totalVolume = c.records.reduce((sum, r) => sum + Number(r.amount || 0), 0);
+      const redeemed = c.records.filter(r => r.status === 'redeemed');
+      const active = c.records.filter(r => r.status === 'active' && (!r.expires_at || new Date(r.expires_at) >= now));
+      const expired = c.records.filter(r => r.status !== 'redeemed' && r.expires_at && new Date(r.expires_at) < now);
+      const conversionRate = totalUsers > 0 ? Math.round((redeemed.length / totalUsers) * 100) : 0;
+
+      return {
+        ...c,
+        totalUsers,
+        totalVolume,
+        redeemedCount: redeemed.length,
+        activeCount: active.length,
+        expiredCount: expired.length,
+        conversionRate
+      };
+    });
+
+    // 2. Métricas globales del panel
+    const totalCampaigns = campaignsList.length;
+    const activeCampaigns = campaignsList.filter(c => c.is_active && (!c.expires_at || new Date(c.expires_at) >= now)).length;
+    const totalImpactedUsers = rawUserBonuses.length;
+    const totalDistributedVolume = rawUserBonuses.reduce((sum, r) => sum + Number(r.amount || 0), 0);
+    const totalRedeemedGlobal = rawUserBonuses.filter(r => r.status === 'redeemed').length;
+    const globalConversionRate = totalImpactedUsers > 0 ? Math.round((totalRedeemedGlobal / totalImpactedUsers) * 100) : 0;
 
     this.dataTable = new DataTable({
-      searchPlaceholder: 'Buscar campañas de bonos por nombre o audiencia...',
+      searchPlaceholder: 'Buscar campañas de bonos por nombre...',
       actionButton: {
-        text: 'Nueva Campaña de Bono',
+        text: 'Lanzar Nueva Campaña',
         icon: icons.plus,
         onClick: () => this.openModal()
       },
@@ -44,61 +92,42 @@ export class MarketingBonusesTab {
             <div>
               <div style="font-weight: 800; color: var(--text-primary); font-size: 0.95rem; display: flex; align-items: center; gap: 6px;">
                 <span>${icons.gift}</span>
-                <span>${row.campaign_name || 'Campaña sin nombre'}</span>
+                <span>${row.campaign_name}</span>
               </div>
-              <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 3px; max-width: 320px; line-height: 1.3;">
-                ${row.description || 'Sin descripción'}
-              </div>
-              <div style="font-size: 0.72rem; color: var(--text-secondary); margin-top: 4px;">
-                Creada: ${new Date(row.created_at || Date.now()).toLocaleDateString('es-CO')}
+              <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 3px;">
+                Lanzada: ${row.created_at ? new Date(row.created_at).toLocaleDateString('es-CO') : 'Reciente'}
               </div>
             </div>
           `
         },
         {
           header: 'Monto del Bono',
-          sortValue: (c) => Number(c.amount || 0),
+          sortValue: (c) => c.amount,
           render: (row) => `
             <div>
               <div style="font-weight: 800; color: var(--accent-green); font-size: 1.15rem;">
                 $${Number(row.amount || 0).toLocaleString('es-CO')}
               </div>
-              <div style="font-size: 0.72rem; color: var(--accent-gold); display: flex; align-items: center; gap: 4px; margin-top: 2px;">
-                ${icons.tag} Bono de Consumo
-              </div>
+              <span class="badge badge-neutral" style="font-size: 0.7rem; margin-top: 2px;">
+                Bono Consumo
+              </span>
             </div>
           `
         },
         {
-          header: 'Audiencia Objetivo',
-          sortValue: (c) => c.target_audience,
-          render: (row) => {
-            const aud = row.target_audience || 'ALL';
-            let label = 'Todos los Inversionistas';
-            let badgeClass = 'badge-info';
-
-            if (aud === 'NEW_USERS') {
-              label = 'Nuevos Inversionistas';
-              badgeClass = 'badge-warning';
-            } else if (aud === 'ACTIVE_INVESTORS') {
-              label = 'Inversionistas Activos';
-              badgeClass = 'badge-success';
-            } else if (aud === 'NO_PIGGIES') {
-              label = 'Sin Cerditos en Engorde';
-              badgeClass = 'badge-neutral';
-            } else if (aud === 'CUSTOM') {
-              label = 'Segmento Seleccionado';
-              badgeClass = 'badge-purple';
-            }
-
-            return `
-              <div>
-                <span class="badge ${badgeClass}" style="font-size: 0.75rem; font-weight: 700; padding: 3px 8px;">
-                  ${label}
-                </span>
+          header: 'Alcance / Inversionistas',
+          sortValue: (c) => c.totalUsers,
+          render: (row) => `
+            <div>
+              <div style="font-weight: 700; color: var(--text-primary); font-size: 0.88rem; display: flex; align-items: center; gap: 5px;">
+                <span>${icons.users}</span>
+                <span>${row.totalUsers} usuarios</span>
               </div>
-            `;
-          }
+              <div style="font-size: 0.75rem; color: var(--accent-gold); margin-top: 2px;">
+                Volumen: $${row.totalVolume.toLocaleString('es-CO')}
+              </div>
+            </div>
+          `
         },
         {
           header: 'Vigencia & Caducidad',
@@ -108,7 +137,6 @@ export class MarketingBonusesTab {
               return '<span class="badge badge-neutral" style="font-size: 0.72rem;">Sin vencimiento</span>';
             }
             const expDate = new Date(row.expires_at);
-            const now = new Date();
             const isExpired = expDate < now;
             const diffHours = Math.round((expDate - now) / (1000 * 60 * 60));
             const diffDays = Math.ceil(diffHours / 24);
@@ -139,33 +167,24 @@ export class MarketingBonusesTab {
           }
         },
         {
-          header: 'Trazabilidad',
-          sortValue: (c) => {
-            const count = userBonuses.filter(ub => ub.campaign_id === c.id).length;
-            return count;
-          },
-          render: (row) => {
-            const assigned = userBonuses.filter(ub => ub.campaign_id === row.id);
-            const redeemed = assigned.filter(ub => ub.status === 'redeemed');
-            const rate = assigned.length > 0 ? Math.round((redeemed.length / assigned.length) * 100) : 0;
-
-            return `
-              <div>
-                <div style="font-weight: 700; color: var(--text-primary); font-size: 0.85rem;">
-                  ${assigned.length} usuarios asignados
-                </div>
-                <div style="font-size: 0.72rem; color: ${rate > 0 ? 'var(--accent-green)' : 'var(--text-muted)'}; margin-top: 2px;">
-                  ${redeemed.length} redimidos (${rate}% efectividad)
-                </div>
+          header: 'Trazabilidad & Efectividad',
+          sortValue: (c) => c.conversionRate,
+          render: (row) => `
+            <div>
+              <div style="font-weight: 700; color: ${row.conversionRate > 0 ? 'var(--accent-green)' : 'var(--text-primary)'}; font-size: 0.88rem;">
+                ${row.redeemedCount} redimidos (${row.conversionRate}% éxito)
               </div>
-            `;
-          }
+              <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 2px;">
+                ${row.activeCount} disponibles / ${row.expiredCount} expirados
+              </div>
+            </div>
+          `
         },
         {
           header: 'Estado',
           sortValue: (c) => c.is_active ? 1 : 0,
           render: (row) => {
-            const isExpired = row.expires_at && new Date(row.expires_at) < new Date();
+            const isExpired = row.expires_at && new Date(row.expires_at) < now;
             if (isExpired) {
               return '<span class="badge badge-danger">Expirada</span>';
             }
@@ -180,23 +199,20 @@ export class MarketingBonusesTab {
           style: 'text-align: right;',
           render: (row) => `
             <div style="display: flex; gap: 0.35rem; justify-content: flex-end; flex-wrap: wrap;">
-              <button class="btn btn-primary btn-sm" data-action="launch-assign" data-id="${row.id}" style="padding: 3px 8px; font-size: 0.75rem; display: inline-flex; align-items: center; gap: 4px;" title="Asignar masivamente a usuarios">
+              <button class="btn btn-primary btn-sm" data-action="assign-more" data-campaign="${encodeURIComponent(row.campaign_name)}" data-amount="${row.amount}" data-expires="${row.expires_at || ''}" style="padding: 3px 8px; font-size: 0.75rem; display: inline-flex; align-items: center; gap: 4px;" title="Asignar a más usuarios">
                 ${icons.users} <span>Asignar</span>
               </button>
-              <button class="btn btn-secondary btn-sm" data-action="edit" data-id="${row.id}" style="padding: 3px 8px; font-size: 0.75rem;" title="Editar Campaña">
-                ${icons.edit}
-              </button>
-              <button class="btn btn-secondary btn-sm" data-action="toggle-status" data-id="${row.id}" style="padding: 3px 8px; font-size: 0.75rem;" title="${row.is_active ? 'Pausar campaña' : 'Activar campaña'}">
+              <button class="btn btn-secondary btn-sm" data-action="toggle-campaign" data-campaign="${encodeURIComponent(row.campaign_name)}" data-active="${row.is_active}" style="padding: 3px 8px; font-size: 0.75rem;" title="${row.is_active ? 'Pausar campaña' : 'Activar campaña'}">
                 ${row.is_active ? icons.x : icons.check}
               </button>
-              <button class="btn btn-danger btn-sm" data-action="delete" data-id="${row.id}" style="padding: 3px 8px; font-size: 0.75rem;" title="Eliminar campaña">
+              <button class="btn btn-danger btn-sm" data-action="delete-campaign" data-campaign="${encodeURIComponent(row.campaign_name)}" style="padding: 3px 8px; font-size: 0.75rem;" title="Eliminar todos los bonos de esta campaña">
                 ${icons.trash}
               </button>
             </div>
           `
         }
       ],
-      data: rawData
+      data: campaignsList
     });
 
     return `
@@ -219,24 +235,24 @@ export class MarketingBonusesTab {
 
           <div style="background: var(--bg-dark); padding: 1.1rem; border-radius: var(--radius-md); border: 1px solid var(--border-color); border-left: 4px solid var(--accent-gold);">
             <div style="font-size: 0.72rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; display: flex; align-items: center; justify-content: space-between;">
-              <span>Monto Unitario Activo</span>
+              <span>Volumen Distribuido</span>
               <span style="color: var(--accent-gold);">${icons.dollar}</span>
             </div>
             <div style="font-size: 1.5rem; font-weight: 800; color: var(--accent-gold); margin-top: 0.3rem;">
-              $${totalAmountCommitted.toLocaleString('es-CO')}
+              $${totalDistributedVolume.toLocaleString('es-CO')}
             </div>
             <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.2rem;">
-              Suma de incentivos en oferta
+              Suma de bonos asignados
             </div>
           </div>
 
           <div style="background: var(--bg-dark); padding: 1.1rem; border-radius: var(--radius-md); border: 1px solid var(--border-color); border-left: 4px solid var(--accent-blue);">
             <div style="font-size: 0.72rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; display: flex; align-items: center; justify-content: space-between;">
-              <span>Usuarios Asignados</span>
+              <span>Usuarios Impactados</span>
               <span style="color: var(--accent-blue);">${icons.users}</span>
             </div>
             <div style="font-size: 1.5rem; font-weight: 800; color: var(--accent-blue); margin-top: 0.3rem;">
-              ${totalAssignments}
+              ${totalImpactedUsers}
             </div>
             <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.2rem;">
               Inversionistas con bonos asignados
@@ -252,7 +268,7 @@ export class MarketingBonusesTab {
               ${globalConversionRate}%
             </div>
             <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.2rem;">
-              ${redeemedAssignments} de ${totalAssignments} bonos redimidos
+              ${totalRedeemedGlobal} de ${totalImpactedUsers} bonos canjeados
             </div>
           </div>
 
@@ -276,92 +292,80 @@ export class MarketingBonusesTab {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
         const action = btn.getAttribute('data-action');
-        const id = btn.getAttribute('data-id');
-        this.handleAction(action, id);
+        const campaignName = decodeURIComponent(btn.getAttribute('data-campaign') || '');
+        const amount = btn.getAttribute('data-amount');
+        const expires = btn.getAttribute('data-expires');
+        const isActive = btn.getAttribute('data-active') === 'true';
+
+        this.handleAction(action, { campaignName, amount, expires, isActive });
       });
     });
   }
 
-  async handleAction(action, id) {
-    const rawData = this.parentView.dataStore.marketing_bonuses || [];
-    const item = rawData.find(c => c.id === id);
-
-    if (action === 'edit' && item) {
-      this.openModal(item);
-    } else if (action === 'toggle-status' && item) {
-      const newStatus = !item.is_active;
-      const res = await marketingService.toggleMarketingBonusStatus(id, newStatus);
+  async handleAction(action, { campaignName, amount, expires, isActive }) {
+    if (action === 'toggle-campaign' && campaignName) {
+      const newStatus = !isActive;
+      const res = await marketingService.toggleCampaignBatchStatus(campaignName, newStatus);
       if (res.success) {
-        toast.success(`Campaña ${newStatus ? 'activada' : 'pausada'} con éxito`);
-        item.is_active = newStatus;
-        this.parentView.updateView();
+        toast.success(`Campaña "${campaignName}" ${newStatus ? 'activada' : 'pausada'}`);
+        await this.refreshData();
       } else {
         toast.error('Error al actualizar estado: ' + res.error);
       }
-    } else if (action === 'delete' && item) {
-      if (confirm(`¿Eliminar la campaña "${item.campaign_name}"? Esta acción no se puede deshacer.`)) {
-        const res = await marketingService.deleteMarketingBonus(id);
+    } else if (action === 'delete-campaign' && campaignName) {
+      if (confirm(`¿Eliminar todos los bonos vinculados a la campaña "${campaignName}"?`)) {
+        const res = await marketingService.deleteCampaignBatch(campaignName);
         if (res.success) {
           toast.success('Campaña eliminada correctamente');
-          this.parentView.dataStore.marketing_bonuses = this.parentView.dataStore.marketing_bonuses.filter(c => c.id !== id);
-          this.parentView.dataStore.user_marketing_bonuses = this.parentView.dataStore.user_marketing_bonuses.filter(ub => ub.campaign_id !== id);
-          this.parentView.updateView();
+          await this.refreshData();
         } else {
           toast.error('Error al eliminar: ' + res.error);
         }
       }
-    } else if (action === 'launch-assign' && item) {
-      this.openAssignModal(item);
+    } else if (action === 'assign-more' && campaignName) {
+      this.openAssignMoreModal({ campaignName, amount, expires });
     }
   }
 
-  openModal(item = null) {
-    const isEdit = !!item;
+  openModal() {
     const profiles = this.parentView.profilesList || [];
 
     modal.open({
-      title: isEdit ? 'Editar Campaña de Bonos de Consumo' : 'Lanzar Nueva Campaña de Bonos de Consumo',
+      title: 'Lanzar Nueva Campaña de Bonos de Consumo',
       size: 'medium',
       contentHtml: `
-        <form id="form-marketing-bonus" style="display: flex; flex-direction: column; gap: 1rem;">
+        <form id="form-launch-bonus-campaign" style="display: flex; flex-direction: column; gap: 1rem;">
           
           <div style="background: rgba(0, 209, 178, 0.08); border: 1px solid var(--accent-green); padding: 0.75rem; border-radius: var(--radius-sm); font-size: 0.8rem; color: var(--text-primary);">
-            <strong style="color: var(--accent-green);">${icons.gift} Campañas de Bonos de Consumo:</strong> Configura ofertas atractivas con vigencia controlada para compras de carne y productos de la granja.
+            <strong style="color: var(--accent-green);">${icons.gift} Bonos de Consumo en Tiempo Real:</strong> Configura y lanza campañas asignadas directamente a los inversionistas para compras en la granja y tienda Piggy.
           </div>
 
           <div class="form-group">
             <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-primary); margin-bottom: 4px; display: block;">
               Nombre de la Campaña: *
             </label>
-            <input type="text" id="mb-name" class="form-control" placeholder="Ej: Bono Fidelización Granja / Fin de Semana Lechón" value="${item ? (item.campaign_name || '') : ''}" required style="width: 100%; padding: 0.6rem; background: var(--bg-dark); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: var(--radius-sm);" />
+            <input type="text" id="lbc-name" class="form-control" placeholder="Ej: Fin de Semana Lechón / Bono Fidelización Cortes Selectos" required style="width: 100%; padding: 0.6rem; background: var(--bg-dark); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: var(--radius-sm);" />
           </div>
 
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
             <div class="form-group">
               <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-primary); margin-bottom: 4px; display: block;">
-                Monto del Bono: *
+                Monto del Bono por Usuario: *
               </label>
-              <input type="text" id="mb-amount" class="form-control" placeholder="$50.000" value="${item ? formatCurrency(item.amount) : '$50.000'}" required style="width: 100%; padding: 0.6rem; background: var(--bg-dark); color: var(--accent-green); font-weight: 800; border: 1px solid var(--border-color); border-radius: var(--radius-sm);" />
+              <input type="text" id="lbc-amount" class="form-control" placeholder="$50.000" value="$50.000" required style="width: 100%; padding: 0.6rem; background: var(--bg-dark); color: var(--accent-green); font-weight: 800; border: 1px solid var(--border-color); border-radius: var(--radius-sm);" />
             </div>
 
             <div class="form-group">
               <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-primary); margin-bottom: 4px; display: block;">
                 Audiencia Objetivo: *
               </label>
-              <select id="mb-audience" class="form-control" style="width: 100%; padding: 0.6rem; background: var(--bg-dark); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: var(--radius-sm);">
-                <option value="ALL" ${!item || item.target_audience === 'ALL' ? 'selected' : ''}>Todos los Inversionistas (${profiles.length})</option>
-                <option value="ACTIVE_INVESTORS" ${item && item.target_audience === 'ACTIVE_INVESTORS' ? 'selected' : ''}>Inversionistas con Cerditos Activos</option>
-                <option value="NEW_USERS" ${item && item.target_audience === 'NEW_USERS' ? 'selected' : ''}>Nuevos Usuarios Registrados</option>
-                <option value="NO_PIGGIES" ${item && item.target_audience === 'NO_PIGGIES' ? 'selected' : ''}>Usuarios sin Cerditos Activos</option>
+              <select id="lbc-audience" class="form-control" style="width: 100%; padding: 0.6rem; background: var(--bg-dark); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: var(--radius-sm);">
+                <option value="ALL">Todos los Inversionistas (${profiles.length})</option>
+                <option value="ACTIVE_INVESTORS">Inversionistas con Cerditos Activos</option>
+                <option value="NEW_USERS">Nuevos Usuarios Registrados</option>
+                <option value="NO_PIGGIES">Usuarios sin Cerditos Activos</option>
               </select>
             </div>
-          </div>
-
-          <div class="form-group">
-            <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-primary); margin-bottom: 4px; display: block;">
-              Descripción / Mensaje Promocional: *
-            </label>
-            <textarea id="mb-description" class="form-control" rows="2" placeholder="Ej: Disfruta $50.000 de regalo para tu próxima compra de cortes selectos en la Tienda Piggy..." required style="width: 100%; padding: 0.6rem; background: var(--bg-dark); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: var(--radius-sm); resize: vertical;">${item ? (item.description || '') : ''}</textarea>
           </div>
 
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
@@ -369,53 +373,37 @@ export class MarketingBonusesTab {
               <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-primary); margin-bottom: 4px; display: block;">
                 Fecha de Expiración (Opcional):
               </label>
-              <input type="datetime-local" id="mb-expires" class="form-control" value="${item && item.expires_at ? new Date(item.expires_at).toISOString().slice(0, 16) : ''}" style="width: 100%; padding: 0.6rem; background: var(--bg-dark); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: var(--radius-sm);" />
+              <input type="datetime-local" id="lbc-expires" class="form-control" style="width: 100%; padding: 0.6rem; background: var(--bg-dark); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: var(--radius-sm);" />
             </div>
 
             <div class="form-group">
               <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-primary); margin-bottom: 4px; display: block;">
                 Estado Inicial:
               </label>
-              <select id="mb-active" class="form-control" style="width: 100%; padding: 0.6rem; background: var(--bg-dark); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: var(--radius-sm);">
-                <option value="true" ${!item || item.is_active ? 'selected' : ''}>Activa (Lanzar inmediatamente)</option>
-                <option value="false" ${item && !item.is_active ? 'selected' : ''}>Pausada / Borrador</option>
+              <select id="lbc-active" class="form-control" style="width: 100%; padding: 0.6rem; background: var(--bg-dark); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: var(--radius-sm);">
+                <option value="true" selected>Activa (Asignar y habilitar inmediatamente)</option>
+                <option value="false">Pausada (Crear en estado inactivo)</option>
               </select>
             </div>
           </div>
 
-          ${!isEdit ? `
-            <div style="background: rgba(255, 184, 0, 0.08); border: 1px solid var(--accent-gold); padding: 0.75rem; border-radius: var(--radius-sm); margin-top: 0.5rem;">
-              <label style="display: flex; align-items: flex-start; gap: 8px; cursor: pointer; font-size: 0.85rem; color: var(--text-primary);">
-                <input type="checkbox" id="mb-auto-assign" checked style="accent-color: var(--accent-gold); margin-top: 3px;" />
-                <div>
-                  <strong>🚀 Asignar automáticamente a la audiencia ahora mismo</strong>
-                  <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 2px;">
-                    Crea los registros de seguimiento en tiempo real en la tabla <code>user_marketing_bonuses</code> para los usuarios de la audiencia seleccionada.
-                  </div>
-                </div>
-              </label>
-            </div>
-          ` : ''}
-
         </form>
       `,
       onInit: (modalBody) => {
-        const amtInput = modalBody.querySelector('#mb-amount');
+        const amtInput = modalBody.querySelector('#lbc-amount');
         if (amtInput) setupCurrencyInput(amtInput);
       },
       footerButtons: [
         { text: 'Cancelar', class: 'btn-secondary', onClick: (e, m) => m.close() },
         {
-          text: isEdit ? 'Guardar Cambios' : 'Lanzar Campaña',
+          text: 'Lanzar Campaña',
           class: 'btn-primary',
           onClick: async (e, m) => {
-            const name = document.getElementById('mb-name').value.trim();
-            const amount = parseCurrency(document.getElementById('mb-amount').value);
-            const description = document.getElementById('mb-description').value.trim();
-            const targetAudience = document.getElementById('mb-audience').value;
-            const expiresInput = document.getElementById('mb-expires').value;
-            const isActive = document.getElementById('mb-active').value === 'true';
-            const autoAssign = document.getElementById('mb-auto-assign')?.checked;
+            const name = document.getElementById('lbc-name').value.trim();
+            const amount = parseCurrency(document.getElementById('lbc-amount').value);
+            const audience = document.getElementById('lbc-audience').value;
+            const expiresInput = document.getElementById('lbc-expires').value;
+            const isActive = document.getElementById('lbc-active').value === 'true';
 
             if (!name) {
               toast.error('Por favor ingresa el nombre de la campaña');
@@ -427,63 +415,42 @@ export class MarketingBonusesTab {
               return;
             }
 
-            if (!description) {
-              toast.error('Por favor ingresa una descripción');
+            let targetUserIds = [];
+            if (audience === 'ALL') {
+              targetUserIds = profiles.map(p => p.id);
+            } else if (audience === 'ACTIVE_INVESTORS') {
+              targetUserIds = profiles.filter(p => (p.activePiggiesCount || 0) > 0).map(p => p.id);
+            } else if (audience === 'NO_PIGGIES') {
+              targetUserIds = profiles.filter(p => (p.activePiggiesCount || 0) === 0).map(p => p.id);
+            } else {
+              targetUserIds = profiles.map(p => p.id);
+            }
+
+            if (targetUserIds.length === 0) {
+              toast.error('No se encontraron usuarios en la audiencia seleccionada');
               return;
             }
 
-            const payload = {
-              campaign_name: name,
-              amount,
-              description,
-              target_audience: targetAudience,
-              expires_at: expiresInput ? new Date(expiresInput).toISOString() : null,
-              is_active: isActive
-            };
-
             const btn = e.target;
             btn.disabled = true;
-            btn.textContent = 'Procesando...';
+            btn.textContent = 'Lanzando...';
 
-            if (isEdit) {
-              const res = await marketingService.updateMarketingBonus(item.id, payload);
-              if (res.success) {
-                toast.success('¡Campaña actualizada exitosamente!');
-                m.close();
-                await this.refreshData();
-              } else {
-                toast.error('Error al actualizar: ' + res.error);
-                btn.disabled = false;
-                btn.textContent = 'Guardar Cambios';
-              }
+            const res = await marketingService.launchCampaign({
+              campaign_name: name,
+              amount,
+              expires_at: expiresInput ? new Date(expiresInput).toISOString() : null,
+              is_active: isActive,
+              userIds: targetUserIds
+            });
+
+            if (res.success) {
+              toast.success(`¡Campaña lanzada con éxito a ${res.count || targetUserIds.length} inversionista(s)!`);
+              m.close();
+              await this.refreshData();
             } else {
-              let targetUserIds = [];
-              if (autoAssign) {
-                if (targetAudience === 'ALL') {
-                  targetUserIds = profiles.map(p => p.id);
-                } else if (targetAudience === 'ACTIVE_INVESTORS') {
-                  targetUserIds = profiles.filter(p => (p.activePiggiesCount || 0) > 0).map(p => p.id);
-                } else if (targetAudience === 'NO_PIGGIES') {
-                  targetUserIds = profiles.filter(p => (p.activePiggiesCount || 0) === 0).map(p => p.id);
-                } else {
-                  targetUserIds = profiles.map(p => p.id);
-                }
-              }
-
-              const res = await marketingService.launchCampaignWithAssignments({
-                campaign: payload,
-                userIds: targetUserIds
-              });
-
-              if (res.success) {
-                toast.success(`¡Campaña lanzada con éxito${res.assignedCount > 0 ? ` y asignada a ${res.assignedCount} usuarios` : ''}!`);
-                m.close();
-                await this.refreshData();
-              } else {
-                toast.error('Error al lanzar campaña: ' + res.error);
-                btn.disabled = false;
-                btn.textContent = 'Lanzar Campaña';
-              }
+              toast.error('Error al lanzar campaña: ' + res.error);
+              btn.disabled = false;
+              btn.textContent = 'Lanzar Campaña';
             }
           }
         }
@@ -491,18 +458,18 @@ export class MarketingBonusesTab {
     });
   }
 
-  openAssignModal(campaign) {
+  openAssignMoreModal({ campaignName, amount, expires }) {
     const profiles = this.parentView.profilesList || [];
 
     modal.open({
-      title: `Asignar Campaña: ${campaign.campaign_name}`,
+      title: `Asignar Campaña: ${campaignName}`,
       size: 'medium',
       contentHtml: `
         <div style="display: flex; flex-direction: column; gap: 1rem;">
           <div style="background: var(--bg-dark); padding: 0.85rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color); font-size: 0.85rem;">
-            <div>Campaña: <strong>${campaign.campaign_name}</strong></div>
-            <div style="color: var(--accent-green); font-weight: 700; margin-top: 3px;">Monto: $${Number(campaign.amount || 0).toLocaleString('es-CO')}</div>
-            <div style="color: var(--text-muted); font-size: 0.78rem; margin-top: 2px;">Vence: ${campaign.expires_at ? new Date(campaign.expires_at).toLocaleString('es-CO') : 'Sin fecha de vencimiento'}</div>
+            <div>Campaña: <strong>${campaignName}</strong></div>
+            <div style="color: var(--accent-green); font-weight: 700; margin-top: 3px;">Monto: $${Number(amount || 0).toLocaleString('es-CO')}</div>
+            <div style="color: var(--text-muted); font-size: 0.78rem; margin-top: 2px;">Vence: ${expires ? new Date(expires).toLocaleString('es-CO') : 'Sin fecha de vencimiento'}</div>
           </div>
 
           <div class="form-group">
@@ -563,23 +530,22 @@ export class MarketingBonusesTab {
               targetIds = [uid];
             }
 
-            const now = new Date().toISOString();
-            const assignments = targetIds.map(uid => ({
-              campaign_id: campaign.id,
+            const items = targetIds.map(uid => ({
+              campaign_name: campaignName,
               user_id: uid,
-              amount: Number(campaign.amount || 0),
+              amount: Number(amount || 0),
               status: 'active',
-              granted_at: now,
-              expires_at: campaign.expires_at || null
+              is_active: true,
+              expires_at: expires || null
             }));
 
             const btn = e.target;
             btn.disabled = true;
             btn.textContent = 'Asignando...';
 
-            const res = await marketingService.createUserMarketingBonusesBatch(assignments);
+            const res = await marketingService.createUserMarketingBonusesBatch(items);
             if (res.success) {
-              toast.success(`¡Bono asignado con éxito a ${assignments.length} usuario(s)!`);
+              toast.success(`¡Bono asignado con éxito a ${items.length} usuario(s)!`);
               m.close();
               await this.refreshData();
             } else {
@@ -594,11 +560,7 @@ export class MarketingBonusesTab {
   }
 
   async refreshData() {
-    const [bonuses, userBonuses] = await Promise.all([
-      marketingService.getMarketingBonuses(),
-      marketingService.getUserMarketingBonuses()
-    ]);
-    this.parentView.dataStore.marketing_bonuses = bonuses;
+    const userBonuses = await marketingService.getUserMarketingBonuses();
     this.parentView.dataStore.user_marketing_bonuses = userBonuses;
     this.parentView.updateView();
     this.parentView.updateBadges();

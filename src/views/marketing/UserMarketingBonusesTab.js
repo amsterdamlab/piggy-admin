@@ -1,5 +1,5 @@
 /* ==========================================================================
-   MARKETING - BONOS CONSUMO: SUB-TAB 2: SEGUIMIENTO USUARIOS (user_marketing_bonuses)
+   MARKETING - BONOS CONSUMO: SUB-TAB 2: SEGUIMIENTO USUARIOS
    Trazabilidad en tiempo real, estados de canje, ofertas expiradas y efectividad
    ========================================================================== */
 
@@ -18,14 +18,10 @@ export class UserMarketingBonusesTab {
 
   render(data) {
     const rawData = data || [];
-    const campaigns = this.parentView.dataStore.marketing_bonuses || [];
     const profiles = this.parentView.profilesList || [];
 
     const profileMap = {};
     profiles.forEach(p => { profileMap[p.id] = p; });
-
-    const campaignMap = {};
-    campaigns.forEach(c => { campaignMap[c.id] = c; });
 
     const now = new Date();
 
@@ -40,7 +36,7 @@ export class UserMarketingBonusesTab {
     const expiredBonuses = rawData.filter(ub => ub.status !== 'redeemed' && ub.expires_at && new Date(ub.expires_at) < now);
     const expiredCount = expiredBonuses.length;
 
-    const activeBonuses = rawData.filter(ub => ub.status === 'active' && (!ub.expires_at || new Date(ub.expires_at) >= now));
+    const activeBonuses = rawData.filter(ub => ub.is_active && ub.status === 'active' && (!ub.expires_at || new Date(ub.expires_at) >= now));
     const activeCount = activeBonuses.length;
     const activeVolume = activeBonuses.reduce((sum, ub) => sum + Number(ub.amount || 0), 0);
 
@@ -52,7 +48,7 @@ export class UserMarketingBonusesTab {
         { label: 'Activos / Disponibles', value: 'active' },
         { label: 'Redimidos / Canjeados', value: 'redeemed' },
         { label: 'Expirados / Vencidos', value: 'expired' },
-        { label: 'Cancelados', value: 'cancelled' }
+        { label: 'Pausados', value: 'paused' }
       ],
       actionButton: {
         text: 'Asignar Bono a Usuario',
@@ -90,26 +86,18 @@ export class UserMarketingBonusesTab {
         },
         {
           header: 'Campaña de Origen',
-          sortValue: (row) => {
-            const c = campaignMap[row.campaign_id] || {};
-            return c.campaign_name || 'Bono Directo';
-          },
-          render: (row) => {
-            const c = campaignMap[row.campaign_id] || {};
-            const campName = c.campaign_name || 'Bono de Marketing Directo';
-
-            return `
-              <div>
-                <div style="font-weight: 700; color: var(--text-primary); font-size: 0.88rem; display: flex; align-items: center; gap: 5px;">
-                  <span>${icons.gift}</span>
-                  <span>${campName}</span>
-                </div>
-                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 2px; max-width: 260px;">
-                  ${c.description || 'Asignación directa desde panel de administración'}
-                </div>
+          sortValue: (row) => row.campaign_name || '',
+          render: (row) => `
+            <div>
+              <div style="font-weight: 700; color: var(--text-primary); font-size: 0.88rem; display: flex; align-items: center; gap: 5px;">
+                <span>${icons.gift}</span>
+                <span>${row.campaign_name || 'Bono de Consumo'}</span>
               </div>
-            `;
-          }
+              <div style="font-size: 0.72rem; color: var(--text-secondary); margin-top: 2px;">
+                ID: ${row.id ? row.id.slice(0, 8) : 'N/A'}
+              </div>
+            </div>
+          `
         },
         {
           header: 'Monto Asignado',
@@ -130,7 +118,7 @@ export class UserMarketingBonusesTab {
           sortValue: (row) => {
             if (row.status === 'redeemed') return 3;
             if (row.expires_at && new Date(row.expires_at) < now) return 0;
-            if (row.status === 'active') return 2;
+            if (row.is_active && row.status === 'active') return 2;
             return 1;
           },
           render: (row) => {
@@ -158,6 +146,16 @@ export class UserMarketingBonusesTab {
                   <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 3px;">
                     No canjeado a tiempo
                   </div>
+                </div>
+              `;
+            }
+
+            if (!row.is_active) {
+              return `
+                <div>
+                  <span class="badge badge-neutral" style="font-size: 0.75rem; padding: 3px 8px;">
+                    Pausado
+                  </span>
                 </div>
               `;
             }
@@ -194,15 +192,15 @@ export class UserMarketingBonusesTab {
         },
         {
           header: 'Trazabilidad & Fechas',
-          sortValue: (row) => new Date(row.granted_at || row.created_at).getTime(),
+          sortValue: (row) => new Date(row.created_at || Date.now()).getTime(),
           render: (row) => {
-            const granted = row.granted_at || row.created_at;
+            const created = row.created_at;
             const exp = row.expires_at;
 
             return `
               <div style="font-size: 0.78rem; line-height: 1.4;">
                 <div style="color: var(--text-secondary);">
-                  <strong style="color: var(--text-muted);">Otorgado:</strong> ${granted ? new Date(granted).toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' }) : 'N/A'}
+                  <strong style="color: var(--text-muted);">Asignado:</strong> ${created ? new Date(created).toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' }) : 'N/A'}
                 </div>
                 <div style="color: var(--text-secondary); margin-top: 2px;">
                   <strong style="color: var(--text-muted);">Vence:</strong> ${exp ? new Date(exp).toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' }) : 'Sin vencimiento'}
@@ -226,6 +224,9 @@ export class UserMarketingBonusesTab {
                 ` : ''}
                 <button class="btn btn-secondary btn-sm" data-action="extend-expiry" data-id="${row.id}" style="padding: 3px 8px; font-size: 0.72rem;" title="Modificar fecha de expiración">
                   ${icons.clock}
+                </button>
+                <button class="btn btn-secondary btn-sm" data-action="toggle-status" data-id="${row.id}" data-active="${row.is_active}" style="padding: 3px 8px; font-size: 0.72rem;" title="${row.is_active ? 'Pausar' : 'Activar'}">
+                  ${row.is_active ? icons.x : icons.check}
                 </button>
                 <button class="btn btn-danger btn-sm" data-action="delete" data-id="${row.id}" style="padding: 3px 8px; font-size: 0.72rem;" title="Eliminar asignación">
                   ${icons.trash}
@@ -316,12 +317,13 @@ export class UserMarketingBonusesTab {
         e.stopPropagation();
         const action = btn.getAttribute('data-action');
         const id = btn.getAttribute('data-id');
-        this.handleAction(action, id);
+        const isActive = btn.getAttribute('data-active') === 'true';
+        this.handleAction(action, id, isActive);
       });
     });
   }
 
-  async handleAction(action, id) {
+  async handleAction(action, id, isActive) {
     const rawData = this.parentView.dataStore.user_marketing_bonuses || [];
     const item = rawData.find(ub => ub.id === id);
     if (!item) return;
@@ -345,16 +347,28 @@ export class UserMarketingBonusesTab {
         const newDate = new Date(newDateStr + 'T23:59:59').toISOString();
         const res = await marketingService.updateUserMarketingBonus(id, {
           status: 'active',
+          is_active: true,
           expires_at: newDate
         });
         if (res.success) {
           toast.success('¡Fecha de expiración extendida exitosamente!');
           item.expires_at = newDate;
           item.status = 'active';
+          item.is_active = true;
           this.parentView.updateView();
         } else {
           toast.error('Error al actualizar fecha: ' + res.error);
         }
+      }
+    } else if (action === 'toggle-status') {
+      const newStatus = !isActive;
+      const res = await marketingService.toggleUserMarketingBonusStatus(id, newStatus);
+      if (res.success) {
+        toast.success(`Bono ${newStatus ? 'activado' : 'pausado'}`);
+        item.is_active = newStatus;
+        this.parentView.updateView();
+      } else {
+        toast.error('Error al actualizar estado: ' + res.error);
       }
     } else if (action === 'delete') {
       if (confirm('¿Eliminar este registro de asignación de bono?')) {
@@ -371,8 +385,11 @@ export class UserMarketingBonusesTab {
   }
 
   openAssignModal() {
-    const campaigns = this.parentView.dataStore.marketing_bonuses || [];
+    const rawData = this.parentView.dataStore.user_marketing_bonuses || [];
     const profiles = this.parentView.profilesList || [];
+
+    // Campañas existentes para autocompletar
+    const existingCampaigns = Array.from(new Set(rawData.map(r => r.campaign_name).filter(Boolean)));
 
     modal.open({
       title: 'Asignar Bono de Consumo a Inversionista',
@@ -381,21 +398,17 @@ export class UserMarketingBonusesTab {
         <form id="form-assign-user-bonus" style="display: flex; flex-direction: column; gap: 1rem;">
           
           <div style="background: rgba(0, 209, 178, 0.08); border: 1px solid var(--accent-green); padding: 0.75rem; border-radius: var(--radius-sm); font-size: 0.8rem; color: var(--text-primary);">
-            <strong style="color: var(--accent-green);">${icons.users} Asignación Personalizada:</strong> Otorga bonos de consumo en tiempo real vinculados a una campaña de marketing o de forma directa a uno o más inversionistas.
+            <strong style="color: var(--accent-green);">${icons.users} Asignación en Tiempo Real:</strong> Otorga bonos de consumo directamente a uno o todos los inversionistas con registro inmediato en <code>user_marketing_bonuses</code>.
           </div>
 
           <div class="form-group">
             <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-primary); margin-bottom: 4px; display: block;">
-              Vincular a Campaña de Marketing (Opcional):
+              Nombre de la Campaña / Motivo: *
             </label>
-            <select id="uab-campaign" class="form-control" style="width: 100%; padding: 0.6rem; background: var(--bg-dark); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: var(--radius-sm);">
-              <option value="">-- Sin campaña (Bono Directo / Manual) --</option>
-              ${campaigns.map(c => `
-                <option value="${c.id}" data-amount="${c.amount || 0}" data-expires="${c.expires_at || ''}">
-                  ${c.campaign_name} ($${Number(c.amount || 0).toLocaleString('es-CO')})
-                </option>
-              `).join('')}
-            </select>
+            <input type="text" id="uab-campaign-name" list="campaigns-datalist" class="form-control" placeholder="Ej: Bono Fidelización Granja / Fin de Semana Lechón" required style="width: 100%; padding: 0.6rem; background: var(--bg-dark); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: var(--radius-sm);" />
+            <datalist id="campaigns-datalist">
+              ${existingCampaigns.map(c => `<option value="${c}"></option>`).join('')}
+            </datalist>
           </div>
 
           <div class="form-group">
@@ -443,23 +456,7 @@ export class UserMarketingBonusesTab {
       `,
       onInit: (modalBody) => {
         const amtInput = modalBody.querySelector('#uab-amount');
-        const campSelect = modalBody.querySelector('#uab-campaign');
-        const expInput = modalBody.querySelector('#uab-expires');
-
         if (amtInput) setupCurrencyInput(amtInput);
-
-        campSelect.addEventListener('change', () => {
-          const opt = campSelect.options[campSelect.selectedIndex];
-          const amt = opt.getAttribute('data-amount');
-          const exp = opt.getAttribute('data-expires');
-
-          if (amt && Number(amt) > 0) {
-            amtInput.value = formatCurrency(amt);
-          }
-          if (exp) {
-            expInput.value = new Date(exp).toISOString().slice(0, 16);
-          }
-        });
       },
       footerButtons: [
         { text: 'Cancelar', class: 'btn-secondary', onClick: (e, m) => m.close() },
@@ -467,11 +464,16 @@ export class UserMarketingBonusesTab {
           text: 'Asignar Bono',
           class: 'btn-primary',
           onClick: async (e, m) => {
-            const campaignId = document.getElementById('uab-campaign').value || null;
+            const campaignName = document.getElementById('uab-campaign-name').value.trim();
             const targetUser = document.getElementById('uab-user-id').value;
             const amount = parseCurrency(document.getElementById('uab-amount').value);
             const expiresInput = document.getElementById('uab-expires').value;
             const status = document.getElementById('uab-status').value;
+
+            if (!campaignName) {
+              toast.error('Por favor ingresa el nombre de la campaña o motivo');
+              return;
+            }
 
             if (!targetUser) {
               toast.error('Por favor selecciona un usuario');
@@ -483,7 +485,6 @@ export class UserMarketingBonusesTab {
               return;
             }
 
-            const now = new Date().toISOString();
             const expiresAt = expiresInput ? new Date(expiresInput).toISOString() : null;
 
             let targetUserIds = [];
@@ -494,11 +495,11 @@ export class UserMarketingBonusesTab {
             }
 
             const items = targetUserIds.map(uid => ({
-              campaign_id: campaignId,
+              campaign_name: campaignName,
               user_id: uid,
               amount,
               status,
-              granted_at: now,
+              is_active: true,
               expires_at: expiresAt
             }));
 
@@ -523,11 +524,7 @@ export class UserMarketingBonusesTab {
   }
 
   async refreshData() {
-    const [bonuses, userBonuses] = await Promise.all([
-      marketingService.getMarketingBonuses(),
-      marketingService.getUserMarketingBonuses()
-    ]);
-    this.parentView.dataStore.marketing_bonuses = bonuses;
+    const userBonuses = await marketingService.getUserMarketingBonuses();
     this.parentView.dataStore.user_marketing_bonuses = userBonuses;
     this.parentView.updateView();
     this.parentView.updateBadges();
