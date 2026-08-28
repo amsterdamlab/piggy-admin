@@ -64,6 +64,12 @@ export class FlashMissionsTab {
 
     this.dataTable = new DataTable({
       searchPlaceholder: 'Buscar misiones flash, usuario o tipo de piggy...',
+      filters: [
+        { label: 'Pendientes / Activas', value: 'pending' },
+        { label: 'Aceptadas (Compradas)', value: 'purchased' },
+        { label: 'Vencidas / Expiradas', value: 'expired' },
+        { label: 'Inactivas', value: 'inactive' }
+      ],
       actionButton: {
         text: 'Nueva Misión Flash',
         icon: icons.plus,
@@ -210,413 +216,402 @@ export class FlashMissionsTab {
               <button class="btn btn-secondary btn-sm" data-action="edit" title="Editar Misión Flash">
                 ${icons.edit}
               </button>
-              <button class="btn btn-secondary btn-sm" data-action="delete" style="color: var(--accent-red);" title="Eliminar Misión Flash">
+              <button class="btn btn-secondary btn-sm" data-action="toggle-active" title="${row.is_active ? 'Desactivar' : 'Activar'}">
+                ${row.is_active ? icons.x : icons.check}
+              </button>
+              <button class="btn btn-danger btn-sm" data-action="delete" title="Eliminar Misión Flash">
                 ${icons.trash}
               </button>
             </div>
           `
         }
       ],
-      data: rawData,
-      onRowAction: (action, row) => this.handleAction(action, row)
+      data: rawData
     });
 
     return `
-      <div class="flash-missions-tab-container">
-        <!-- Bloques de Métricas e Inteligencia de Negocio para Ofertas Flash -->
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; margin-bottom: 1.25rem;">
+      <div>
+        <!-- 4 Tarjetas de Inteligencia Comercial y Métricas de Conversión -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
           
-          <!-- Bloque 1: Ofertas y Estados -->
-          <div style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: var(--radius-md); padding: 0.85rem 1rem;">
-            <div style="font-size: 0.72rem; text-transform: uppercase; color: var(--accent-green); font-weight: 700; letter-spacing: 0.05em; margin-bottom: 0.25rem;">
-              🏆 Ofertas (Aceptadas / Pendientes)
+          <!-- Tarjeta 1: Resumen de Ofertas -->
+          <div style="background: var(--bg-dark); padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid var(--border-color); border-left: 4px solid var(--accent-blue);">
+            <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; display: flex; align-items: center; justify-content: space-between;">
+              <span>Total Ofertas Flash</span>
+              <span style="color: var(--accent-blue);">${icons.zap}</span>
             </div>
-            <div style="font-size: 1.15rem; font-weight: 800; color: var(--text-primary); display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-              <span style="color: var(--accent-green);">${acceptedCount} Aceptadas</span>
-              <span style="font-size: 0.85rem; color: var(--accent-gold); font-weight: 700;">• ${pendingMissions.length} Pendientes</span>
-              ${expiredMissions.length > 0 ? `<span style="font-size: 0.8rem; color: var(--accent-red); font-weight: 700;">• ${expiredMissions.length} Vencidas</span>` : ''}
+            <div style="font-size: 1.6rem; font-weight: 800; color: var(--accent-blue); margin-top: 0.35rem;">
+              ${totalFlash}
             </div>
-            <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 2px;">
-              $${totalAcceptedVolume.toLocaleString('es-CO')} vendidos (${conversionRate}% conversión)
-            </div>
-          </div>
-
-          <!-- Bloque 2: Top Comprador -->
-          <div style="background: rgba(255, 75, 139, 0.08); border: 1px solid rgba(255, 75, 139, 0.25); border-radius: var(--radius-md); padding: 0.85rem 1rem;">
-            <div style="font-size: 0.72rem; text-transform: uppercase; color: var(--primary-pink); font-weight: 700; letter-spacing: 0.05em; margin-bottom: 0.25rem;">
-              🔥 Top Comprador de Ofertas
-            </div>
-            <div style="font-size: 0.95rem; font-weight: 800; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${topBuyerName}">
-              ${topBuyerName}
-            </div>
-            <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 2px;">
-              ${topBuyerCount > 0 ? `${topBuyerCount} ofertas ($${topBuyerVolume.toLocaleString('es-CO')})` : 'Sin compras registradas'}
+            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">
+              <span style="color: var(--accent-gold); font-weight: 700;">${pendingMissions.length} activas</span> | ${expiredMissions.length} vencidas
             </div>
           </div>
 
-          <!-- Bloque 3: Capital Disponible en Billeteras (Con Botón Popup) -->
-          <div style="background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.25); border-radius: var(--radius-md); padding: 0.85rem 1rem;">
-            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem;">
-              <div>
-                <div style="font-size: 0.72rem; text-transform: uppercase; color: var(--accent-blue); font-weight: 700; letter-spacing: 0.05em; margin-bottom: 0.25rem;">
-                  ⚡ Saldo en Billeteras (Oportunidad)
-                </div>
-                <div style="font-size: 1.2rem; font-weight: 800; color: var(--accent-blue);">
-                  $${totalAvailableWallet.toLocaleString('es-CO')}
-                </div>
-                <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 2px;">
-                  ${usersWithBalanceCount} usuarios con saldo listo
-                </div>
-              </div>
-              <button class="btn btn-secondary btn-sm" id="btn-view-wallet-users" style="padding: 4px 10px; font-size: 0.75rem; display: inline-flex; align-items: center; gap: 5px; margin-top: 2px; border-color: rgba(59, 130, 246, 0.4); color: var(--accent-blue);" title="Ver listado de usuarios con saldo disponible">
-                ${icons.eye || icons.wallet} <span>Ver Usuarios</span>
-              </button>
+          <!-- Tarjeta 2: Tasa de Aceptación / Conversión -->
+          <div style="background: var(--bg-dark); padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid var(--border-color); border-left: 4px solid var(--accent-green);">
+            <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; display: flex; align-items: center; justify-content: space-between;">
+              <span>Tasa de Conversión</span>
+              <span style="color: var(--accent-green);">${icons.trendingUp || icons.zap}</span>
+            </div>
+            <div style="font-size: 1.6rem; font-weight: 800; color: var(--accent-green); margin-top: 0.35rem;">
+              ${conversionRate}%
+            </div>
+            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">
+              <strong>${acceptedCount}</strong> cerditos comprados de ${totalFlash} ofertas
+            </div>
+          </div>
+
+          <!-- Tarjeta 3: Volumen Comprado -->
+          <div style="background: var(--bg-dark); padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid var(--border-color); border-left: 4px solid var(--accent-purple);">
+            <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; display: flex; align-items: center; justify-content: space-between;">
+              <span>Volumen de Ventas Flash</span>
+              <span style="color: var(--accent-purple);">${icons.award || icons.pig}</span>
+            </div>
+            <div style="font-size: 1.6rem; font-weight: 800; color: var(--accent-purple); margin-top: 0.35rem;">
+              $${totalAcceptedVolume.toLocaleString('es-CO')}
+            </div>
+            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+              Top comprador: <strong>${topBuyerName}</strong> (${topBuyerCount})
+            </div>
+          </div>
+
+          <!-- Tarjeta 4: Liquidez Disponible en Usuarios -->
+          <div style="background: var(--bg-dark); padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid var(--border-color); border-left: 4px solid var(--accent-gold);">
+            <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; display: flex; align-items: center; justify-content: space-between;">
+              <span>Liquidez en Billeteras</span>
+              <span style="color: var(--accent-gold);">${icons.wallet}</span>
+            </div>
+            <div style="font-size: 1.6rem; font-weight: 800; color: var(--accent-gold); margin-top: 0.35rem;">
+              $${totalAvailableWallet.toLocaleString('es-CO')}
+            </div>
+            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">
+              <strong>${usersWithBalanceCount}</strong> inversionistas con saldo para comprar
             </div>
           </div>
 
         </div>
 
-        ${this.dataTable.render()}
+        <!-- Tabla de Misiones Flash -->
+        <div id="flash-missions-datatable">
+          ${this.dataTable.render()}
+        </div>
       </div>
     `;
   }
 
   attachEvents(container) {
     if (this.dataTable) {
-      this.dataTable.attachEvents(container);
+      const dtContainer = container.querySelector('#flash-missions-datatable');
+      if (dtContainer) this.dataTable.attachEvents(dtContainer);
     }
 
-    const btnWalletUsers = container.querySelector('#btn-view-wallet-users');
-    if (btnWalletUsers) {
-      btnWalletUsers.addEventListener('click', () => {
-        this.openWalletUsersModal();
-      });
-    }
-  }
+    const tbody = container.querySelector('.data-table tbody');
+    if (!tbody) return;
 
-  openWalletUsersModal() {
-    const profiles = this.parentView.profilesList || [];
-    
-    // Filtrar y ordenar usuarios con saldo disponible de mayor a menor
-    const usersWithBalance = profiles
-      .filter(p => Number(p.walletBalance || p.wallet_balance || 0) > 0)
-      .sort((a, b) => Number(b.walletBalance || b.wallet_balance || 0) - Number(a.walletBalance || a.wallet_balance || 0));
+    tbody.querySelectorAll('tr').forEach((row, index) => {
+      const item = this.dataTable.filteredData[index];
+      if (!item) return;
 
-    const totalBalance = usersWithBalance.reduce((sum, p) => sum + Number(p.walletBalance || p.wallet_balance || 0), 0);
+      const editBtn = row.querySelector('[data-action="edit"]');
+      const toggleBtn = row.querySelector('[data-action="toggle-active"]');
+      const deleteBtn = row.querySelector('[data-action="delete"]');
+      const viewDetailBtn = row.querySelector('[data-action="view-user-detail"]');
 
-    const listHtml = usersWithBalance.length > 0 ? usersWithBalance.map((user, idx) => {
-      const name = user.fullName || user.full_name || 'Usuario';
-      const email = user.email || '';
-      const phone = user.whatsapp || user.phone || '';
-      const balance = Number(user.walletBalance || user.wallet_balance || 0);
-      const totalCompra = Number(user.totalCompraPiggies || user.total_compra_piggies || 0);
-
-      return `
-        <div style="display: flex; align-items: center; justify-content: space-between; padding: 0.85rem 1rem; margin-bottom: 0.6rem; background: var(--bg-sidebar); border: 1px solid var(--border-color); border-radius: var(--radius-md);">
-          <div style="display: flex; align-items: center; gap: 0.75rem; min-width: 0; flex: 1;">
-            <div style="width: 28px; height: 28px; border-radius: 50%; background: rgba(59, 130, 246, 0.15); color: var(--accent-blue); font-weight: 800; font-size: 0.8rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-              ${idx + 1}
-            </div>
-            <div style="min-width: 0;">
-              <div style="font-weight: 800; color: var(--text-primary); font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                ${name}
-              </div>
-              <div style="font-size: 0.75rem; color: var(--text-muted); font-family: monospace;">
-                ${email} ${phone ? `• ${phone}` : ''}
-              </div>
-            </div>
-          </div>
-
-          <div style="display: flex; align-items: center; gap: 1.25rem; margin-left: 1rem;">
-            <div style="text-align: right;">
-              <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Saldo Billetera</div>
-              <div style="font-weight: 800; color: var(--accent-green); font-size: 1.05rem;">
-                $${balance.toLocaleString('es-CO')}
-              </div>
-            </div>
-
-            <div style="text-align: right; display: none; @media(min-width: 600px){display: block;}">
-              <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Piggys Comprados</div>
-              <div style="font-weight: 700; color: var(--primary-pink); font-size: 0.85rem;">
-                $${totalCompra.toLocaleString('es-CO')}
-              </div>
-            </div>
-
-            <button class="btn btn-secondary btn-sm launch-flash-user-btn" data-user-id="${user.id}" style="padding: 4px 8px; font-size: 0.72rem; display: inline-flex; align-items: center; gap: 4px;" title="Lanzar Misión Flash a este usuario">
-              ${icons.zap} <span>Lanzar Misión</span>
-            </button>
-          </div>
-        </div>
-      `;
-    }).join('') : '<div class="p-4 text-center text-muted">No hay usuarios con saldo disponible actualmente.</div>';
-
-    modal.open({
-      title: 'Usuarios con Saldo Disponible en Billetera',
-      contentHtml: `
-        <div>
-          <!-- Resumen de Capital -->
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; padding: 0.85rem 1.1rem; background: var(--bg-card); border-radius: var(--radius-md); border: 1px solid var(--border-color);">
-            <div>
-              <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Capital Total Disponible</div>
-              <div style="font-weight: 800; font-size: 1.3rem; color: var(--accent-blue);">
-                $${totalBalance.toLocaleString('es-CO')}
-              </div>
-            </div>
-            <div style="text-align: right;">
-              <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Usuarios Listos</div>
-              <div style="font-weight: 800; font-size: 1.1rem; color: var(--text-primary);">
-                ${usersWithBalance.length} usuarios
-              </div>
-            </div>
-          </div>
-
-          <div style="max-height: 55vh; overflow-y: auto; padding-right: 0.25rem;">
-            ${listHtml}
-          </div>
-        </div>
-      `,
-      footerButtons: [
-        { text: 'Cerrar', class: 'btn-secondary', onClick: (e, m) => m.close() }
-      ]
-    });
-
-    // Conectar botón para lanzar misión directa desde el modal
-    setTimeout(() => {
-      const modalEl = document.querySelector('.modal-container');
-      if (modalEl) {
-        modalEl.querySelectorAll('.launch-flash-user-btn').forEach(btn => {
-          btn.addEventListener('click', () => {
-            const uid = btn.getAttribute('data-user-id');
-            modal.close();
-            this.openModal({ user_id: uid });
-          });
+      if (editBtn) {
+        editBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          this.openModal(item);
         });
       }
-    }, 100);
-  }
 
-  handleAction(action, row) {
-    if (action === 'edit') {
-      this.openModal(row);
-    } else if (action === 'delete') {
-      if (confirm(`¿Eliminar la misión flash "${row.title}"?`)) {
-        marketingService.deleteUserFlashMission(row.id).then(res => {
+      if (toggleBtn) {
+        toggleBtn.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          const newStatus = !item.is_active;
+          const res = await marketingService.toggleUserFlashMissionStatus(item.id, newStatus);
           if (res.success) {
-            toast.success('Misión flash eliminada');
-            this.parentView.dataStore.user_flash_missions = this.parentView.dataStore.user_flash_missions.filter(item => item.id !== row.id);
-            this.dataTable.setData(this.parentView.dataStore.user_flash_missions);
-            this.parentView.updateBadges();
+            toast.success(`Misión flash ${newStatus ? 'activada' : 'desactivada'}`);
+            item.is_active = newStatus;
+            this.parentView.updateView();
           } else {
-            toast.error(res.error || 'Error al eliminar');
+            toast.error('Error al actualizar estado: ' + res.error);
           }
         });
       }
-    } else if (action === 'view-user-detail') {
-      const p = (this.parentView.profilesList || []).find(prof => prof.id === row.user_id) || {};
-      this.openUserProfileModal(p);
-    }
+
+      if (deleteBtn) {
+        deleteBtn.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          if (confirm(`¿Eliminar la misión flash "${item.title || item.mission_title}"?`)) {
+            const res = await marketingService.deleteUserFlashMission(item.id);
+            if (res.success) {
+              toast.success('Misión flash eliminada');
+              this.parentView.dataStore.user_flash_missions = this.parentView.dataStore.user_flash_missions.filter(f => f.id !== item.id);
+              this.parentView.updateView();
+              this.parentView.updateBadges();
+            } else {
+              toast.error('Error al eliminar: ' + res.error);
+            }
+          }
+        });
+      }
+
+      if (viewDetailBtn) {
+        viewDetailBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const uid = viewDetailBtn.getAttribute('data-uid');
+          this.openUserDetailModal(uid);
+        });
+      }
+    });
   }
 
-  openUserProfileModal(user) {
-    const fullName = user.fullName || user.full_name || 'Usuario';
-    const email = user.email || 'No registrado';
-    const whatsapp = user.whatsapp || user.phone || 'No registrado';
-    const cedula = user.cedula || 'No registrada';
-    const refCode = user.referralCode || user.referral_code || 'Sin código';
-    const bankName = user.bankName || user.bank_name || 'No registrado';
-    const bankBreveKey = user.bankBreveKey || user.bank_breve_key || 'No registrada';
-    const walletBalance = Number(user.walletBalance || user.wallet_balance || 0);
-    const totalCompraPiggies = Number(user.totalCompraPiggies || user.total_compra_piggies || 0);
-    const activePiggiesCount = user.activePiggiesCount !== undefined ? user.activePiggiesCount : 0;
-    const totalPiggiesCount = user.totalPiggiesCount !== undefined ? user.totalPiggiesCount : 0;
+  openUserDetailModal(userId) {
+    const profiles = this.parentView.profilesList || [];
+    const piggies = this.parentView.piggiesList || [];
+    const rawFlash = this.parentView.dataStore.user_flash_missions || [];
+
+    const user = profiles.find(p => p.id === userId);
+    if (!user) {
+      toast.error('No se encontró información del usuario');
+      return;
+    }
+
+    const userPiggies = piggies.filter(p => p.user_id === userId);
+    const activePiggies = userPiggies.filter(p => p.status === 'engorde' || p.status === 'active');
+    const userFlashHistory = rawFlash.filter(f => f.user_id === userId);
+    const purchasedFlash = userFlashHistory.filter(f => f.is_purchased === true);
+
+    const piggyCount = userPiggies.length;
+    const baseRoiPct = piggyCount >= 3 ? 0.10 : (piggyCount === 2 ? 0.09 : 0.08);
 
     modal.open({
-      title: `Detalle del Usuario: ${fullName}`,
+      title: `Detalle del Inversionista: ${user.fullName || user.full_name || 'Usuario'}`,
+      size: 'large',
       contentHtml: `
         <div style="display: flex; flex-direction: column; gap: 1.25rem;">
           
-          <!-- 1. Información de Identificación & Contacto -->
-          <div style="background: var(--bg-dark); padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
-            <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em; margin-bottom: 0.4rem;">
-              Información de Identificación & Contacto
+          <!-- Ficha de Datos Principales -->
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.75rem; background: var(--bg-dark); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+            <div>
+              <div style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase;">Nombre Completo</div>
+              <div style="font-weight: 800; color: var(--text-primary); font-size: 0.95rem; margin-top: 2px;">${user.fullName || user.full_name || 'N/A'}</div>
             </div>
-            <div style="font-size: 1.25rem; font-weight: 800; color: var(--text-primary); margin-bottom: 0.85rem;">
-              ${fullName}
+            <div>
+              <div style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase;">Correo Electrónico</div>
+              <div style="color: var(--text-primary); font-size: 0.85rem; margin-top: 2px;">${user.email || 'N/A'}</div>
             </div>
-
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.75rem; font-size: 0.85rem;">
-              <div>
-                <span style="color: var(--text-muted);">Email:</span>
-                <div style="font-weight: 700; color: var(--accent-blue); font-family: monospace;">${email}</div>
-              </div>
-              <div>
-                <span style="color: var(--text-muted);">WhatsApp:</span>
-                <div style="font-weight: 700; color: var(--accent-green);">${whatsapp}</div>
-              </div>
-              <div>
-                <span style="color: var(--text-muted);">Cédula:</span>
-                <div style="font-weight: 700; color: var(--text-primary);">${cedula}</div>
-              </div>
-              <div>
-                <span style="color: var(--text-muted);">Código Referido:</span>
-                <div style="font-weight: 700; color: var(--accent-gold); font-family: monospace;">${refCode}</div>
-              </div>
-              <div>
-                <span style="color: var(--text-muted);">Banco:</span>
-                <div style="font-weight: 700; color: var(--primary-pink);">${bankName}</div>
-              </div>
-              <div>
-                <span style="color: var(--text-muted);">Llave Bre-B:</span>
-                <div style="font-weight: 700; color: var(--accent-gold); font-family: monospace;">${bankBreveKey}</div>
-              </div>
+            <div>
+              <div style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase;">WhatsApp / Teléfono</div>
+              <div style="color: var(--accent-green); font-size: 0.85rem; margin-top: 2px; font-weight: 700;">${user.whatsapp || user.phone || 'No registrado'}</div>
+            </div>
+            <div>
+              <div style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase;">Saldo en Billetera Agro</div>
+              <div style="font-weight: 800; color: var(--accent-gold); font-size: 1.1rem; margin-top: 2px;">$${Number(user.walletBalance || user.wallet_balance || 0).toLocaleString('es-CO')}</div>
             </div>
           </div>
 
-          <!-- 2. Recuadros de Métricas Financieras (Igual que en Módulo Usuarios) -->
-          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
-            
-            <div style="background: var(--bg-dark); padding: 1.1rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
-              <div style="font-size: 0.72rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; display: flex; align-items: center; gap: 4px;">
-                <span style="color: var(--accent-green);">${icons.wallet || '💳'}</span> Saldo Disponible en Billetera
-              </div>
-              <div style="font-size: 1.35rem; font-weight: 800; color: var(--accent-green); margin-top: 0.3rem;">
-                $${walletBalance.toLocaleString('es-CO')}
-              </div>
-              <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.2rem;">
-                Listo para compra inmediata de ofertas
-              </div>
+          <!-- Métricas del Inversionista -->
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.75rem;">
+            <div style="background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.2); padding: 0.9rem; border-radius: var(--radius-sm);">
+              <div style="font-size: 0.72rem; color: var(--accent-blue); font-weight: 700; text-transform: uppercase;">Cerditos Activos</div>
+              <div style="font-size: 1.3rem; font-weight: 800; color: var(--text-primary); margin-top: 0.2rem;">${activePiggies.length} de ${userPiggies.length}</div>
+              <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.15rem;">Margen Base: ${(baseRoiPct * 100).toFixed(0)}%</div>
             </div>
 
-            <div style="background: var(--bg-dark); padding: 1.1rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
-              <div style="font-size: 0.72rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; display: flex; align-items: center; gap: 4px;">
-                <span style="color: var(--primary-pink);">${icons.pig || '🐷'}</span> Valor de Compra Piggys
-              </div>
-              <div style="font-size: 1.35rem; font-weight: 800; color: var(--primary-pink); margin-top: 0.3rem;">
-                $${totalCompraPiggies.toLocaleString('es-CO')}
-              </div>
-              <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.2rem;">
-                ${activePiggiesCount} en engorde (${totalPiggiesCount} total)
-              </div>
+            <div style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.2); padding: 0.9rem; border-radius: var(--radius-sm);">
+              <div style="font-size: 0.72rem; color: var(--accent-green); font-weight: 700; text-transform: uppercase;">Ofertas Flash Aceptadas</div>
+              <div style="font-size: 1.3rem; font-weight: 800; color: var(--text-primary); margin-top: 0.2rem;">${purchasedFlash.length}</div>
+              <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.15rem;">De ${userFlashHistory.length} enviadas</div>
             </div>
 
+            <div style="background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.2); padding: 0.9rem; border-radius: var(--radius-sm);">
+              <div style="font-size: 0.72rem; color: var(--accent-gold); font-weight: 700; text-transform: uppercase;">Total Compras Flash</div>
+              <div style="font-size: 1.3rem; font-weight: 800; color: var(--accent-gold); margin-top: 0.2rem;">$${purchasedFlash.reduce((sum, f) => sum + Number(f.price || 0), 0).toLocaleString('es-CO')}</div>
+              <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.15rem;">Volumen invertido</div>
+            </div>
           </div>
+
+          <!-- Historial de Ofertas Flash del Usuario -->
+          <div>
+            <h4 style="font-size: 0.88rem; font-weight: 800; margin-bottom: 0.5rem; color: var(--text-primary);">Historial de Ofertas Flash Asignadas</h4>
+            <div style="max-height: 200px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: var(--radius-sm);">
+              <table style="width: 100%; border-collapse: collapse; font-size: 0.78rem; text-align: left;">
+                <thead style="background: var(--bg-dark); color: var(--text-muted); position: sticky; top: 0;">
+                  <tr>
+                    <th style="padding: 6px 10px;">Misión / Tipo</th>
+                    <th style="padding: 6px 10px;">Precio</th>
+                    <th style="padding: 6px 10px;">Estado Oferta</th>
+                    <th style="padding: 6px 10px;">Caducidad</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${userFlashHistory.length === 0 ? `
+                    <tr><td colspan="4" style="padding: 12px; text-align: center; color: var(--text-muted);">No tiene ofertas flash registradas.</td></tr>
+                  ` : userFlashHistory.map(f => `
+                    <tr style="border-top: 1px solid var(--border-color);">
+                      <td style="padding: 6px 10px;">
+                        <strong>${f.title || f.mission_title}</strong>
+                        <div style="font-size: 0.7rem; color: var(--text-muted);">${f.piggy_label || f.piggy_type}</div>
+                      </td>
+                      <td style="padding: 6px 10px; font-weight: 700; color: var(--accent-gold);">$${Number(f.price || 0).toLocaleString('es-CO')}</td>
+                      <td style="padding: 6px 10px;">
+                        ${f.is_purchased ? '<span class="badge badge-success" style="font-size: 0.68rem;">Aceptada</span>' : (f.scheduled_at && new Date(f.scheduled_at) < new Date() ? '<span class="badge badge-danger" style="font-size: 0.68rem;">Vencida</span>' : '<span class="badge badge-warning" style="font-size: 0.68rem;">Pendiente</span>')}
+                      </td>
+                      <td style="padding: 6px 10px; font-size: 0.72rem; color: var(--text-muted);">
+                        ${f.scheduled_at ? new Date(f.scheduled_at).toLocaleDateString('es-CO') : 'Sin caducidad'}
+                      </td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Cerditos en Engorde Actuales -->
+          <div>
+            <h4 style="font-size: 0.88rem; font-weight: 800; margin-bottom: 0.5rem; color: var(--text-primary);">Cerditos del Inversionista (${userPiggies.length})</h4>
+            <div style="max-height: 180px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: var(--radius-sm);">
+              <table style="width: 100%; border-collapse: collapse; font-size: 0.78rem; text-align: left;">
+                <thead style="background: var(--bg-dark); color: var(--text-muted); position: sticky; top: 0;">
+                  <tr>
+                    <th style="padding: 6px 10px;">Código / Nombre</th>
+                    <th style="padding: 6px 10px;">Inversión</th>
+                    <th style="padding: 6px 10px;">Estado</th>
+                    <th style="padding: 6px 10px;">Fecha Fin</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${userPiggies.length === 0 ? `
+                    <tr><td colspan="4" style="padding: 12px; text-align: center; color: var(--text-muted);">No tiene cerditos registrados aún.</td></tr>
+                  ` : userPiggies.map(p => `
+                    <tr style="border-top: 1px solid var(--border-color);">
+                      <td style="padding: 6px 10px;">
+                        <strong>${p.pig_id || `Cerdito ${p.id.slice(0, 6)}`}</strong>
+                        <div style="font-size: 0.7rem; color: var(--text-muted);">${p.pig_name || p.type || 'Standard'}</div>
+                      </td>
+                      <td style="padding: 6px 10px; font-weight: 700; color: var(--accent-green);">$${Number(p.investment_amount || 1000000).toLocaleString('es-CO')}</td>
+                      <td style="padding: 6px 10px;">
+                        <span class="badge ${p.status === 'engorde' || p.status === 'active' ? 'badge-success' : 'badge-neutral'}" style="font-size: 0.68rem;">
+                          ${p.status || 'Activo'}
+                        </span>
+                      </td>
+                      <td style="padding: 6px 10px; font-size: 0.72rem; color: var(--text-muted);">
+                        ${p.end_date ? new Date(p.end_date).toLocaleDateString('es-CO') : 'En curso'}
+                      </td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
         </div>
       `,
       footerButtons: [
         {
-          text: 'Ir a Módulo de Usuarios',
-          class: 'btn-secondary',
+          text: 'Crear Oferta para este Usuario',
+          class: 'btn-primary',
           onClick: (e, m) => {
             m.close();
-            window.location.hash = '#users';
+            this.openModal(null, userId);
           }
         },
-        { text: 'Cerrar', class: 'btn-primary', onClick: (e, m) => m.close() }
+        { text: 'Cerrar', class: 'btn-secondary', onClick: (e, m) => m.close() }
       ]
     });
   }
 
-  openModal(item = null) {
-    const isEdit = Boolean(item && item.id);
+  openModal(item = null, preselectedUserId = null) {
+    const isEdit = !!item;
     const profiles = this.parentView.profilesList || [];
-    const exclusiveConfigs = this.parentView.dataStore.exclusive_piggy_config || [];
-
-    const now = new Date();
-    const thirtyDaysAgo = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000));
-
-    // Segmentación de Audiencias (Nuevos Usuarios: <= 30 días de registro)
-    const allUsers = profiles;
-    const activePiggyUsers = profiles.filter(p => Number(p.activePiggiesCount || 0) > 0);
-    const newUsers = profiles.filter(p => {
-      const createdDate = p.createdAt || p.created_at;
-      return createdDate ? new Date(createdDate) >= thirtyDaysAgo : false;
-    });
-    const noPiggyUsers = profiles.filter(p => Number(p.activePiggiesCount || 0) === 0);
-
-    const initialSingleUserId = item?.user_id || '';
-    const initialAudience = isEdit ? 'SINGLE' : (item?.user_id ? 'SINGLE' : 'ALL');
-
-    const userOptions = profiles.map(p => {
-      const name = p.fullName || p.full_name || p.email;
-      const isSelected = initialSingleUserId === p.id ? 'selected' : '';
-      return `<option value="${p.id}" ${isSelected}>${name} (${p.email || p.id.slice(0,8)})</option>`;
-    }).join('');
 
     const scheduledVal = item?.scheduled_at ? new Date(item.scheduled_at).toISOString().slice(0, 16) : '';
-    const initialType = item?.piggy_type || 'dorado';
-    const initialCatInfo = getPiggyCategoryInfo(initialType);
-
-    // Buscar si hay un override de precio en exclusive_piggy_config
-    const exclusiveOverride = exclusiveConfigs.find(c => c.piggy_type === initialType);
-    const defaultInitialPrice = exclusiveOverride ? Number(exclusiveOverride.price) : initialCatInfo.defaultPrice;
+    const initialPiggyType = item?.piggy_type || 'dorado';
+    const initialCatInfo = getPiggyCategoryInfo(initialPiggyType);
+    const defaultInitialPrice = initialCatInfo.defaultPrice;
 
     modal.open({
-      title: isEdit ? 'Editar Misión Flash' : 'Lanzar Campaña / Nueva Misión Flash',
+      title: isEdit ? 'Editar Misión Flash' : 'Lanzar Nueva Misión Flash',
+      size: 'medium',
       contentHtml: `
-        <form id="flash-form">
+        <form id="form-flash-mission" class="form-grid" style="display: flex; flex-direction: column; gap: 1rem;">
+          
+          <!-- Banner Informativo -->
+          <div style="background: rgba(245, 158, 11, 0.08); border: 1px solid var(--accent-gold); padding: 0.75rem; border-radius: var(--radius-sm); font-size: 0.8rem; color: var(--text-primary);">
+            <strong style="color: var(--accent-gold);">${icons.zap} Misiones Flash Automatizadas:</strong> Configura ofertas exclusivas de cerditos temporales con retorno preferencial. Puedes activarlas de inmediato o programar su caducidad.
+          </div>
+
+          <!-- Selector de Audiencia / Destinatario -->
           ${!isEdit ? `
             <div class="form-group">
-              <label class="form-label" for="flash-audience">Alcance de la Asignación / Destinatarios: *</label>
+              <label class="form-label" for="flash-audience">Audiencia / Destinatarios</label>
               <select id="flash-audience" class="form-select">
-                <option value="ALL" ${initialAudience === 'ALL' ? 'selected' : ''}>🌟 Todos los Usuarios (${allUsers.length})</option>
-                <option value="ACTIVE_USERS" ${initialAudience === 'ACTIVE_USERS' ? 'selected' : ''}>🐷 Usuarios con Cerditos Activos (${activePiggyUsers.length})</option>
-                <option value="NEW_USERS" ${initialAudience === 'NEW_USERS' ? 'selected' : ''}>🌱 Nuevos Usuarios Registrados (${newUsers.length})</option>
-                <option value="NO_PIGGIES" ${initialAudience === 'NO_PIGGIES' ? 'selected' : ''}>⏳ Usuarios sin Cerditos Activos (${noPiggyUsers.length})</option>
-                <option value="SINGLE" ${initialAudience === 'SINGLE' ? 'selected' : ''}>👤 Usuario Individual Específico</option>
+                <option value="ALL" ${!preselectedUserId ? 'selected' : ''}>🌟 Todos los Inversionistas (${profiles.length} usuarios)</option>
+                <option value="ACTIVE_INVESTORS">Inversionistas con Cerditos Activos</option>
+                <option value="NEW_USERS">Nuevos Usuarios Registrados</option>
+                <option value="NO_PIGGIES">Usuarios sin Cerditos Activos</option>
+                <option value="SINGLE" ${preselectedUserId ? 'selected' : ''}>👤 Inversionista Individual Específico</option>
               </select>
             </div>
 
-            <div class="form-group" id="flash-single-user-cont" style="${initialAudience === 'SINGLE' ? 'display: block;' : 'display: none;'}">
-              <label class="form-label" for="flash-user">Seleccionar Usuario:</label>
-              <select id="flash-user" class="form-select">
-                <option value="">-- Elige un usuario --</option>
-                ${userOptions}
+            <div class="form-group" id="flash-single-user-cont" style="display: ${preselectedUserId ? 'block' : 'none'};">
+              <label class="form-label" for="flash-user-id">Seleccionar Inversionista</label>
+              <select id="flash-user-id" class="form-select">
+                <option value="" disabled ${!preselectedUserId ? 'selected' : ''}>-- Elige un usuario --</option>
+                ${profiles.map(p => `
+                  <option value="${p.id}" ${p.id === preselectedUserId ? 'selected' : ''}>
+                    ${p.fullName || p.full_name || 'Sin Nombre'} (${p.email || p.whatsapp || p.id.slice(0, 6)})
+                  </option>
+                `).join('')}
               </select>
             </div>
           ` : `
             <div class="form-group">
-              <label class="form-label">Destinatario:</label>
-              <div style="font-weight: 700; color: var(--accent-blue); padding: 0.5rem 0.75rem; background: var(--bg-dark); border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
-                ${item?.user_id ? (profiles.find(p => p.id === item.user_id)?.fullName || profiles.find(p => p.id === item.user_id)?.email || `Usuario (${item.user_id.slice(0,8)})`) : 'Global (Todos)'}
+              <label class="form-label">Inversionista Asignado</label>
+              <div style="font-weight: 700; color: var(--text-primary); font-size: 0.88rem; padding: 0.5rem; background: var(--bg-dark); border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+                ${item?.user_id ? ((profiles.find(p => p.id === item.user_id)?.fullName) || (profiles.find(p => p.id === item.user_id)?.full_name) || `Usuario ${item.user_id.slice(0, 8)}`) : 'Global (Todos los usuarios)'}
               </div>
             </div>
           `}
 
+          <!-- Tipo de Cerdito & Beneficio Exclusivo -->
           <div class="form-row">
-            <div class="form-group" style="flex: 1.2;">
-              <label class="form-label" for="flash-type">Tipo de Piggy</label>
-              <select id="flash-type" class="form-select">
-                ${renderCategorySelectOptions(initialType, exclusiveConfigs)}
+            <div class="form-group">
+              <label class="form-label" for="flash-type">Tipo de Cerdito</label>
+              <select id="flash-type" class="form-select" required>
+                ${renderCategorySelectOptions(initialPiggyType)}
               </select>
             </div>
 
-            <div class="form-group" style="flex: 1.2;">
-              <label class="form-label" for="flash-title">Título de la Misión</label>
-              <input type="text" id="flash-title" class="form-input" placeholder="Ej: ¡Acelera tu Crecimiento!" value="${item?.title || (isEdit ? '' : initialCatInfo.title)}" required />
+            <div class="form-group">
+              <label class="form-label" for="flash-piggy-label">Nombre Comercial del Cerdito</label>
+              <input type="text" id="flash-piggy-label" class="form-input" value="${item?.piggy_label || (isEdit ? '' : initialCatInfo.piggyLabel)}" placeholder="Ej: Cerdito Dorado" required />
             </div>
           </div>
 
           <div class="form-row">
             <div class="form-group">
-              <label class="form-label" for="flash-piggy-label">Etiqueta del Piggy (Nombre)</label>
-              <input type="text" id="flash-piggy-label" class="form-input" placeholder="Ej: Piggy Flash 45D" value="${item?.piggy_label || (isEdit ? '' : initialCatInfo.piggyLabel)}" required />
+              <label class="form-label" for="flash-title">Título de la Misión</label>
+              <input type="text" id="flash-title" class="form-input" value="${item?.title || item?.mission_title || (isEdit ? '' : initialCatInfo.title)}" placeholder="Ej: Oportunidad Cerdito Dorado" required />
             </div>
 
             <div class="form-group">
-              <label class="form-label" for="flash-badge">Badge / Cinta Visual</label>
-              <input type="text" id="flash-badge" class="form-input" placeholder="Ej: ⚡ OFERTA FLASH · 45 DÍAS" value="${item?.badge || (isEdit ? '' : initialCatInfo.badge)}" required />
+              <label class="form-label" for="flash-badge">Etiqueta Visual (Badge)</label>
+              <input type="text" id="flash-badge" class="form-input" value="${item?.badge || (isEdit ? '' : initialCatInfo.badge)}" placeholder="Ej: 🏆 12% Extra / 🚀 15% ROI" />
             </div>
           </div>
 
           <div class="form-row">
             <div class="form-group">
               <label class="form-label" for="flash-benefit-title">Título del Beneficio</label>
-              <input type="text" id="flash-benefit-title" class="form-input" placeholder="Ej: Reducción de 45 días de espera" value="${item?.benefit_title || (isEdit ? '' : initialCatInfo.benefitTitle)}" required />
+              <input type="text" id="flash-benefit-title" class="form-input" value="${item?.benefit_title || (isEdit ? '' : initialCatInfo.benefitTitle)}" placeholder="Ej: 12% Ganancia Neta Asegurada" />
             </div>
 
             <div class="form-group">
               <label class="form-label" for="flash-benefit-desc">Detalle del Beneficio</label>
-              <input type="text" id="flash-benefit-desc" class="form-input" placeholder="Ej: Inicia tu cerdito en el día 45 ahorrando tiempo." value="${item?.benefit_description || (isEdit ? '' : initialCatInfo.benefitDescription)}" required />
+              <input type="text" id="flash-benefit-desc" class="form-input" value="${item?.benefit_description || (isEdit ? '' : initialCatInfo.benefitDescription)}" placeholder="Ej: Retorno preferencial en 90 días" />
             </div>
           </div>
 
@@ -635,8 +630,13 @@ export class FlashMissionsTab {
             </div>
 
             <div class="form-group datetime-enhanced-group">
-              <label class="form-label" for="flash-scheduled">Caducidad (Fecha y Hora)</label>
-              <input type="datetime-local" id="flash-scheduled" class="form-input" value="${scheduledVal}" />
+              <label class="form-label" for="flash-scheduled">Programación / Caducidad</label>
+              <div class="datetime-input-wrapper">
+                <input type="datetime-local" id="flash-scheduled" class="form-input" value="${scheduledVal}" style="color-scheme: dark;" />
+              </div>
+              <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 2px;">
+                Fecha límite para activar y/o comprar la oferta
+              </div>
             </div>
           </div>
 
@@ -761,68 +761,54 @@ export class FlashMissionsTab {
               const res = await marketingService.updateUserFlashMission(item.id, basePayload);
               if (res.success) {
                 toast.success('Misión flash actualizada con éxito');
-                this.parentView.dataStore.user_flash_missions = await marketingService.getUserFlashMissions();
-                this.dataTable.setData(this.parentView.dataStore.user_flash_missions);
-                this.parentView.updateBadges();
                 m.close();
+                this.parentView.updateView();
               } else {
-                toast.error(res.error || 'Error al guardar');
+                toast.error('Error al actualizar: ' + res.error);
                 btn.disabled = false;
                 btn.textContent = 'Guardar Cambios';
               }
-              return;
-            }
-
-            // Nueva Misión Flash: Determinar destinatarios según la segmentación seleccionada
-            const audience = root.querySelector('#flash-audience')?.value || 'ALL';
-            const singleUserId = root.querySelector('#flash-user')?.value || null;
-
-            let targetUserIds = [];
-            if (audience === 'SINGLE') {
-              if (!singleUserId) {
-                toast.error('Por favor selecciona un usuario específico');
-                btn.disabled = false;
-                btn.textContent = 'Lanzar Misión Flash';
-                return;
-              }
-              targetUserIds = [singleUserId];
-            } else if (audience === 'ALL') {
-              targetUserIds = allUsers.map(p => p.id);
-            } else if (audience === 'ACTIVE_USERS') {
-              targetUserIds = activePiggyUsers.map(p => p.id);
-            } else if (audience === 'NEW_USERS') {
-              targetUserIds = newUsers.map(p => p.id);
-            } else if (audience === 'NO_PIGGIES') {
-              targetUserIds = noPiggyUsers.map(p => p.id);
-            }
-
-            if (targetUserIds.length === 0) {
-              toast.error('No se encontraron usuarios para la audiencia seleccionada');
-              btn.disabled = false;
-              btn.textContent = 'Lanzar Misión Flash';
-              return;
-            }
-
-            // Generar UUID único de campaña para agrupar este lanzamiento
-            const campaignId = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : ('camp_' + Date.now());
-
-            const batchItems = targetUserIds.map(uid => ({
-              ...basePayload,
-              user_id: uid,
-              campaign_id: campaignId
-            }));
-
-            const res = await marketingService.createUserFlashMissionsBatch(batchItems);
-            if (res.success) {
-              toast.success(`¡Misión Flash asignada con éxito a ${batchItems.length} usuario(s)!`);
-              this.parentView.dataStore.user_flash_missions = await marketingService.getUserFlashMissions();
-              this.dataTable.setData(this.parentView.dataStore.user_flash_missions);
-              this.parentView.updateBadges();
-              m.close();
             } else {
-              toast.error(res.error || 'Error al lanzar misión flash');
-              btn.disabled = false;
-              btn.textContent = 'Lanzar Misión Flash';
+              const audience = root.querySelector('#flash-audience')?.value;
+              const singleUserId = root.querySelector('#flash-user-id')?.value;
+
+              let targetUserIds = [];
+              if (audience === 'SINGLE') {
+                if (!singleUserId) {
+                  toast.error('Selecciona un inversionista específico');
+                  btn.disabled = false;
+                  btn.textContent = 'Lanzar Misión Flash';
+                  return;
+                }
+                targetUserIds = [singleUserId];
+              } else if (audience === 'ACTIVE_INVESTORS') {
+                targetUserIds = profiles.filter(p => (p.activePiggiesCount || 0) > 0).map(p => p.id);
+              } else if (audience === 'NO_PIGGIES') {
+                targetUserIds = profiles.filter(p => (p.activePiggiesCount || 0) === 0).map(p => p.id);
+              } else if (audience === 'NEW_USERS') {
+                const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000);
+                targetUserIds = profiles.filter(p => p.createdAt && new Date(p.createdAt) >= thirtyDaysAgo).map(p => p.id);
+              } else {
+                targetUserIds = profiles.map(p => p.id);
+              }
+
+              if (targetUserIds.length === 0) {
+                targetUserIds = [null]; // Misión flash global
+              }
+
+              let createdCount = 0;
+              for (const uid of targetUserIds) {
+                const payload = { ...basePayload, user_id: uid };
+                const res = await marketingService.createUserFlashMission(payload);
+                if (res.success) createdCount++;
+              }
+
+              toast.success(`¡Misión Flash asignada con éxito a ${createdCount} usuario(s)!`);
+              m.close();
+              const refreshed = await marketingService.getUserFlashMissions();
+              this.parentView.dataStore.user_flash_missions = refreshed;
+              this.parentView.updateView();
+              this.parentView.updateBadges();
             }
           }
         }

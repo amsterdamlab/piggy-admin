@@ -1,7 +1,7 @@
 /* ==========================================================================
    MARKETING - BONOS CONSUMO (user_marketing_bonuses)
-   Vista unificada para asignación, seguimiento en tiempo real, caducidad y canjes
-   Sincronizado 100% con balances de usuarios y movimientos contables
+   Vista unificada para asignación, programación, seguimiento en tiempo real,
+   caducidad y canjes. Sincronizado 100% con balances y movimientos contables.
    ========================================================================== */
 
 import { marketingService } from '../../services/marketingService.js';
@@ -38,16 +38,20 @@ export class BonosConsumoTab {
     const expiredBonuses = rawData.filter(ub => ub.status !== 'redeemed' && ub.expires_at && new Date(ub.expires_at) < now);
     const expiredCount = expiredBonuses.length;
 
-    const activeBonuses = rawData.filter(ub => ub.is_active && ub.status === 'active' && (!ub.expires_at || new Date(ub.expires_at) >= now));
+    const scheduledBonuses = rawData.filter(ub => ub.is_active && ub.status !== 'redeemed' && ub.starts_at && new Date(ub.starts_at) > now);
+    const scheduledCount = scheduledBonuses.length;
+
+    const activeBonuses = rawData.filter(ub => ub.is_active && ub.status === 'active' && (!ub.starts_at || new Date(ub.starts_at) <= now) && (!ub.expires_at || new Date(ub.expires_at) >= now));
     const activeCount = activeBonuses.length;
     const activeVolume = activeBonuses.reduce((sum, ub) => sum + Number(ub.amount || 0), 0);
 
     const conversionRate = totalAssignments > 0 ? Math.round((redeemedCount / totalAssignments) * 100) : 0;
 
     this.dataTable = new DataTable({
-      searchPlaceholder: 'Buscar por usuario, email, campaña o estado...',
+      searchPlaceholder: 'Buscar por usuario, campaña o estado...',
       filters: [
-        { label: 'Activos / Disponibles', value: 'active' },
+        { label: 'Disponibles / Activos', value: 'active' },
+        { label: 'Programados', value: 'scheduled' },
         { label: 'Redimidos / Canjeados', value: 'redeemed' },
         { label: 'Expirados / Vencidos', value: 'expired' },
         { label: 'Pausados', value: 'paused' }
@@ -59,7 +63,7 @@ export class BonosConsumoTab {
       },
       columns: [
         {
-          header: 'Usuario',
+          header: 'Usuario / Inversionista',
           sortValue: (row) => {
             const p = profileMap[row.user_id] || {};
             return p.fullName || p.full_name || row.user_id;
@@ -112,15 +116,18 @@ export class BonosConsumoTab {
         {
           header: 'Estado en Tiempo Real',
           sortValue: (row) => {
-            if (row.status === 'redeemed') return 3;
+            if (row.status === 'redeemed') return 4;
             if (row.expires_at && new Date(row.expires_at) < now) return 0;
-            if (row.is_active && row.status === 'active') return 2;
+            if (row.starts_at && new Date(row.starts_at) > now) return 2;
+            if (row.is_active && row.status === 'active') return 3;
             return 1;
           },
           render: (row) => {
-            const isExpired = row.status !== 'redeemed' && row.expires_at && new Date(row.expires_at) < now;
+            const isRedeemed = row.status === 'redeemed';
+            const isExpired = !isRedeemed && row.expires_at && new Date(row.expires_at) < now;
+            const isScheduled = !isRedeemed && !isExpired && row.starts_at && new Date(row.starts_at) > now;
 
-            if (row.status === 'redeemed') {
+            if (isRedeemed) {
               return `
                 <div>
                   <span class="badge badge-success" style="font-size: 0.75rem; padding: 3px 8px; display: inline-flex; align-items: center; gap: 4px;">
@@ -141,6 +148,24 @@ export class BonosConsumoTab {
                   </span>
                   <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 3px;">
                     No canjeado a tiempo
+                  </div>
+                </div>
+              `;
+            }
+
+            if (isScheduled) {
+              const startDate = new Date(row.starts_at);
+              const diffHours = Math.max(1, Math.round((startDate - now) / (1000 * 60 * 60)));
+              const diffDays = Math.ceil(diffHours / 24);
+              const timeLabel = diffDays > 1 ? `Inicia en ${diffDays} días` : `Inicia en ${diffHours} horas`;
+
+              return `
+                <div>
+                  <span class="badge badge-warning" style="font-size: 0.75rem; padding: 3px 8px; display: inline-flex; align-items: center; gap: 4px; background: rgba(245, 158, 11, 0.15); color: var(--accent-gold); border: 1px solid rgba(245, 158, 11, 0.3);">
+                    ${icons.clock} Programada
+                  </span>
+                  <div style="font-size: 0.72rem; color: var(--accent-gold); margin-top: 3px; font-weight: 600;">
+                    ${timeLabel}
                   </div>
                 </div>
               `;
@@ -168,9 +193,9 @@ export class BonosConsumoTab {
               return `
                 <div>
                   <span class="badge badge-info" style="font-size: 0.75rem; padding: 3px 8px; display: inline-flex; align-items: center; gap: 4px;">
-                    ${icons.clock} Disponible / Activo
+                    ${icons.check} Disponible / Activo
                   </span>
-                  <div style="font-size: 0.72rem; color: var(--accent-gold); margin-top: 3px; font-weight: 600;">
+                  <div style="font-size: 0.72rem; color: var(--accent-green); margin-top: 3px; font-weight: 600;">
                     ${timeLabel}
                   </div>
                 </div>
@@ -190,16 +215,26 @@ export class BonosConsumoTab {
           header: 'Trazabilidad & Fechas',
           sortValue: (row) => new Date(row.created_at || Date.now()).getTime(),
           render: (row) => {
-            const created = row.created_at;
+            const starts = row.starts_at;
             const exp = row.expires_at;
+            const created = row.created_at;
 
             return `
-              <div style="font-size: 0.78rem; line-height: 1.4;">
-                <div style="color: var(--text-secondary);">
-                  <strong style="color: var(--text-muted);">Asignado:</strong> ${created ? new Date(created).toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' }) : 'N/A'}
-                </div>
+              <div style="font-size: 0.78rem; line-height: 1.45;">
+                ${starts ? `
+                  <div style="color: var(--accent-gold);">
+                    <strong style="color: var(--text-muted);">Inicia:</strong> ${new Date(starts).toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' })}
+                  </div>
+                ` : `
+                  <div style="color: var(--text-secondary);">
+                    <strong style="color: var(--text-muted);">Lanzamiento:</strong> Inmediato
+                  </div>
+                `}
                 <div style="color: var(--text-secondary); margin-top: 2px;">
                   <strong style="color: var(--text-muted);">Vence:</strong> ${exp ? new Date(exp).toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' }) : 'Sin vencimiento'}
+                </div>
+                <div style="color: var(--text-muted); font-size: 0.7rem; margin-top: 2px;">
+                  Creado: ${created ? new Date(created).toLocaleDateString('es-CO') : 'N/A'}
                 </div>
               </div>
             `;
@@ -262,7 +297,7 @@ export class BonosConsumoTab {
               ${activeCount} <span style="font-size: 0.85rem; color: var(--text-muted); font-weight: 500;">($${activeVolume.toLocaleString('es-CO')})</span>
             </div>
             <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.2rem;">
-              Ofertas vigentes en manos de usuarios
+              ${scheduledCount > 0 ? `<span style="color: var(--accent-gold); font-weight: 700;">+${scheduledCount} programada(s)</span>` : 'Ofertas vigentes en manos de usuarios'}
             </div>
           </div>
 
@@ -384,18 +419,6 @@ export class BonosConsumoTab {
     const rawData = this.parentView.dataStore.user_marketing_bonuses || [];
     const profiles = this.parentView.profilesList || [];
 
-    const now = new Date();
-    const thirtyDaysAgo = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000));
-
-    // Segmentación de Audiencias (Nuevos Usuarios: <= 30 días de registro)
-    const allUsers = profiles;
-    const activePiggyUsers = profiles.filter(p => Number(p.activePiggiesCount || 0) > 0);
-    const newUsers = profiles.filter(p => {
-      const createdDate = p.createdAt || p.created_at;
-      return createdDate ? new Date(createdDate) >= thirtyDaysAgo : false;
-    });
-    const noPiggyUsers = profiles.filter(p => Number(p.activePiggiesCount || 0) === 0);
-
     // Campañas existentes para autocompletar
     const existingCampaigns = Array.from(new Set(rawData.map(r => r.campaign_name).filter(Boolean)));
 
@@ -406,7 +429,7 @@ export class BonosConsumoTab {
         <form id="form-assign-user-bonus" style="display: flex; flex-direction: column; gap: 1rem;">
           
           <div style="background: rgba(0, 209, 178, 0.08); border: 1px solid var(--accent-green); padding: 0.75rem; border-radius: var(--radius-sm); font-size: 0.8rem; color: var(--text-primary);">
-            <strong style="color: var(--accent-green);">${icons.gift} Bonos de Consumo en Tiempo Real:</strong> Configura y asigna incentivos para compras en la granja. El saldo se acreditará en la cuenta del usuario y se registrará en el historial financiero.
+            <strong style="color: var(--accent-green);">${icons.gift} Bonos de Consumo Automatizados:</strong> Configura incentivos para compras en la granja. Puedes lanzarlos de inmediato o programar su fecha y hora exacta de activación.
           </div>
 
           <div class="form-group">
@@ -418,7 +441,7 @@ export class BonosConsumoTab {
               ${existingCampaigns.map(c => `<option value="${c}"></option>`).join('')}
               <option value="Bono Fidelización Granja"></option>
               <option value="Fin de Semana Lechón"></option>
-              <option value="Bono Bienvenida Usuarios"></option>
+              <option value="Bono Bienvenida Inversionistas"></option>
               <option value="Incentivo Cortes Premium"></option>
             </datalist>
           </div>
@@ -428,42 +451,58 @@ export class BonosConsumoTab {
               Alcance de la Asignación / Destinatarios: *
             </label>
             <select id="uab-audience" class="form-control" style="width: 100%; padding: 0.6rem; background: var(--bg-dark); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: var(--radius-sm);">
-              <option value="ALL" selected>🌟 Todos los Usuarios (${allUsers.length})</option>
-              <option value="ACTIVE_INVESTORS">🐷 Usuarios con Cerditos Activos (${activePiggyUsers.length})</option>
-              <option value="NEW_USERS">🌱 Nuevos Usuarios Registrados (${newUsers.length})</option>
-              <option value="NO_PIGGIES">⏳ Usuarios sin Cerditos Activos (${noPiggyUsers.length})</option>
+              <option value="ALL" selected>🌟 Todos los Inversionistas (${profiles.length})</option>
+              <option value="ACTIVE_INVESTORS">Inversionistas con Cerditos Activos</option>
+              <option value="NEW_USERS">Nuevos Usuarios Registrados</option>
+              <option value="NO_PIGGIES">Usuarios sin Cerditos Activos</option>
               <option value="SINGLE">👤 Usuario Individual Específico</option>
             </select>
           </div>
 
           <div class="form-group" id="uab-single-user-cont" style="display: none;">
             <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-primary); margin-bottom: 4px; display: block;">
-              Seleccionar Usuario:
+              Seleccionar Inversionista:
             </label>
             <select id="uab-user-id" class="form-control" style="width: 100%; padding: 0.6rem; background: var(--bg-dark); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: var(--radius-sm);">
               <option value="" disabled selected>-- Elige un usuario --</option>
               ${profiles.map(p => `
                 <option value="${p.id}">
-                  ${p.fullName || p.full_name || 'Sin Nombre'} (${p.email || p.id.slice(0, 6)})
+                  ${p.fullName || p.full_name || 'Sin Nombre'} (${p.id.slice(0, 6)})
                 </option>
               `).join('')}
             </select>
           </div>
 
+          <div class="form-group">
+            <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-primary); margin-bottom: 4px; display: block;">
+              Monto del Bono por Usuario: *
+            </label>
+            <input type="text" id="uab-amount" class="form-control" placeholder="$50.000" value="$50.000" required style="width: 100%; padding: 0.6rem; background: var(--bg-dark); color: var(--accent-green); font-weight: 800; border: 1px solid var(--border-color); border-radius: var(--radius-sm);" />
+          </div>
+
+          <!-- Fechas: Lanzamiento / Programación y Expiración -->
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
             <div class="form-group">
               <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-primary); margin-bottom: 4px; display: block;">
-                Monto del Bono por Usuario: *
+                Lanzamiento / Programación:
               </label>
-              <input type="text" id="uab-amount" class="form-control" placeholder="$50.000" value="$50.000" required style="width: 100%; padding: 0.6rem; background: var(--bg-dark); color: var(--accent-green); font-weight: 800; border: 1px solid var(--border-color); border-radius: var(--radius-sm);" />
+              <div class="datetime-input-wrapper">
+                <input type="datetime-local" id="uab-starts" class="form-control form-input" style="width: 100%; padding: 0.6rem 2.8rem 0.6rem 0.6rem; background: var(--bg-dark); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: var(--radius-sm); color-scheme: dark;" />
+              </div>
+              <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 2px;">
+                Vacío = Activación inmediata
+              </div>
             </div>
 
             <div class="form-group">
               <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-primary); margin-bottom: 4px; display: block;">
-                Fecha de Expiración (Opcional):
+                Fecha de Expiración:
               </label>
               <div class="datetime-input-wrapper">
                 <input type="datetime-local" id="uab-expires" class="form-control form-input" style="width: 100%; padding: 0.6rem 2.8rem 0.6rem 0.6rem; background: var(--bg-dark); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: var(--radius-sm); color-scheme: dark;" />
+              </div>
+              <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 2px;">
+                Opcional (Sin caducidad si está vacío)
               </div>
             </div>
           </div>
@@ -487,6 +526,9 @@ export class BonosConsumoTab {
         const amtInput = modalBody.querySelector('#uab-amount');
         if (amtInput) setupCurrencyInput(amtInput);
 
+        const startsInput = modalBody.querySelector('#uab-starts');
+        if (startsInput) setupDateTimePicker(startsInput);
+
         const expInput = modalBody.querySelector('#uab-expires');
         if (expInput) setupDateTimePicker(expInput);
 
@@ -506,6 +548,7 @@ export class BonosConsumoTab {
             const audience = document.getElementById('uab-audience').value;
             const singleUserId = document.getElementById('uab-user-id')?.value;
             const amount = parseCurrency(document.getElementById('uab-amount').value);
+            const startsInput = document.getElementById('uab-starts').value;
             const expiresInput = document.getElementById('uab-expires').value;
             const status = document.getElementById('uab-status').value;
 
@@ -522,20 +565,18 @@ export class BonosConsumoTab {
             let targetUserIds = [];
             if (audience === 'SINGLE') {
               if (!singleUserId) {
-                toast.error('Por favor selecciona un usuario específico');
+                toast.error('Por favor selecciona un inversionista específico');
                 return;
               }
               targetUserIds = [singleUserId];
             } else if (audience === 'ALL') {
-              targetUserIds = allUsers.map(p => p.id);
+              targetUserIds = profiles.map(p => p.id);
             } else if (audience === 'ACTIVE_INVESTORS') {
-              targetUserIds = activePiggyUsers.map(p => p.id);
-            } else if (audience === 'NEW_USERS') {
-              targetUserIds = newUsers.map(p => p.id);
+              targetUserIds = profiles.filter(p => (p.activePiggiesCount || 0) > 0).map(p => p.id);
             } else if (audience === 'NO_PIGGIES') {
-              targetUserIds = noPiggyUsers.map(p => p.id);
+              targetUserIds = profiles.filter(p => (p.activePiggiesCount || 0) === 0).map(p => p.id);
             } else {
-              targetUserIds = allUsers.map(p => p.id);
+              targetUserIds = profiles.map(p => p.id);
             }
 
             if (targetUserIds.length === 0) {
@@ -543,6 +584,7 @@ export class BonosConsumoTab {
               return;
             }
 
+            const startsAt = startsInput ? new Date(startsInput).toISOString() : null;
             const expiresAt = expiresInput ? new Date(expiresInput).toISOString() : null;
 
             const items = targetUserIds.map(uid => ({
@@ -551,6 +593,7 @@ export class BonosConsumoTab {
               amount,
               status,
               is_active: true,
+              starts_at: startsAt,
               expires_at: expiresAt
             }));
 
