@@ -3,7 +3,7 @@
    5 Main Tabs:
    1. Banners (news_billboard)
    2. Misiones (Misiones Globales + Misiones Flash)
-   3. Bonos Consumo (Campañas Activas + Seguimiento Usuarios)
+   3. Bonos Consumo (user_marketing_bonuses) - Vista Unificada Directa
    4. Ciclos Completados (Granja Piggys Exclusivos + Piggys Exclusivos Config)
    5. Tips Dinámicos (dynamic_tips)
    ========================================================================== */
@@ -15,8 +15,7 @@ import { icons } from '../icons.js';
 import { NewsTab } from './marketing/NewsTab.js';
 import { MissionsTab } from './marketing/MissionsTab.js';
 import { FlashMissionsTab } from './marketing/FlashMissionsTab.js';
-import { MarketingBonusesTab } from './marketing/MarketingBonusesTab.js';
-import { UserMarketingBonusesTab } from './marketing/UserMarketingBonusesTab.js';
+import { BonosConsumoTab } from './marketing/BonosConsumoTab.js';
 import { CycleMissionsTab } from './marketing/CycleMissionsTab.js';
 import { ExclusiveConfigTab } from './marketing/ExclusiveConfigTab.js';
 import { DynamicTipsTab } from './marketing/DynamicTipsTab.js';
@@ -26,7 +25,6 @@ export class MarketingView {
     this.mainTab = 'banners'; // 'banners' | 'missions' | 'bonuses' | 'cycles' | 'tips'
     this.subTabs = {
       missions: 'global_missions', // 'global_missions' | 'flash_missions'
-      bonuses: 'campaigns',        // 'campaigns' | 'user_bonuses'
       cycles: 'exclusive_farm'     // 'exclusive_farm' | 'exclusive_config'
     };
 
@@ -45,13 +43,12 @@ export class MarketingView {
       dynamic_tips: []
     };
 
-    // Sub-tab controllers
+    // Sub-tab / Tab controllers
     this.controllers = {
       news_billboard: new NewsTab(this),
       missions: new MissionsTab(this),
       user_flash_missions: new FlashMissionsTab(this),
-      marketing_bonuses: new MarketingBonusesTab(this),
-      user_marketing_bonuses: new UserMarketingBonusesTab(this),
+      user_marketing_bonuses: new BonosConsumoTab(this),
       cycle_completion_missions: new CycleMissionsTab(this),
       exclusive_piggy_config: new ExclusiveConfigTab(this),
       dynamic_tips: new DynamicTipsTab(this)
@@ -114,7 +111,7 @@ export class MarketingView {
               <span class="stat-title">Bonos Consumo</span>
               <div class="stat-icon" style="color: var(--accent-green);">${icons.gift}</div>
             </div>
-            <div class="stat-value">${this.overview.campaignsCount || 0} <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: 500;">campañas (${this.overview.activeUserBonusesCount || 0} activos)</span></div>
+            <div class="stat-value">${this.dataStore.user_marketing_bonuses.length} <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: 500;">otorgados (${this.overview.activeUserBonusesCount || 0} activos)</span></div>
             <div class="stat-subtitle">Incentivos para compras de carne</div>
           </div>
 
@@ -203,26 +200,6 @@ export class MarketingView {
       `;
     }
 
-    if (this.mainTab === 'bonuses') {
-      const activeSub = this.subTabs.bonuses;
-      const uniqueCampaigns = new Set((this.dataStore.user_marketing_bonuses || []).map(ub => ub.campaign_name).filter(Boolean));
-      return `
-        <div class="marketing-subtabs-wrapper">
-          <button class="marketing-subtab-btn ${activeSub === 'campaigns' ? 'active' : ''}" data-subtab="campaigns">
-            ${icons.gift}
-            <span>Campañas Activas</span>
-            <span class="marketing-subtab-badge" id="badge-sub-campaigns">${uniqueCampaigns.size}</span>
-          </button>
-
-          <button class="marketing-subtab-btn ${activeSub === 'user_bonuses' ? 'active' : ''}" data-subtab="user_bonuses">
-            ${icons.users}
-            <span>Seguimiento Usuarios</span>
-            <span class="marketing-subtab-badge" id="badge-sub-user-bonuses">${this.dataStore.user_marketing_bonuses.length}</span>
-          </button>
-        </div>
-      `;
-    }
-
     if (this.mainTab === 'cycles') {
       const activeSub = this.subTabs.cycles;
       return `
@@ -247,12 +224,10 @@ export class MarketingView {
 
   getActiveKey() {
     if (this.mainTab === 'banners') return 'news_billboard';
+    if (this.mainTab === 'bonuses') return 'user_marketing_bonuses';
     if (this.mainTab === 'tips') return 'dynamic_tips';
     if (this.mainTab === 'missions') {
       return this.subTabs.missions === 'global_missions' ? 'missions' : 'user_flash_missions';
-    }
-    if (this.mainTab === 'bonuses') {
-      return this.subTabs.bonuses === 'campaigns' ? 'marketing_bonuses' : 'user_marketing_bonuses';
     }
     if (this.mainTab === 'cycles') {
       return this.subTabs.cycles === 'exclusive_farm' ? 'cycle_completion_missions' : 'exclusive_piggy_config';
@@ -264,9 +239,6 @@ export class MarketingView {
     const key = this.getActiveKey();
     const controller = this.controllers[key];
     if (controller) {
-      if (key === 'marketing_bonuses' || key === 'user_marketing_bonuses') {
-        return controller.render(this.dataStore.user_marketing_bonuses);
-      }
       return controller.render(this.dataStore[key]);
     }
     return '<div class="p-4 text-center">Selecciona una opción</div>';
@@ -300,8 +272,6 @@ export class MarketingView {
         const sub = btn.getAttribute('data-subtab');
         if (this.mainTab === 'missions') {
           this.subTabs.missions = sub;
-        } else if (this.mainTab === 'bonuses') {
-          this.subTabs.bonuses = sub;
         } else if (this.mainTab === 'cycles') {
           this.subTabs.cycles = sub;
         }
@@ -363,13 +333,6 @@ export class MarketingView {
 
     const badgeSubFlash = this.container.querySelector('#badge-sub-flash');
     if (badgeSubFlash) badgeSubFlash.textContent = this.dataStore.user_flash_missions.length;
-
-    const uniqueCampaigns = new Set((this.dataStore.user_marketing_bonuses || []).map(ub => ub.campaign_name).filter(Boolean));
-    const badgeSubCampaigns = this.container.querySelector('#badge-sub-campaigns');
-    if (badgeSubCampaigns) badgeSubCampaigns.textContent = uniqueCampaigns.size;
-
-    const badgeSubUserBonuses = this.container.querySelector('#badge-sub-user-bonuses');
-    if (badgeSubUserBonuses) badgeSubUserBonuses.textContent = this.dataStore.user_marketing_bonuses.length;
 
     const badgeSubCycle = this.container.querySelector('#badge-sub-cycle-missions');
     if (badgeSubCycle) badgeSubCycle.textContent = this.dataStore.cycle_completion_missions.length;
