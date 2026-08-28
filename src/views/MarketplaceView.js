@@ -9,18 +9,7 @@ import { modal } from '../components/Modal.js';
 import { toast } from '../components/Toast.js';
 import { icons } from '../icons.js';
 import { resolveImageUrl, getFallbackImageUrl, PIGGY_PRESET_IMAGES } from '../utils/imageUtils.js';
-
-const CATEGORY_DEFINITIONS = [
-  { value: 'estandar', label: 'Estándar (Base 8-10%)', defaultRoi: 0.00, defaultDays: 0, defaultWeight: 15.0 },
-  { value: 'plus', label: 'Plus (+1% ROI)', defaultRoi: 0.01, defaultDays: 0, defaultWeight: 15.0 },
-  { value: 'dorado', label: 'Dorado (+2% ROI)', defaultRoi: 0.02, defaultDays: 0, defaultWeight: 15.0 },
-  { value: 'premium', label: 'Premium (+3% ROI)', defaultRoi: 0.03, defaultDays: 0, defaultWeight: 15.0 },
-  { value: 'avanzado30', label: 'Avanzado 30 días (+30d)', defaultRoi: 0.00, defaultDays: 30, defaultWeight: 34.8 },
-  { value: 'avanzado45', label: 'Avanzado 45 días (+45d)', defaultRoi: 0.00, defaultDays: 45, defaultWeight: 45.0 },
-  { value: 'avanzado60', label: 'Avanzado 60 días (+60d)', defaultRoi: 0.00, defaultDays: 60, defaultWeight: 54.6 },
-  { value: 'avanzado75', label: 'Avanzado 75 días (+75d)', defaultRoi: 0.00, defaultDays: 75, defaultWeight: 64.5 },
-  { value: 'avanzado90', label: 'Avanzado 90 días (+90d)', defaultRoi: 0.00, defaultDays: 90, defaultWeight: 75.0 },
-];
+import { PIGGY_CATEGORIES, getPiggyCategoryInfo, renderCategorySelectOptions } from '../utils/piggyCategories.js';
 
 export class MarketplaceView {
   constructor() {
@@ -185,11 +174,7 @@ export class MarketplaceView {
             <div class="form-group" style="flex: 1.5;">
               <label class="form-label" for="mk-category">Categoría del Ciclo</label>
               <select id="mk-category" class="form-select">
-                ${CATEGORY_DEFINITIONS.map(cat => `
-                  <option value="${cat.value}" ${currentCat === cat.value ? 'selected' : ''}>
-                    ${cat.label}
-                  </option>
-                `).join('')}
+                ${renderCategorySelectOptions(currentCat)}
               </select>
             </div>
           </div>
@@ -315,10 +300,10 @@ export class MarketplaceView {
         if (categorySelect) {
           categorySelect.addEventListener('change', (e) => {
             const catKey = e.target.value;
-            const def = CATEGORY_DEFINITIONS.find(c => c.value === catKey);
+            const def = getPiggyCategoryInfo(catKey);
             if (def && !isEdit) {
-              if (roiInput) roiInput.value = def.defaultRoi;
-              if (daysInput) daysInput.value = def.defaultDays;
+              if (roiInput) roiInput.value = def.extraRoiBonus;
+              if (daysInput) daysInput.value = def.daysAdvanced;
               if (weightInput) weightInput.value = def.defaultWeight;
             }
           });

@@ -8,6 +8,7 @@ import { DataTable } from '../../components/DataTable.js';
 import { modal } from '../../components/Modal.js';
 import { toast } from '../../components/Toast.js';
 import { icons } from '../../icons.js';
+import { getPiggyCategoryBadge, getPiggyCategoryInfo, renderCategorySelectOptions } from '../../utils/piggyCategories.js';
 
 export class CycleMissionsTab {
   constructor(parentView) {
@@ -120,11 +121,7 @@ export class CycleMissionsTab {
         {
           header: 'Oferta',
           render: (row) => {
-            const piggyBadge = `
-              <span class="badge badge-info" style="font-weight: 800; text-transform: uppercase; font-size: 0.72rem; padding: 1px 7px; margin-bottom: 3px; display: inline-block;">
-                ${row.piggy_type || row.piggy_label || 'Plus'}
-              </span>
-            `;
+            const piggyBadge = getPiggyCategoryBadge(row.piggy_type, row.piggy_label);
 
             const priceHtml = `
               <div style="font-weight: 800; color: var(--accent-gold); font-size: 0.95rem; margin-top: 1px;">
@@ -632,6 +629,7 @@ export class CycleMissionsTab {
   openModal(item = null) {
     const isEdit = Boolean(item && item.id);
     const profiles = this.parentView.profilesList || [];
+    const exclusiveConfigs = this.parentView.dataStore.exclusive_piggy_config || [];
 
     const userOptions = profiles.map(p => {
       const name = p.fullName || p.full_name || p.email;
@@ -640,6 +638,10 @@ export class CycleMissionsTab {
     }).join('');
 
     const expiresVal = item?.expires_at ? new Date(item.expires_at).toISOString().slice(0, 16) : '';
+    const initialType = item?.piggy_type || 'plus';
+    const initialCatInfo = getPiggyCategoryInfo(initialType);
+    const exclusiveOverride = exclusiveConfigs.find(c => c.piggy_type === initialType);
+    const defaultInitialPrice = exclusiveOverride ? Number(exclusiveOverride.price) : initialCatInfo.defaultPrice;
 
     modal.open({
       title: isEdit ? 'Editar Oferta de Granja Exclusiva' : 'Nueva Oferta de Granja Exclusiva',
@@ -657,10 +659,7 @@ export class CycleMissionsTab {
             <div class="form-group">
               <label class="form-label" for="cycle-type">Tipo de Piggy</label>
               <select id="cycle-type" class="form-select">
-                <option value="plus" ${item?.piggy_type === 'plus' ? 'selected' : ''}>Piggy Plus</option>
-                <option value="premium" ${item?.piggy_type === 'premium' ? 'selected' : ''}>Piggy Premium</option>
-                <option value="dorado" ${item?.piggy_type === 'dorado' ? 'selected' : ''}>Piggy Dorado</option>
-                <option value="esmeralda" ${item?.piggy_type === 'esmeralda' ? 'selected' : ''}>Piggy Esmeralda</option>
+                ${renderCategorySelectOptions(initialType, exclusiveConfigs)}
               </select>
             </div>
           </div>
@@ -668,7 +667,7 @@ export class CycleMissionsTab {
           <div class="form-row">
             <div class="form-group">
               <label class="form-label" for="cycle-price">Precio de la Oferta ($)</label>
-              <input type="number" id="cycle-price" class="form-input" value="${item?.price || 1000000}" step="50000" min="0" required />
+              <input type="number" id="cycle-price" class="form-input" value="${item?.price !== undefined ? item.price : defaultInitialPrice}" step="50000" min="0" required />
             </div>
 
             <div class="form-group">
@@ -686,6 +685,22 @@ export class CycleMissionsTab {
           </div>
         </form>
       `,
+      onInit: (modalBody) => {
+        const typeSelect = modalBody.querySelector('#cycle-type');
+        const priceInput = modalBody.querySelector('#cycle-price');
+
+        if (typeSelect) {
+          typeSelect.addEventListener('change', (e) => {
+            const selectedKey = e.target.value;
+            const selectedOpt = typeSelect.options[typeSelect.selectedIndex];
+            const catInfo = getPiggyCategoryInfo(selectedKey);
+            const suggestedPrice = selectedOpt.getAttribute('data-price') || catInfo.defaultPrice;
+            if (priceInput && (!isEdit || Number(priceInput.value) === 0)) {
+              priceInput.value = suggestedPrice;
+            }
+          });
+        }
+      },
       footerButtons: [
         { text: 'Cancelar', class: 'btn-secondary', onClick: (e, m) => m.close() },
         {
@@ -698,9 +713,16 @@ export class CycleMissionsTab {
             const expires_at = document.querySelector('#cycle-expires').value;
             const is_completed = document.querySelector('#cycle-completed').value === 'true';
 
+            const catInfo = getPiggyCategoryInfo(piggy_type);
+            const exConfig = exclusiveConfigs.find(c => c.piggy_type === piggy_type);
+            const piggy_label = exConfig?.piggy_label || catInfo.label;
+            const extra_roi_bonus = exConfig?.extra_roi_bonus !== undefined ? Number(exConfig.extra_roi_bonus) : catInfo.extraRoiBonus;
+
             const payload = {
               user_id,
               piggy_type,
+              piggy_label,
+              extra_roi_bonus,
               price: Number(price),
               expires_at: expires_at ? new Date(expires_at).toISOString() : null,
               is_completed,

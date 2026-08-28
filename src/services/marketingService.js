@@ -29,6 +29,7 @@ export const marketingService = {
   },
 
   // ==========================================================================
+  // ==========================================================================
   // 0.1. CERDITOS EN ENGORDE (piggies)
   // ==========================================================================
   async getPiggies() {
@@ -47,7 +48,6 @@ export const marketingService = {
     }
   },
 
-  // ==========================================================================
   // 1. NOTICIAS Y BANNERS (news_billboard)
   // ==========================================================================
   async getNews() {
@@ -159,7 +159,9 @@ export const marketingService = {
         scheduled_at: item.scheduled_at || null,
         is_purchased: Boolean(item.is_purchased),
         purchased_at: item.purchased_at || null,
-        is_active: item.is_active !== undefined ? Boolean(item.is_active) : true
+        is_active: item.is_active !== undefined ? Boolean(item.is_active) : true,
+        mission_title: item.mission_title || 'MISIÓN FLASH',
+        icon: item.icon || (item.piggy_type?.startsWith('avanzado') ? '🚀' : '⏳')
       };
       const { data, error } = await client.from('user_flash_missions').insert([payload]).select().single();
       if (error) throw error;
@@ -185,6 +187,8 @@ export const marketingService = {
       if (item.scheduled_at !== undefined) payload.scheduled_at = item.scheduled_at;
       if (item.is_purchased !== undefined) payload.is_purchased = item.is_purchased;
       if (item.purchased_at !== undefined) payload.purchased_at = item.purchased_at;
+      if (item.mission_title !== undefined) payload.mission_title = item.mission_title;
+      if (item.icon !== undefined) payload.icon = item.icon;
 
       const { data, error } = await client.from('user_flash_missions').update(payload).eq('id', id).select().single();
       if (error) throw error;
@@ -244,7 +248,7 @@ export const marketingService = {
       const payload = {
         title: item.title || '',
         icon: item.icon || 'target',
-        reward: item.reward || '',
+        reward: Number(item.reward || 0),
         sort_order: Number(item.sort_order || 0),
         is_completed: item.is_completed !== undefined ? Boolean(item.is_completed) : false
       };
@@ -265,7 +269,7 @@ export const marketingService = {
       const payload = {
         title: item.title,
         icon: item.icon,
-        reward: item.reward,
+        reward: Number(item.reward || 0),
         sort_order: Number(item.sort_order || 0),
         is_completed: Boolean(item.is_completed)
       };
@@ -317,7 +321,7 @@ export const marketingService = {
       const { data, error } = await client
         .from('exclusive_piggy_config')
         .select('*')
-        .order('price', { ascending: true });
+        .order('id', { ascending: true });
       if (error) throw error;
       return data || [];
     } catch (err) {
@@ -331,13 +335,9 @@ export const marketingService = {
     if (!client) return { success: false, error: 'Sin conexión a base de datos' };
     try {
       const payload = {
-        piggy_label: item.piggy_label || '',
-        piggy_type: item.piggy_type || '',
-        extra_roi_bonus: Number(item.extra_roi_bonus || 0),
         price: Number(item.price || 0),
-        duration_hours: Number(item.duration_hours || 48),
-        min_piggies: Number(item.min_piggies || 1),
-        is_enabled: item.is_enabled !== undefined ? Boolean(item.is_enabled) : true
+        is_enabled: item.is_enabled !== undefined ? Boolean(item.is_enabled) : true,
+        updated_at: new Date().toISOString()
       };
       const { data, error } = await client.from('exclusive_piggy_config').insert([payload]).select().single();
       if (error) throw error;
@@ -361,7 +361,6 @@ export const marketingService = {
       if (item.duration_hours !== undefined) payload.duration_hours = Number(item.duration_hours);
       if (item.min_piggies !== undefined) payload.min_piggies = Number(item.min_piggies);
       if (item.is_enabled !== undefined) payload.is_enabled = Boolean(item.is_enabled);
-
       const { data, error } = await client.from('exclusive_piggy_config').update(payload).eq('id', id).select().single();
       if (error) throw error;
       return { success: true, data };
@@ -374,7 +373,10 @@ export const marketingService = {
     const client = getClient();
     if (!client) return { success: false, error: 'Sin conexión a base de datos' };
     try {
-      const { error } = await client.from('exclusive_piggy_config').update({ is_enabled: isEnabled, updated_at: new Date().toISOString() }).eq('id', id);
+      const { error } = await client.from('exclusive_piggy_config').update({
+        is_enabled: isEnabled,
+        updated_at: new Date().toISOString()
+      }).eq('id', id);
       if (error) throw error;
       return { success: true };
     } catch (err) {
@@ -418,15 +420,16 @@ export const marketingService = {
     if (!client) return { success: false, error: 'Sin conexión a base de datos' };
     try {
       const payload = {
-        price: Number(item.price || 0),
+        user_id: item.user_id || null,
+        piggy_id: item.piggy_id || null,
         piggy_type: item.piggy_type || 'plus',
-        is_completed: item.is_completed !== undefined ? Boolean(item.is_completed) : false
+        piggy_label: item.piggy_label || (item.piggy_type ? `Piggy ${item.piggy_type.charAt(0).toUpperCase() + item.piggy_type.slice(1)}` : 'Piggy Plus'),
+        extra_roi_bonus: item.extra_roi_bonus !== undefined ? Number(item.extra_roi_bonus) : 0.01,
+        price: Number(item.price || 0),
+        is_completed: item.is_completed !== undefined ? Boolean(item.is_completed) : false,
+        expires_at: item.expires_at ? new Date(item.expires_at).toISOString() : null,
+        purchased_at: item.purchased_at || null
       };
-      if (item.user_id) payload.user_id = item.user_id;
-      if (item.piggy_id) payload.piggy_id = item.piggy_id;
-      if (item.expires_at) payload.expires_at = item.expires_at;
-      if (item.purchased_at) payload.purchased_at = item.purchased_at;
-
       const { data, error } = await client.from('cycle_completion_missions').insert([payload]).select().single();
       if (error) throw error;
       return { success: true, data };
@@ -441,12 +444,14 @@ export const marketingService = {
     try {
       const payload = {
         price: Number(item.price || 0),
-        is_completed: Boolean(item.is_completed)
+        is_completed: Boolean(item.is_completed),
+        expires_at: item.expires_at ? new Date(item.expires_at).toISOString() : null
       };
       if (item.user_id !== undefined) payload.user_id = item.user_id;
       if (item.piggy_id !== undefined) payload.piggy_id = item.piggy_id;
       if (item.piggy_type !== undefined) payload.piggy_type = item.piggy_type;
-      if (item.expires_at !== undefined) payload.expires_at = item.expires_at;
+      if (item.piggy_label !== undefined) payload.piggy_label = item.piggy_label;
+      if (item.extra_roi_bonus !== undefined) payload.extra_roi_bonus = Number(item.extra_roi_bonus);
       if (item.purchased_at !== undefined) payload.purchased_at = item.purchased_at;
 
       const { data, error } = await client.from('cycle_completion_missions').update(payload).eq('id', id).select().single();
@@ -482,7 +487,7 @@ export const marketingService = {
   },
 
   // ==========================================================================
-  // 6. CONSEJOS Y TIPS DINÁMICOS (dynamic_tips)
+  // 6. TIPS Y CONSEJOS DINÁMICOS (dynamic_tips)
   // ==========================================================================
   async getDynamicTips() {
     const client = getClient();
@@ -491,7 +496,7 @@ export const marketingService = {
       const { data, error } = await client
         .from('dynamic_tips')
         .select('*')
-        .order('priority', { ascending: true });
+        .order('priority', { ascending: true, nullsFirst: false });
       if (error) throw error;
       return data || [];
     } catch (err) {
@@ -507,10 +512,10 @@ export const marketingService = {
       const payload = {
         title: item.title || '',
         priority: Number(item.priority || 1),
-        reward: Number(item.reward || 0),
         icon: item.icon || 'lightbulb',
-        color: item.color || '#F770B4',
         cta_url: item.cta_url || '',
+        reward: Number(item.reward || 0),
+        color: item.color || '#F770B4',
         is_active: item.is_active !== undefined ? Boolean(item.is_active) : true
       };
       const { data, error } = await client.from('dynamic_tips').insert([payload]).select().single();
@@ -528,10 +533,10 @@ export const marketingService = {
       const payload = {
         title: item.title,
         priority: Number(item.priority || 1),
-        reward: Number(item.reward || 0),
         icon: item.icon,
-        color: item.color,
         cta_url: item.cta_url,
+        reward: Number(item.reward || 0),
+        color: item.color,
         is_active: Boolean(item.is_active)
       };
       const { data, error } = await client.from('dynamic_tips').update(payload).eq('id', id).select().single();
@@ -567,26 +572,28 @@ export const marketingService = {
   },
 
   // ==========================================================================
-  // 7. CONSOLIDADO DE MÉTRICAS GLOBALES DE MARKETING
+  // RESUMEN GLOBAL PARA MÉTRICAS
   // ==========================================================================
   async getMarketingOverview() {
-    const [news, flash, missions, cycles, exclusive, tips] = await Promise.all([
+    const [news, flashMissions, missions, exclusivePiggies, cycleMissions, tips] = await Promise.all([
       this.getNews(),
       this.getUserFlashMissions(),
       this.getMissions(),
-      this.getCycleMissions(),
       this.getExclusiveConfigs(),
+      this.getCycleMissions(),
       this.getDynamicTips()
     ]);
 
     return {
       newsCount: news.length,
       activeNewsCount: news.filter(n => n.is_active).length,
-      flashMissionsCount: flash.length,
-      activeFlashCount: flash.filter(f => f.is_active).length,
+      flashCount: flashMissions.length,
+      activeFlashCount: flashMissions.filter(f => f.is_active).length,
       missionsCount: missions.length,
-      cycleMissionsCount: cycles.length,
-      activeExclusiveCount: exclusive.filter(e => e.is_enabled).length,
+      completedMissionsCount: missions.filter(m => m.is_completed).length,
+      exclusiveCount: exclusivePiggies.length,
+      activeExclusiveCount: exclusivePiggies.filter(e => e.is_enabled).length,
+      cycleCount: cycleMissions.length,
       tipsCount: tips.length,
       activeTipsCount: tips.filter(t => t.is_active).length
     };

@@ -8,6 +8,7 @@ import { DataTable } from '../../components/DataTable.js';
 import { modal } from '../../components/Modal.js';
 import { toast } from '../../components/Toast.js';
 import { icons } from '../../icons.js';
+import { getPiggyCategoryBadge, getPiggyCategoryInfo, renderCategorySelectOptions } from '../../utils/piggyCategories.js';
 
 export class FlashMissionsTab {
   constructor(parentView) {
@@ -103,11 +104,7 @@ export class FlashMissionsTab {
         {
           header: 'Oferta',
           render: (row) => {
-            const piggyBadge = `
-              <span class="badge badge-info" style="font-weight: 800; text-transform: uppercase; font-size: 0.72rem; padding: 1px 7px; margin-bottom: 3px; display: inline-block;">
-                ${row.piggy_type || 'General'}
-              </span>
-            `;
+            const piggyBadge = getPiggyCategoryBadge(row.piggy_type);
 
             const priceHtml = `
               <div style="font-weight: 800; color: var(--accent-gold); font-size: 0.95rem; margin-top: 1px;">
@@ -478,6 +475,7 @@ export class FlashMissionsTab {
   openModal(item = null) {
     const isEdit = Boolean(item && item.id);
     const profiles = this.parentView.profilesList || [];
+    const exclusiveConfigs = this.parentView.dataStore.exclusive_piggy_config || [];
 
     const userOptions = profiles.map(p => {
       const name = p.fullName || p.full_name || p.email;
@@ -486,6 +484,12 @@ export class FlashMissionsTab {
     }).join('');
 
     const scheduledVal = item?.scheduled_at ? new Date(item.scheduled_at).toISOString().slice(0, 16) : '';
+    const initialType = item?.piggy_type || 'dorado';
+    const initialCatInfo = getPiggyCategoryInfo(initialType);
+
+    // Buscar si hay un override de precio en exclusive_piggy_config
+    const exclusiveOverride = exclusiveConfigs.find(c => c.piggy_type === initialType);
+    const defaultInitialPrice = exclusiveOverride ? Number(exclusiveOverride.price) : initialCatInfo.defaultPrice;
 
     modal.open({
       title: isEdit ? 'Editar Misión Flash' : 'Nueva Misión Flash',
@@ -493,12 +497,12 @@ export class FlashMissionsTab {
         <form id="flash-form">
           <div class="form-group">
             <label class="form-label" for="flash-title">Título de la Misión Flash</label>
-            <input type="text" id="flash-title" class="form-input" placeholder="Ej: El Cerdito de Oro" value="${item?.title || ''}" required />
+            <input type="text" id="flash-title" class="form-input" placeholder="Ej: El Cerdito de Oro" value="${item?.title || (isEdit ? '' : (initialType === 'dorado' ? 'El Cerdito de Oro' : `Misión Flash: ${initialCatInfo.shortLabel}`))}" required />
           </div>
 
           <div class="form-group">
             <label class="form-label" for="flash-desc">Descripción / Instrucciones</label>
-            <textarea id="flash-desc" class="form-textarea" placeholder="Explica la oferta temporal al usuario...">${item?.description || ''}</textarea>
+            <textarea id="flash-desc" class="form-textarea" placeholder="Explica la oferta temporal al usuario...">${item?.description || (isEdit ? '' : initialCatInfo.description)}</textarea>
           </div>
 
           <div class="form-row">
@@ -513,11 +517,7 @@ export class FlashMissionsTab {
             <div class="form-group">
               <label class="form-label" for="flash-type">Tipo de Piggy</label>
               <select id="flash-type" class="form-select">
-                <option value="dorado" ${item?.piggy_type === 'dorado' ? 'selected' : ''}>Dorado</option>
-                <option value="esmeralda" ${item?.piggy_type === 'esmeralda' ? 'selected' : ''}>Esmeralda</option>
-                <option value="diamante" ${item?.piggy_type === 'diamante' ? 'selected' : ''}>Diamante</option>
-                <option value="clasico" ${item?.piggy_type === 'clasico' ? 'selected' : ''}>Clásico</option>
-                <option value="avanzado60" ${item?.piggy_type === 'avanzado60' ? 'selected' : ''}>Avanzado (60 Días)</option>
+                ${renderCategorySelectOptions(initialType, exclusiveConfigs)}
               </select>
             </div>
           </div>
@@ -525,7 +525,7 @@ export class FlashMissionsTab {
           <div class="form-row">
             <div class="form-group">
               <label class="form-label" for="flash-price">Precio ($)</label>
-              <input type="number" id="flash-price" class="form-input" value="${item?.price || 1000000}" step="50000" min="0" required />
+              <input type="number" id="flash-price" class="form-input" value="${item?.price !== undefined ? item.price : defaultInitialPrice}" step="50000" min="0" required />
             </div>
 
             <div class="form-group">
@@ -553,6 +553,33 @@ export class FlashMissionsTab {
           </div>
         </form>
       `,
+      onInit: (modalBody) => {
+        const typeSelect = modalBody.querySelector('#flash-type');
+        const priceInput = modalBody.querySelector('#flash-price');
+        const titleInput = modalBody.querySelector('#flash-title');
+        const descInput = modalBody.querySelector('#flash-desc');
+
+        if (typeSelect) {
+          typeSelect.addEventListener('change', (e) => {
+            const selectedKey = e.target.value;
+            const selectedOpt = typeSelect.options[typeSelect.selectedIndex];
+            const catInfo = getPiggyCategoryInfo(selectedKey);
+
+            const suggestedPrice = selectedOpt.getAttribute('data-price') || catInfo.defaultPrice;
+            if (priceInput && (!isEdit || Number(priceInput.value) === 0)) {
+              priceInput.value = suggestedPrice;
+            }
+
+            if (!isEdit && titleInput) {
+              titleInput.value = selectedKey === 'dorado' ? 'El Cerdito de Oro' : `Misión Flash: ${catInfo.shortLabel || selectedKey}`;
+            }
+
+            if (!isEdit && descInput) {
+              descInput.value = catInfo.description || `Oferta especial de Piggy ${catInfo.shortLabel} por tiempo limitado.`;
+            }
+          });
+        }
+      },
       footerButtons: [
         { text: 'Cancelar', class: 'btn-secondary', onClick: (e, m) => m.close() },
         {
@@ -573,6 +600,8 @@ export class FlashMissionsTab {
               return;
             }
 
+            const catInfo = getPiggyCategoryInfo(piggy_type);
+
             const payload = {
               title,
               description,
@@ -582,7 +611,9 @@ export class FlashMissionsTab {
               scheduled_at: scheduled_at ? new Date(scheduled_at).toISOString() : null,
               is_purchased,
               purchased_at: is_purchased ? (item?.purchased_at || new Date().toISOString()) : null,
-              is_active
+              is_active,
+              mission_title: 'MISIÓN FLASH',
+              icon: catInfo.icon || (piggy_type.startsWith('avanzado') ? '🚀' : '⏳')
             };
 
             let res;
