@@ -1,6 +1,6 @@
 /* ==========================================================================
    PIGGY MASTER ADMIN DASHBOARD - FORM UTILS
-   Helpers for Currency Formatting (thousands separator) & DateTime Mini Picker
+   Helpers for Currency Formatting (thousands separator) & DateTime Mini Picker Button
    ========================================================================== */
 
 import { icons } from '../icons.js';
@@ -75,75 +75,7 @@ export function setupCurrencyInput(inputEl, options = {}) {
 }
 
 /**
- * Converts a Date object to ISO local datetime string: YYYY-MM-DDTHH:mm
- * @param {Date} date 
- * @returns {string}
- */
-export function toLocalDatetimeString(date) {
-  if (!date || isNaN(date.getTime())) return '';
-  const pad = (n) => String(n).padStart(2, '0');
-  const year = date.getFullYear();
-  const month = pad(date.getMonth() + 1);
-  const day = pad(date.getDate());
-  const hours = pad(date.getHours());
-  const minutes = pad(date.getMinutes());
-  return `${year}-${month}-${day}T${hours}:${minutes}`;
-}
-
-/**
- * Formats a date string into a friendly Spanish relative & absolute text.
- * @param {Date|string} dateVal 
- * @returns {string} e.g. "Sábado, 29 de Agosto 2026, 05:00 PM (en 24 horas)"
- */
-export function formatExpirationFriendly(dateVal) {
-  if (!dateVal) return '';
-  const target = new Date(dateVal);
-  if (isNaN(target.getTime())) return '';
-
-  const now = new Date();
-  const diffMs = target.getTime() - now.getTime();
-  const isPast = diffMs < 0;
-  const absDiffHours = Math.abs(Math.round(diffMs / (1000 * 60 * 60)));
-  const absDiffDays = Math.abs(Math.round(diffMs / (1000 * 60 * 60 * 24)));
-
-  const dateStr = target.toLocaleDateString('es-CO', {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric'
-  });
-
-  const timeStr = target.toLocaleTimeString('es-CO', {
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: true
-  });
-
-  let relativeStr = '';
-  if (isPast) {
-    relativeStr = absDiffHours < 24 ? `hace ${absDiffHours}h (Expirada)` : `hace ${absDiffDays} días (Expirada)`;
-  } else {
-    if (absDiffHours < 1) {
-      const mins = Math.max(1, Math.round(diffMs / 60000));
-      relativeStr = `en ${mins} min`;
-    } else if (absDiffHours < 24) {
-      relativeStr = `en ${absDiffHours} horas`;
-    } else {
-      relativeStr = `en ${absDiffDays} ${absDiffDays === 1 ? 'día' : 'días'}`;
-    }
-  }
-
-  return {
-    isPast,
-    dateStr,
-    timeStr,
-    relativeStr,
-    fullText: `${dateStr} a las ${timeStr} (${relativeStr})`
-  };
-}
-
-/**
- * Enhances a datetime-local input with quick expiration preset buttons and a live preview badge.
+ * Enhances a datetime-local input with a clean blue calendar button and opens the native picker.
  * @param {HTMLInputElement} inputEl 
  * @param {Object} options 
  */
@@ -163,11 +95,11 @@ export function setupDateTimePicker(inputEl, options = {}) {
     const calBtn = document.createElement('button');
     calBtn.type = 'button';
     calBtn.className = 'datetime-calendar-btn';
-    calBtn.title = 'Abrir selector de fecha y hora';
+    calBtn.title = 'Abrir calendario';
     calBtn.innerHTML = icons.calendar || '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>';
 
-    calBtn.addEventListener('click', (e) => {
-      e.preventDefault();
+    const triggerPicker = (e) => {
+      if (e) e.preventDefault();
       try {
         if (typeof inputEl.showPicker === 'function') {
           inputEl.showPicker();
@@ -177,93 +109,19 @@ export function setupDateTimePicker(inputEl, options = {}) {
       } catch (err) {
         inputEl.focus();
       }
-    });
+    };
+
+    calBtn.addEventListener('click', triggerPicker);
+    inputEl.addEventListener('click', triggerPicker);
 
     wrapper.appendChild(calBtn);
   }
 
-  // Create or find live preview badge container
-  let previewBadge = parent.parentElement?.querySelector('.datetime-preview-badge');
-  if (!previewBadge) {
-    previewBadge = document.createElement('div');
-    previewBadge.className = 'datetime-preview-badge';
-    parent.parentElement?.appendChild(previewBadge);
+  if (options.onChange) {
+    inputEl.addEventListener('change', () => options.onChange(inputEl.value));
   }
-
-  const updatePreview = () => {
-    const val = inputEl.value;
-    if (!val) {
-      previewBadge.style.display = 'none';
-      return;
-    }
-    const info = formatExpirationFriendly(val);
-    if (!info) {
-      previewBadge.style.display = 'none';
-      return;
-    }
-
-    previewBadge.style.display = 'inline-flex';
-    previewBadge.className = `datetime-preview-badge ${info.isPast ? 'expired' : 'soon'}`;
-    previewBadge.innerHTML = `
-      <span>${info.isPast ? '⚠️' : '⏳'}</span>
-      <span>${info.fullText}</span>
-    `;
-  };
-
-  // Create Quick Preset Pills container
-  let presetsContainer = parent.parentElement?.querySelector('.datetime-presets-wrapper');
-  if (!presetsContainer) {
-    presetsContainer = document.createElement('div');
-    presetsContainer.className = 'datetime-presets-wrapper';
-    presetsContainer.innerHTML = `
-      <span class="datetime-presets-label">⚡ Rápido:</span>
-      <button type="button" class="datetime-preset-pill" data-hours="6">+6 Horas</button>
-      <button type="button" class="datetime-preset-pill" data-hours="12">+12 Horas</button>
-      <button type="button" class="datetime-preset-pill" data-hours="24">+24 Horas (1d)</button>
-      <button type="button" class="datetime-preset-pill" data-hours="48">+48 Horas (2d)</button>
-      <button type="button" class="datetime-preset-pill" data-hours="72">+3 Días</button>
-      <button type="button" class="datetime-preset-pill" data-hours="168">+7 Días (1 sem)</button>
-    `;
-
-    // Insert presets right above or below input
-    parent.parentElement?.appendChild(presetsContainer);
-
-    presetsContainer.querySelectorAll('.datetime-preset-pill').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        e.preventDefault();
-        const hours = Number(btn.getAttribute('data-hours') || 24);
-        const targetDate = new Date(Date.now() + (hours * 3600 * 1000));
-        
-        // Round to clean minutes (e.g. current minute)
-        targetDate.setSeconds(0);
-        targetDate.setMilliseconds(0);
-
-        inputEl.value = toLocalDatetimeString(targetDate);
-        updatePreview();
-
-        presetsContainer.querySelectorAll('.datetime-preset-pill').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-
-        if (options.onChange) options.onChange(inputEl.value);
-      });
-    });
-  }
-
-  // Listen to manual input changes
-  inputEl.addEventListener('input', () => {
-    updatePreview();
-    if (presetsContainer) {
-      presetsContainer.querySelectorAll('.datetime-preset-pill').forEach(b => b.classList.remove('active'));
-    }
-    if (options.onChange) options.onChange(inputEl.value);
-  });
-
-  inputEl.addEventListener('change', updatePreview);
-
-  // Initial preview update
-  updatePreview();
 
   return {
-    updatePreview
+    input: inputEl
   };
 }

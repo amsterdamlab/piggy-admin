@@ -1,6 +1,6 @@
 /* ==========================================================================
    PIGGY MASTER ADMIN DASHBOARD - FORM ENHANCEMENTS CSS
-   Styles for Currency inputs with thousand separators & Mini Calendar Picker
+   Styles for Currency inputs with thousand separators & Mini Calendar Picker Button
    ========================================================================== */
 
 /* Currency Input Styling */
@@ -45,16 +45,31 @@
 }
 
 .datetime-input-wrapper .form-input {
-  padding-right: 2.6rem !important;
+  padding-right: 2.8rem !important;
   color-scheme: dark;
   cursor: pointer;
+  -moz-appearance: textfield;
 }
 
+/* Ocultar el icono nativo del navegador para evitar el icono doble */
+.datetime-input-wrapper input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+.datetime-input-wrapper input[type="date"]::-webkit-calendar-picker-indicator {
+  display: none !important;
+  -webkit-appearance: none;
+  opacity: 0;
+  pointer-events: none;
+  width: 0;
+  height: 0;
+  margin: 0;
+  padding: 0;
+}
+
+/* Botón estilo calendario azul personalizado */
 .datetime-calendar-btn {
   position: absolute;
-  right: 0.5rem;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid var(--border-color);
+  right: 0.4rem;
+  background: rgba(59, 130, 246, 0.15);
+  border: 1px solid rgba(59, 130, 246, 0.35);
   border-radius: var(--radius-sm);
   color: var(--accent-blue);
   width: 32px;
@@ -65,91 +80,19 @@
   cursor: pointer;
   transition: all 0.2s ease;
   padding: 0;
+  z-index: 2;
 }
 
 .datetime-calendar-btn:hover {
-  background: rgba(59, 130, 246, 0.2);
+  background: var(--accent-blue);
   border-color: var(--accent-blue);
   color: #fff;
   transform: scale(1.05);
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
 }
 
 .datetime-calendar-btn svg {
   width: 16px;
   height: 16px;
-}
-
-/* Quick Expiration Presets Pills */
-.datetime-presets-wrapper {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.35rem;
-  margin-top: 0.2rem;
-}
-
-.datetime-presets-label {
-  font-size: 0.7rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  color: var(--text-muted);
-  margin-right: 0.2rem;
-  display: flex;
-  align-items: center;
-  gap: 3px;
-}
-
-.datetime-preset-pill {
-  background: var(--bg-dark);
-  border: 1px solid var(--border-color);
-  color: var(--text-secondary);
-  font-size: 0.72rem;
-  font-weight: 700;
-  padding: 0.25rem 0.55rem;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  transition: all 0.15s ease;
-  user-select: none;
-}
-
-.datetime-preset-pill:hover {
-  background: rgba(59, 130, 246, 0.15);
-  border-color: rgba(59, 130, 246, 0.4);
-  color: var(--accent-blue);
-  transform: translateY(-1px);
-}
-
-.datetime-preset-pill.active {
-  background: var(--accent-blue);
-  border-color: var(--accent-blue);
-  color: #fff;
-  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
-}
-
-/* Expiration Live Preview Badge */
-.datetime-preview-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  font-size: 0.75rem;
-  padding: 0.35rem 0.65rem;
-  border-radius: var(--radius-sm);
-  background: rgba(59, 130, 246, 0.1);
-  border: 1px solid rgba(59, 130, 246, 0.25);
-  color: var(--accent-blue);
-  font-weight: 600;
-  margin-top: 0.2rem;
-  width: fit-content;
-}
-
-.datetime-preview-badge.expired {
-  background: rgba(239, 68, 68, 0.1);
-  border-color: rgba(239, 68, 68, 0.3);
-  color: var(--accent-red);
-}
-
-.datetime-preview-badge.soon {
-  background: rgba(245, 158, 11, 0.1);
-  border-color: rgba(245, 158, 11, 0.3);
-  color: var(--accent-gold);
+  pointer-events: none;
 }
