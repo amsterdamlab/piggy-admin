@@ -27,9 +27,12 @@ export class FlashMissionsTab {
     });
 
     // 1. Cálculos de Inteligencia de Negocio para las tarjetas de métricas
+    const now = new Date();
     const totalFlash = rawData.length;
     const acceptedMissions = rawData.filter(f => f.is_purchased === true);
     const acceptedCount = acceptedMissions.length;
+    const expiredMissions = rawData.filter(f => f.is_purchased !== true && f.scheduled_at && new Date(f.scheduled_at) < now);
+    const pendingMissions = rawData.filter(f => f.is_purchased !== true && (!f.scheduled_at || new Date(f.scheduled_at) >= now));
     const conversionRate = totalFlash > 0 ? Math.round((acceptedCount / totalFlash) * 100) : 0;
     const totalAcceptedVolume = acceptedMissions.reduce((sum, f) => sum + Number(f.price || 0), 0);
 
@@ -128,12 +131,34 @@ export class FlashMissionsTab {
               </div>
             `;
 
-            const offerBadge = row.is_purchased === true
-              ? `<div style="margin-top: 3px; display: flex; align-items: center; gap: 5px;">
-                   <span class="badge badge-success" style="padding: 1px 6px; font-size: 0.7rem;">Aceptada</span>
-                   ${row.purchased_at ? `<span style="font-size: 0.72rem; color: var(--text-muted); font-family: monospace;">${new Date(row.purchased_at).toLocaleDateString('es-CO')}</span>` : ''}
-                 </div>`
-              : '<div style="margin-top: 3px;"><span class="badge badge-danger" style="padding: 1px 6px; font-size: 0.7rem;">Cancelada</span></div>';
+            // Lógica de 3 estados para la oferta:
+            // 1. Aceptada (Comprada)
+            // 2. Vencida (No comprada y fecha expirada)
+            // 3. Pendiente (No comprada y vigente o sin fecha)
+            const isPurchased = row.is_purchased === true;
+            const isExpired = !isPurchased && row.scheduled_at && new Date(row.scheduled_at) < new Date();
+
+            let offerBadge;
+            if (isPurchased) {
+              offerBadge = `
+                <div style="margin-top: 3px; display: flex; align-items: center; gap: 5px;">
+                  <span class="badge badge-success" style="padding: 1px 7px; font-size: 0.7rem; font-weight: 800;">Aceptada</span>
+                  ${row.purchased_at ? `<span style="font-size: 0.72rem; color: var(--text-muted); font-family: monospace;">${new Date(row.purchased_at).toLocaleDateString('es-CO')}</span>` : ''}
+                </div>
+              `;
+            } else if (isExpired) {
+              offerBadge = `
+                <div style="margin-top: 3px;">
+                  <span class="badge badge-danger" style="padding: 1px 7px; font-size: 0.7rem; font-weight: 800;">Vencida</span>
+                </div>
+              `;
+            } else {
+              offerBadge = `
+                <div style="margin-top: 3px;">
+                  <span class="badge badge-warning" style="padding: 1px 7px; font-size: 0.7rem; font-weight: 800; background: rgba(245, 158, 11, 0.15); color: var(--accent-gold); border: 1px solid rgba(245, 158, 11, 0.3);">Pendiente</span>
+                </div>
+              `;
+            }
 
             return `
               <div>
@@ -201,16 +226,18 @@ export class FlashMissionsTab {
         <!-- Bloques de Métricas e Inteligencia de Negocio para Ofertas Flash -->
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; margin-bottom: 1.25rem;">
           
-          <!-- Bloque 1: Ofertas Aceptadas -->
+          <!-- Bloque 1: Ofertas y Estados -->
           <div style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: var(--radius-md); padding: 0.85rem 1rem;">
             <div style="font-size: 0.72rem; text-transform: uppercase; color: var(--accent-green); font-weight: 700; letter-spacing: 0.05em; margin-bottom: 0.25rem;">
-              🏆 Ofertas Aceptadas (Conversión)
+              🏆 Ofertas (Aceptadas / Pendientes)
             </div>
-            <div style="font-size: 1.2rem; font-weight: 800; color: var(--text-primary);">
-              ${acceptedCount} <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 500;">/ ${totalFlash} (${conversionRate}%)</span>
+            <div style="font-size: 1.15rem; font-weight: 800; color: var(--text-primary); display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+              <span style="color: var(--accent-green);">${acceptedCount} Aceptadas</span>
+              <span style="font-size: 0.85rem; color: var(--accent-gold); font-weight: 700;">• ${pendingMissions.length} Pendientes</span>
+              ${expiredMissions.length > 0 ? `<span style="font-size: 0.8rem; color: var(--accent-red); font-weight: 700;">• ${expiredMissions.length} Vencidas</span>` : ''}
             </div>
             <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 2px;">
-              $${totalAcceptedVolume.toLocaleString('es-CO')} vendidos
+              $${totalAcceptedVolume.toLocaleString('es-CO')} vendidos (${conversionRate}% conversión)
             </div>
           </div>
 
@@ -580,9 +607,9 @@ export class FlashMissionsTab {
 
           <div class="form-row">
             <div class="form-group">
-              <label class="form-label" for="flash-purchased">Oferta (Compra)</label>
+              <label class="form-label" for="flash-purchased">Estado de la Oferta</label>
               <select id="flash-purchased" class="form-select">
-                <option value="false" ${item?.is_purchased !== true ? 'selected' : ''}>Cancelada (No comprada)</option>
+                <option value="false" ${item?.is_purchased !== true ? 'selected' : ''}>Pendiente (No comprada)</option>
                 <option value="true" ${item?.is_purchased === true ? 'selected' : ''}>Aceptada (Comprada)</option>
               </select>
             </div>
