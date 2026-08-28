@@ -97,15 +97,30 @@ export class FlashMissionsTab {
           header: 'Misión Flash',
           render: (row) => `
             <div>
-              <div style="font-weight: 800; color: var(--text-primary); font-size: 0.9rem;">${row.title || row.mission_title || 'Misión Flash'}</div>
-              <div style="font-size: 0.75rem; color: var(--text-muted); max-width: 240px; margin-top: 2px;">${row.description || 'Sin descripción'}</div>
+              <div style="font-weight: 800; color: var(--text-primary); font-size: 0.9rem;">
+                ${row.title || row.mission_title || 'Misión Flash'}
+              </div>
+              ${row.benefit_title ? `
+                <div style="font-size: 0.75rem; color: var(--accent-gold); font-weight: 700; margin-top: 2px;">
+                  ✨ ${row.benefit_title}
+                </div>
+              ` : ''}
+              <div style="font-size: 0.75rem; color: var(--text-muted); max-width: 260px; margin-top: 2px;">
+                ${row.benefit_description || row.description || 'Sin descripción'}
+              </div>
             </div>
           `
         },
         {
           header: 'Oferta',
           render: (row) => {
-            const piggyBadge = getPiggyCategoryBadge(row.piggy_type);
+            const piggyBadge = getPiggyCategoryBadge(row.piggy_type, row.badge || row.piggy_label);
+
+            const labelHtml = row.piggy_label ? `
+              <div style="font-size: 0.78rem; font-weight: 700; color: var(--text-primary); margin-bottom: 2px;">
+                ${row.piggy_label}
+              </div>
+            ` : '';
 
             const priceHtml = `
               <div style="font-weight: 800; color: var(--accent-gold); font-size: 0.95rem; margin-top: 1px;">
@@ -123,6 +138,7 @@ export class FlashMissionsTab {
             return `
               <div>
                 ${piggyBadge}
+                ${labelHtml}
                 ${priceHtml}
                 ${offerBadge}
               </div>
@@ -496,18 +512,8 @@ export class FlashMissionsTab {
       title: isEdit ? 'Editar Misión Flash' : 'Nueva Misión Flash',
       contentHtml: `
         <form id="flash-form">
-          <div class="form-group">
-            <label class="form-label" for="flash-title">Título de la Misión Flash</label>
-            <input type="text" id="flash-title" class="form-input" placeholder="Ej: El Cerdito de Oro" value="${item?.title || (isEdit ? '' : (initialType === 'dorado' ? 'El Cerdito de Oro' : `Misión Flash: ${initialCatInfo.shortLabel}`))}" required />
-          </div>
-
-          <div class="form-group">
-            <label class="form-label" for="flash-desc">Descripción / Instrucciones</label>
-            <textarea id="flash-desc" class="form-textarea" placeholder="Explica la oferta temporal al usuario...">${item?.description || (isEdit ? '' : initialCatInfo.description)}</textarea>
-          </div>
-
           <div class="form-row">
-            <div class="form-group">
+            <div class="form-group" style="flex: 1.2;">
               <label class="form-label" for="flash-user">Usuario Destinatario</label>
               <select id="flash-user" class="form-select">
                 <option value="">-- Global (Todos los usuarios) --</option>
@@ -515,12 +521,46 @@ export class FlashMissionsTab {
               </select>
             </div>
 
-            <div class="form-group">
+            <div class="form-group" style="flex: 1.2;">
               <label class="form-label" for="flash-type">Tipo de Piggy</label>
               <select id="flash-type" class="form-select">
                 ${renderCategorySelectOptions(initialType, exclusiveConfigs)}
               </select>
             </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="flash-title">Título de la Misión</label>
+              <input type="text" id="flash-title" class="form-input" placeholder="Ej: ¡Acelera tu Crecimiento!" value="${item?.title || (isEdit ? '' : initialCatInfo.title)}" required />
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="flash-piggy-label">Etiqueta del Piggy (Nombre)</label>
+              <input type="text" id="flash-piggy-label" class="form-input" placeholder="Ej: Piggy Flash 45D" value="${item?.piggy_label || (isEdit ? '' : initialCatInfo.piggyLabel)}" required />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="flash-badge">Badge / Cinta Visual</label>
+              <input type="text" id="flash-badge" class="form-input" placeholder="Ej: ⚡ OFERTA FLASH · 45 DÍAS" value="${item?.badge || (isEdit ? '' : initialCatInfo.badge)}" required />
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="flash-benefit-title">Título del Beneficio</label>
+              <input type="text" id="flash-benefit-title" class="form-input" placeholder="Ej: Reducción de 45 días de espera" value="${item?.benefit_title || (isEdit ? '' : initialCatInfo.benefitTitle)}" required />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="flash-benefit-desc">Detalle del Beneficio</label>
+            <input type="text" id="flash-benefit-desc" class="form-input" placeholder="Ej: Inicia tu cerdito en el día 45 ahorrando tiempo." value="${item?.benefit_description || (isEdit ? '' : initialCatInfo.benefitDescription)}" required />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="flash-desc">Descripción General / Instrucciones</label>
+            <textarea id="flash-desc" class="form-textarea" placeholder="Explica la oferta temporal al usuario...">${item?.description || (isEdit ? '' : initialCatInfo.description)}</textarea>
           </div>
 
           <div class="form-row">
@@ -561,13 +601,17 @@ export class FlashMissionsTab {
         const typeSelect = modalBody.querySelector('#flash-type');
         const priceInput = modalBody.querySelector('#flash-price');
         const titleInput = modalBody.querySelector('#flash-title');
+        const piggyLabelInput = modalBody.querySelector('#flash-piggy-label');
+        const badgeInput = modalBody.querySelector('#flash-badge');
+        const benefitTitleInput = modalBody.querySelector('#flash-benefit-title');
+        const benefitDescInput = modalBody.querySelector('#flash-benefit-desc');
         const descInput = modalBody.querySelector('#flash-desc');
         const scheduledInput = modalBody.querySelector('#flash-scheduled');
 
         // Formato monetario con separador de miles dinámico
         const priceCtrl = setupCurrencyInput(priceInput);
 
-        // Selector mini-calendario con botones de expiración rápida (+6h, +12h, +24h, etc.)
+        // Selector mini-calendario con botón azul
         setupDateTimePicker(scheduledInput);
 
         if (typeSelect) {
@@ -581,13 +625,18 @@ export class FlashMissionsTab {
               priceCtrl.setRawValue(suggestedPrice);
             }
 
-            if (!isEdit && titleInput) {
-              titleInput.value = selectedKey === 'dorado' ? 'El Cerdito de Oro' : `Misión Flash: ${catInfo.shortLabel || selectedKey}`;
-            }
+            const optPiggyLabel = selectedOpt.getAttribute('data-piggy-label') || catInfo.piggyLabel;
+            const optBadge = selectedOpt.getAttribute('data-badge') || catInfo.badge;
+            const optBenefitTitle = selectedOpt.getAttribute('data-benefit-title') || catInfo.benefitTitle;
+            const optBenefitDesc = selectedOpt.getAttribute('data-benefit-desc') || catInfo.benefitDescription;
+            const optTitle = selectedOpt.getAttribute('data-title') || catInfo.title;
 
-            if (!isEdit && descInput) {
-              descInput.value = catInfo.description || `Oferta especial de Piggy ${catInfo.shortLabel} por tiempo limitado.`;
-            }
+            if (titleInput) titleInput.value = optTitle;
+            if (piggyLabelInput) piggyLabelInput.value = optPiggyLabel;
+            if (badgeInput) badgeInput.value = optBadge;
+            if (benefitTitleInput) benefitTitleInput.value = optBenefitTitle;
+            if (benefitDescInput) benefitDescInput.value = optBenefitDesc;
+            if (descInput) descInput.value = catInfo.description;
           });
         }
       },
@@ -599,6 +648,10 @@ export class FlashMissionsTab {
           onClick: async (e, m) => {
             const root = m?.overlay || document;
             const title = root.querySelector('#flash-title')?.value?.trim();
+            const piggy_label = root.querySelector('#flash-piggy-label')?.value?.trim();
+            const badge = root.querySelector('#flash-badge')?.value?.trim();
+            const benefit_title = root.querySelector('#flash-benefit-title')?.value?.trim();
+            const benefit_description = root.querySelector('#flash-benefit-desc')?.value?.trim();
             const description = root.querySelector('#flash-desc')?.value?.trim();
             const user_id = root.querySelector('#flash-user')?.value || null;
             const piggy_type = root.querySelector('#flash-type')?.value;
@@ -619,13 +672,17 @@ export class FlashMissionsTab {
               description,
               user_id,
               piggy_type,
+              piggy_label: piggy_label || catInfo.piggyLabel,
+              benefit_title: benefit_title || catInfo.benefitTitle,
+              benefit_description: benefit_description || catInfo.benefitDescription,
+              badge: badge || catInfo.badge,
               price: Number(price || 0),
               scheduled_at: scheduled_at ? new Date(scheduled_at).toISOString() : null,
               is_purchased,
               purchased_at: is_purchased ? (item?.purchased_at || new Date().toISOString()) : null,
               is_active,
               mission_title: 'MISIÓN FLASH',
-              icon: catInfo.icon || (piggy_type.startsWith('avanzado') ? '🚀' : '⏳')
+              icon: catInfo.icon || '⚡'
             };
 
             let res;
