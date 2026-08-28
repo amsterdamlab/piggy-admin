@@ -59,7 +59,7 @@ export class BonosConsumoTab {
       },
       columns: [
         {
-          header: 'Usuario / Inversionista',
+          header: 'Usuario',
           sortValue: (row) => {
             const p = profileMap[row.user_id] || {};
             return p.fullName || p.full_name || row.user_id;
@@ -384,6 +384,18 @@ export class BonosConsumoTab {
     const rawData = this.parentView.dataStore.user_marketing_bonuses || [];
     const profiles = this.parentView.profilesList || [];
 
+    const now = new Date();
+    const thirtyDaysAgo = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000));
+
+    // Segmentación de Audiencias (Nuevos Usuarios: <= 30 días de registro)
+    const allUsers = profiles;
+    const activePiggyUsers = profiles.filter(p => Number(p.activePiggiesCount || 0) > 0);
+    const newUsers = profiles.filter(p => {
+      const createdDate = p.createdAt || p.created_at;
+      return createdDate ? new Date(createdDate) >= thirtyDaysAgo : false;
+    });
+    const noPiggyUsers = profiles.filter(p => Number(p.activePiggiesCount || 0) === 0);
+
     // Campañas existentes para autocompletar
     const existingCampaigns = Array.from(new Set(rawData.map(r => r.campaign_name).filter(Boolean)));
 
@@ -406,7 +418,7 @@ export class BonosConsumoTab {
               ${existingCampaigns.map(c => `<option value="${c}"></option>`).join('')}
               <option value="Bono Fidelización Granja"></option>
               <option value="Fin de Semana Lechón"></option>
-              <option value="Bono Bienvenida Inversionistas"></option>
+              <option value="Bono Bienvenida Usuarios"></option>
               <option value="Incentivo Cortes Premium"></option>
             </datalist>
           </div>
@@ -416,23 +428,23 @@ export class BonosConsumoTab {
               Alcance de la Asignación / Destinatarios: *
             </label>
             <select id="uab-audience" class="form-control" style="width: 100%; padding: 0.6rem; background: var(--bg-dark); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: var(--radius-sm);">
-              <option value="ALL" selected>🌟 Todos los Inversionistas (${profiles.length})</option>
-              <option value="ACTIVE_INVESTORS">Inversionistas con Cerditos Activos</option>
-              <option value="NEW_USERS">Nuevos Usuarios Registrados</option>
-              <option value="NO_PIGGIES">Usuarios sin Cerditos Activos</option>
+              <option value="ALL" selected>🌟 Todos los Usuarios (${allUsers.length})</option>
+              <option value="ACTIVE_INVESTORS">🐷 Usuarios con Cerditos Activos (${activePiggyUsers.length})</option>
+              <option value="NEW_USERS">🌱 Nuevos Usuarios Registrados (${newUsers.length})</option>
+              <option value="NO_PIGGIES">⏳ Usuarios sin Cerditos Activos (${noPiggyUsers.length})</option>
               <option value="SINGLE">👤 Usuario Individual Específico</option>
             </select>
           </div>
 
           <div class="form-group" id="uab-single-user-cont" style="display: none;">
             <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-primary); margin-bottom: 4px; display: block;">
-              Seleccionar Inversionista:
+              Seleccionar Usuario:
             </label>
             <select id="uab-user-id" class="form-control" style="width: 100%; padding: 0.6rem; background: var(--bg-dark); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: var(--radius-sm);">
               <option value="" disabled selected>-- Elige un usuario --</option>
               ${profiles.map(p => `
                 <option value="${p.id}">
-                  ${p.fullName || p.full_name || 'Sin Nombre'} (${p.id.slice(0, 6)})
+                  ${p.fullName || p.full_name || 'Sin Nombre'} (${p.email || p.id.slice(0, 6)})
                 </option>
               `).join('')}
             </select>
@@ -510,18 +522,20 @@ export class BonosConsumoTab {
             let targetUserIds = [];
             if (audience === 'SINGLE') {
               if (!singleUserId) {
-                toast.error('Por favor selecciona un inversionista específico');
+                toast.error('Por favor selecciona un usuario específico');
                 return;
               }
               targetUserIds = [singleUserId];
             } else if (audience === 'ALL') {
-              targetUserIds = profiles.map(p => p.id);
+              targetUserIds = allUsers.map(p => p.id);
             } else if (audience === 'ACTIVE_INVESTORS') {
-              targetUserIds = profiles.filter(p => (p.activePiggiesCount || 0) > 0).map(p => p.id);
+              targetUserIds = activePiggyUsers.map(p => p.id);
+            } else if (audience === 'NEW_USERS') {
+              targetUserIds = newUsers.map(p => p.id);
             } else if (audience === 'NO_PIGGIES') {
-              targetUserIds = profiles.filter(p => (p.activePiggiesCount || 0) === 0).map(p => p.id);
+              targetUserIds = noPiggyUsers.map(p => p.id);
             } else {
-              targetUserIds = profiles.map(p => p.id);
+              targetUserIds = allUsers.map(p => p.id);
             }
 
             if (targetUserIds.length === 0) {

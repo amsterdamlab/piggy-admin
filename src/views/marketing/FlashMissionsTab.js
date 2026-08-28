@@ -77,7 +77,7 @@ export class FlashMissionsTab {
               return '<span class="badge badge-neutral" style="font-weight: 700;">Global (Todos)</span>';
             }
             const p = profileMap[row.user_id] || {};
-            const name = p.fullName || p.full_name || p.name || 'Inversionista';
+            const name = p.fullName || p.full_name || p.name || 'Usuario';
             const email = p.email || row.user_id;
             return `
               <div>
@@ -305,7 +305,7 @@ export class FlashMissionsTab {
     const totalBalance = usersWithBalance.reduce((sum, p) => sum + Number(p.walletBalance || p.wallet_balance || 0), 0);
 
     const listHtml = usersWithBalance.length > 0 ? usersWithBalance.map((user, idx) => {
-      const name = user.fullName || user.full_name || 'Inversionista';
+      const name = user.fullName || user.full_name || 'Usuario';
       const email = user.email || '';
       const phone = user.whatsapp || user.phone || '';
       const balance = Number(user.walletBalance || user.wallet_balance || 0);
@@ -365,7 +365,7 @@ export class FlashMissionsTab {
             <div style="text-align: right;">
               <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Usuarios Listos</div>
               <div style="font-weight: 800; font-size: 1.1rem; color: var(--text-primary);">
-                ${usersWithBalance.length} inversionistas
+                ${usersWithBalance.length} usuarios
               </div>
             </div>
           </div>
@@ -418,7 +418,7 @@ export class FlashMissionsTab {
   }
 
   openUserProfileModal(user) {
-    const fullName = user.fullName || user.full_name || 'Inversionista';
+    const fullName = user.fullName || user.full_name || 'Usuario';
     const email = user.email || 'No registrado';
     const whatsapp = user.whatsapp || user.phone || 'No registrado';
     const cedula = user.cedula || 'No registrada';
@@ -521,9 +521,24 @@ export class FlashMissionsTab {
     const profiles = this.parentView.profilesList || [];
     const exclusiveConfigs = this.parentView.dataStore.exclusive_piggy_config || [];
 
+    const now = new Date();
+    const thirtyDaysAgo = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000));
+
+    // Segmentación de Audiencias (Nuevos Usuarios: <= 30 días de registro)
+    const allUsers = profiles;
+    const activePiggyUsers = profiles.filter(p => Number(p.activePiggiesCount || 0) > 0);
+    const newUsers = profiles.filter(p => {
+      const createdDate = p.createdAt || p.created_at;
+      return createdDate ? new Date(createdDate) >= thirtyDaysAgo : false;
+    });
+    const noPiggyUsers = profiles.filter(p => Number(p.activePiggiesCount || 0) === 0);
+
+    const initialSingleUserId = item?.user_id || '';
+    const initialAudience = isEdit ? 'SINGLE' : (item?.user_id ? 'SINGLE' : 'ALL');
+
     const userOptions = profiles.map(p => {
       const name = p.fullName || p.full_name || p.email;
-      const isSelected = item?.user_id === p.id ? 'selected' : '';
+      const isSelected = initialSingleUserId === p.id ? 'selected' : '';
       return `<option value="${p.id}" ${isSelected}>${name} (${p.email || p.id.slice(0,8)})</option>`;
     }).join('');
 
@@ -536,53 +551,73 @@ export class FlashMissionsTab {
     const defaultInitialPrice = exclusiveOverride ? Number(exclusiveOverride.price) : initialCatInfo.defaultPrice;
 
     modal.open({
-      title: isEdit ? 'Editar Misión Flash' : 'Nueva Misión Flash',
+      title: isEdit ? 'Editar Misión Flash' : 'Lanzar Campaña / Nueva Misión Flash',
       contentHtml: `
         <form id="flash-form">
-          <div class="form-row">
-            <div class="form-group" style="flex: 1.2;">
-              <label class="form-label" for="flash-user">Usuario Destinatario</label>
-              <select id="flash-user" class="form-select">
-                <option value="">-- Global (Todos los usuarios) --</option>
-                ${userOptions}
+          ${!isEdit ? `
+            <div class="form-group">
+              <label class="form-label" for="flash-audience">Alcance de la Asignación / Destinatarios: *</label>
+              <select id="flash-audience" class="form-select">
+                <option value="ALL" ${initialAudience === 'ALL' ? 'selected' : ''}>🌟 Todos los Usuarios (${allUsers.length})</option>
+                <option value="ACTIVE_USERS" ${initialAudience === 'ACTIVE_USERS' ? 'selected' : ''}>🐷 Usuarios con Cerditos Activos (${activePiggyUsers.length})</option>
+                <option value="NEW_USERS" ${initialAudience === 'NEW_USERS' ? 'selected' : ''}>🌱 Nuevos Usuarios Registrados (${newUsers.length})</option>
+                <option value="NO_PIGGIES" ${initialAudience === 'NO_PIGGIES' ? 'selected' : ''}>⏳ Usuarios sin Cerditos Activos (${noPiggyUsers.length})</option>
+                <option value="SINGLE" ${initialAudience === 'SINGLE' ? 'selected' : ''}>👤 Usuario Individual Específico</option>
               </select>
             </div>
 
+            <div class="form-group" id="flash-single-user-cont" style="${initialAudience === 'SINGLE' ? 'display: block;' : 'display: none;'}">
+              <label class="form-label" for="flash-user">Seleccionar Usuario:</label>
+              <select id="flash-user" class="form-select">
+                <option value="">-- Elige un usuario --</option>
+                ${userOptions}
+              </select>
+            </div>
+          ` : `
+            <div class="form-group">
+              <label class="form-label">Destinatario:</label>
+              <div style="font-weight: 700; color: var(--accent-blue); padding: 0.5rem 0.75rem; background: var(--bg-dark); border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+                ${item?.user_id ? (profiles.find(p => p.id === item.user_id)?.fullName || profiles.find(p => p.id === item.user_id)?.email || `Usuario (${item.user_id.slice(0,8)})`) : 'Global (Todos)'}
+              </div>
+            </div>
+          `}
+
+          <div class="form-row">
             <div class="form-group" style="flex: 1.2;">
               <label class="form-label" for="flash-type">Tipo de Piggy</label>
               <select id="flash-type" class="form-select">
                 ${renderCategorySelectOptions(initialType, exclusiveConfigs)}
               </select>
             </div>
-          </div>
 
-          <div class="form-row">
-            <div class="form-group">
+            <div class="form-group" style="flex: 1.2;">
               <label class="form-label" for="flash-title">Título de la Misión</label>
               <input type="text" id="flash-title" class="form-input" placeholder="Ej: ¡Acelera tu Crecimiento!" value="${item?.title || (isEdit ? '' : initialCatInfo.title)}" required />
             </div>
+          </div>
 
+          <div class="form-row">
             <div class="form-group">
               <label class="form-label" for="flash-piggy-label">Etiqueta del Piggy (Nombre)</label>
               <input type="text" id="flash-piggy-label" class="form-input" placeholder="Ej: Piggy Flash 45D" value="${item?.piggy_label || (isEdit ? '' : initialCatInfo.piggyLabel)}" required />
             </div>
-          </div>
 
-          <div class="form-row">
             <div class="form-group">
               <label class="form-label" for="flash-badge">Badge / Cinta Visual</label>
               <input type="text" id="flash-badge" class="form-input" placeholder="Ej: ⚡ OFERTA FLASH · 45 DÍAS" value="${item?.badge || (isEdit ? '' : initialCatInfo.badge)}" required />
             </div>
+          </div>
 
+          <div class="form-row">
             <div class="form-group">
               <label class="form-label" for="flash-benefit-title">Título del Beneficio</label>
               <input type="text" id="flash-benefit-title" class="form-input" placeholder="Ej: Reducción de 45 días de espera" value="${item?.benefit_title || (isEdit ? '' : initialCatInfo.benefitTitle)}" required />
             </div>
-          </div>
 
-          <div class="form-group">
-            <label class="form-label" for="flash-benefit-desc">Detalle del Beneficio</label>
-            <input type="text" id="flash-benefit-desc" class="form-input" placeholder="Ej: Inicia tu cerdito en el día 45 ahorrando tiempo." value="${item?.benefit_description || (isEdit ? '' : initialCatInfo.benefitDescription)}" required />
+            <div class="form-group">
+              <label class="form-label" for="flash-benefit-desc">Detalle del Beneficio</label>
+              <input type="text" id="flash-benefit-desc" class="form-input" placeholder="Ej: Inicia tu cerdito en el día 45 ahorrando tiempo." value="${item?.benefit_description || (isEdit ? '' : initialCatInfo.benefitDescription)}" required />
+            </div>
           </div>
 
           <div class="form-group">
@@ -641,6 +676,14 @@ export class FlashMissionsTab {
         // Selector mini-calendario con botón azul
         setupDateTimePicker(scheduledInput);
 
+        const audienceSelect = modalBody.querySelector('#flash-audience');
+        const singleCont = modalBody.querySelector('#flash-single-user-cont');
+        if (audienceSelect && singleCont) {
+          audienceSelect.addEventListener('change', () => {
+            singleCont.style.display = audienceSelect.value === 'SINGLE' ? 'block' : 'none';
+          });
+        }
+
         if (typeSelect) {
           typeSelect.addEventListener('change', (e) => {
             const selectedKey = e.target.value;
@@ -680,7 +723,6 @@ export class FlashMissionsTab {
             const benefit_title = root.querySelector('#flash-benefit-title')?.value?.trim();
             const benefit_description = root.querySelector('#flash-benefit-desc')?.value?.trim();
             const description = root.querySelector('#flash-desc')?.value?.trim();
-            const user_id = root.querySelector('#flash-user')?.value || null;
             const piggy_type = root.querySelector('#flash-type')?.value;
             const price = parseCurrency(root.querySelector('#flash-price')?.value);
             const scheduled_at = root.querySelector('#flash-scheduled')?.value;
@@ -694,10 +736,9 @@ export class FlashMissionsTab {
 
             const catInfo = getPiggyCategoryInfo(piggy_type);
 
-            const payload = {
+            const basePayload = {
               title,
               description,
-              user_id,
               piggy_type,
               piggy_label: piggy_label || catInfo.piggyLabel,
               benefit_title: benefit_title || catInfo.benefitTitle,
@@ -712,21 +753,76 @@ export class FlashMissionsTab {
               icon: catInfo.icon || '⚡'
             };
 
-            let res;
+            const btn = e.target;
+            btn.disabled = true;
+            btn.textContent = 'Procesando...';
+
             if (isEdit) {
-              res = await marketingService.updateUserFlashMission(item.id, payload);
-            } else {
-              res = await marketingService.createUserFlashMission(payload);
+              const res = await marketingService.updateUserFlashMission(item.id, basePayload);
+              if (res.success) {
+                toast.success('Misión flash actualizada con éxito');
+                this.parentView.dataStore.user_flash_missions = await marketingService.getUserFlashMissions();
+                this.dataTable.setData(this.parentView.dataStore.user_flash_missions);
+                this.parentView.updateBadges();
+                m.close();
+              } else {
+                toast.error(res.error || 'Error al guardar');
+                btn.disabled = false;
+                btn.textContent = 'Guardar Cambios';
+              }
+              return;
             }
 
+            // Nueva Misión Flash: Determinar destinatarios según la segmentación seleccionada
+            const audience = root.querySelector('#flash-audience')?.value || 'ALL';
+            const singleUserId = root.querySelector('#flash-user')?.value || null;
+
+            let targetUserIds = [];
+            if (audience === 'SINGLE') {
+              if (!singleUserId) {
+                toast.error('Por favor selecciona un usuario específico');
+                btn.disabled = false;
+                btn.textContent = 'Lanzar Misión Flash';
+                return;
+              }
+              targetUserIds = [singleUserId];
+            } else if (audience === 'ALL') {
+              targetUserIds = allUsers.map(p => p.id);
+            } else if (audience === 'ACTIVE_USERS') {
+              targetUserIds = activePiggyUsers.map(p => p.id);
+            } else if (audience === 'NEW_USERS') {
+              targetUserIds = newUsers.map(p => p.id);
+            } else if (audience === 'NO_PIGGIES') {
+              targetUserIds = noPiggyUsers.map(p => p.id);
+            }
+
+            if (targetUserIds.length === 0) {
+              toast.error('No se encontraron usuarios para la audiencia seleccionada');
+              btn.disabled = false;
+              btn.textContent = 'Lanzar Misión Flash';
+              return;
+            }
+
+            // Generar UUID único de campaña para agrupar este lanzamiento
+            const campaignId = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : ('camp_' + Date.now());
+
+            const batchItems = targetUserIds.map(uid => ({
+              ...basePayload,
+              user_id: uid,
+              campaign_id: campaignId
+            }));
+
+            const res = await marketingService.createUserFlashMissionsBatch(batchItems);
             if (res.success) {
-              toast.success(isEdit ? 'Misión flash actualizada' : 'Misión flash creada con éxito');
+              toast.success(`¡Misión Flash asignada con éxito a ${batchItems.length} usuario(s)!`);
               this.parentView.dataStore.user_flash_missions = await marketingService.getUserFlashMissions();
               this.dataTable.setData(this.parentView.dataStore.user_flash_missions);
               this.parentView.updateBadges();
               m.close();
             } else {
-              toast.error(res.error || 'Error al guardar');
+              toast.error(res.error || 'Error al lanzar misión flash');
+              btn.disabled = false;
+              btn.textContent = 'Lanzar Misión Flash';
             }
           }
         }

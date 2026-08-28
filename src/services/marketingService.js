@@ -153,20 +153,57 @@ export const marketingService = {
       const payload = {
         user_id: item.user_id || null,
         campaign_id: item.campaign_id || null,
+        mission_title: item.mission_title || 'MISIÓN FLASH',
         title: item.title || '',
         description: item.description || '',
+        icon: item.icon || '⚡',
         piggy_type: item.piggy_type || 'dorado',
+        piggy_label: item.piggy_label || null,
+        benefit_title: item.benefit_title || null,
+        benefit_description: item.benefit_description || null,
+        badge: item.badge || null,
         price: Number(item.price || 0),
         scheduled_at: item.scheduled_at || null,
         is_purchased: Boolean(item.is_purchased),
         purchased_at: item.purchased_at || null,
-        is_active: item.is_active !== undefined ? Boolean(item.is_active) : true,
-        mission_title: item.mission_title || 'MISIÓN FLASH',
-        icon: item.icon || (item.piggy_type?.startsWith('avanzado') ? '🚀' : '⏳')
+        is_active: item.is_active !== undefined ? Boolean(item.is_active) : true
       };
       const { data, error } = await client.from('user_flash_missions').insert([payload]).select().single();
       if (error) throw error;
       return { success: true, data };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  },
+
+  async createUserFlashMissionsBatch(items) {
+    const client = getClient();
+    if (!client) return { success: false, error: 'Sin conexión a base de datos' };
+    try {
+      const batchSize = 50;
+      for (let i = 0; i < items.length; i += batchSize) {
+        const slice = items.slice(i, i + batchSize).map(item => ({
+          user_id: item.user_id || null,
+          campaign_id: item.campaign_id || null,
+          mission_title: item.mission_title || 'MISIÓN FLASH',
+          title: item.title || '',
+          description: item.description || '',
+          icon: item.icon || '⚡',
+          piggy_type: item.piggy_type || 'dorado',
+          piggy_label: item.piggy_label || null,
+          benefit_title: item.benefit_title || null,
+          benefit_description: item.benefit_description || null,
+          badge: item.badge || null,
+          price: Number(item.price || 0),
+          scheduled_at: item.scheduled_at || null,
+          is_purchased: Boolean(item.is_purchased),
+          purchased_at: item.purchased_at || null,
+          is_active: item.is_active !== undefined ? Boolean(item.is_active) : true
+        }));
+        const { error } = await client.from('user_flash_missions').insert(slice);
+        if (error) throw error;
+      }
+      return { success: true, count: items.length };
     } catch (err) {
       return { success: false, error: err.message };
     }
@@ -190,6 +227,10 @@ export const marketingService = {
       if (item.purchased_at !== undefined) payload.purchased_at = item.purchased_at;
       if (item.mission_title !== undefined) payload.mission_title = item.mission_title;
       if (item.icon !== undefined) payload.icon = item.icon;
+      if (item.piggy_label !== undefined) payload.piggy_label = item.piggy_label;
+      if (item.benefit_title !== undefined) payload.benefit_title = item.benefit_title;
+      if (item.benefit_description !== undefined) payload.benefit_description = item.benefit_description;
+      if (item.badge !== undefined) payload.badge = item.badge;
 
       const { data, error } = await client.from('user_flash_missions').update(payload).eq('id', id).select().single();
       if (error) throw error;
@@ -634,7 +675,7 @@ export const marketingService = {
             .single();
 
           const currentBalance = Number(profile?.consumption_balance || 0);
-          const userName = profile?.full_name || 'Inversionista';
+          const userName = profile?.full_name || 'Usuario';
 
           // Si el bono se crea como activo o canjeado, se acredita primero el derecho al bono
           let newBalance = currentBalance + amount;
@@ -746,7 +787,7 @@ export const marketingService = {
             const canjeRef = `CRN-${Math.floor(100000 + Math.random() * 900000)}`;
             await client.from('wallet_requests').insert({
               user_id: uid,
-              user_name: profile?.full_name || 'Inversionista',
+              user_name: profile?.full_name || 'Usuario',
               request_type: 'bonus_debit',
               amount: amount,
               payment_method: 'CANJE_TIENDA',
