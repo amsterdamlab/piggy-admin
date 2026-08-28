@@ -572,16 +572,223 @@ export const marketingService = {
   },
 
   // ==========================================================================
+  // 7. CAMPAÑAS DE BONOS DE CONSUMO (marketing_bonuses)
+  // ==========================================================================
+  async getMarketingBonuses() {
+    const client = getClient();
+    if (!client) return [];
+    try {
+      const { data, error } = await client
+        .from('marketing_bonuses')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data || [];
+    } catch (err) {
+      console.error('Error fetching marketing_bonuses:', err);
+      return [];
+    }
+  },
+
+  async createMarketingBonus(item) {
+    const client = getClient();
+    if (!client) return { success: false, error: 'Sin conexión a base de datos' };
+    try {
+      const payload = {
+        campaign_name: item.campaign_name || 'Nueva Campaña de Bonos',
+        description: item.description || '',
+        amount: Number(item.amount || 0),
+        target_audience: item.target_audience || 'ALL',
+        expires_at: item.expires_at || null,
+        is_active: item.is_active !== undefined ? Boolean(item.is_active) : true
+      };
+      const { data, error } = await client.from('marketing_bonuses').insert([payload]).select().single();
+      if (error) throw error;
+      return { success: true, data };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  },
+
+  async updateMarketingBonus(id, item) {
+    const client = getClient();
+    if (!client) return { success: false, error: 'Sin conexión a base de datos' };
+    try {
+      const payload = {
+        campaign_name: item.campaign_name,
+        description: item.description,
+        amount: Number(item.amount || 0),
+        target_audience: item.target_audience || 'ALL',
+        expires_at: item.expires_at || null,
+        is_active: Boolean(item.is_active)
+      };
+      const { data, error } = await client.from('marketing_bonuses').update(payload).eq('id', id).select().single();
+      if (error) throw error;
+      return { success: true, data };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  },
+
+  async toggleMarketingBonusStatus(id, isActive) {
+    const client = getClient();
+    if (!client) return { success: false, error: 'Sin conexión a base de datos' };
+    try {
+      const { error } = await client.from('marketing_bonuses').update({ is_active: isActive }).eq('id', id);
+      if (error) throw error;
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  },
+
+  async deleteMarketingBonus(id) {
+    const client = getClient();
+    if (!client) return { success: false, error: 'Sin conexión a base de datos' };
+    try {
+      // Borrar primero asignaciones dependientes si existen
+      try {
+        await client.from('user_marketing_bonuses').delete().eq('campaign_id', id);
+      } catch (_) {}
+
+      const { error } = await client.from('marketing_bonuses').delete().eq('id', id);
+      if (error) throw error;
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  },
+
+  // ==========================================================================
+  // 8. ASIGNACIONES DE BONOS A USUARIOS (user_marketing_bonuses)
+  // ==========================================================================
+  async getUserMarketingBonuses() {
+    const client = getClient();
+    if (!client) return [];
+    try {
+      const { data, error } = await client
+        .from('user_marketing_bonuses')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data || [];
+    } catch (err) {
+      console.error('Error fetching user_marketing_bonuses:', err);
+      return [];
+    }
+  },
+
+  async createUserMarketingBonus(item) {
+    const client = getClient();
+    if (!client) return { success: false, error: 'Sin conexión a base de datos' };
+    try {
+      const payload = {
+        campaign_id: item.campaign_id || null,
+        user_id: item.user_id,
+        amount: Number(item.amount || 0),
+        status: item.status || 'active',
+        granted_at: item.granted_at || new Date().toISOString(),
+        expires_at: item.expires_at || null
+      };
+      const { data, error } = await client.from('user_marketing_bonuses').insert([payload]).select().single();
+      if (error) throw error;
+      return { success: true, data };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  },
+
+  async createUserMarketingBonusesBatch(items) {
+    const client = getClient();
+    if (!client) return { success: false, error: 'Sin conexión a base de datos' };
+    try {
+      const batchSize = 50;
+      for (let i = 0; i < items.length; i += batchSize) {
+        const slice = items.slice(i, i + batchSize);
+        const { error } = await client.from('user_marketing_bonuses').insert(slice);
+        if (error) throw error;
+      }
+      return { success: true, count: items.length };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  },
+
+  async updateUserMarketingBonus(id, item) {
+    const client = getClient();
+    if (!client) return { success: false, error: 'Sin conexión a base de datos' };
+    try {
+      const payload = {
+        status: item.status,
+        expires_at: item.expires_at || null
+      };
+      if (item.amount !== undefined) payload.amount = Number(item.amount);
+      const { data, error } = await client.from('user_marketing_bonuses').update(payload).eq('id', id).select().single();
+      if (error) throw error;
+      return { success: true, data };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  },
+
+  async deleteUserMarketingBonus(id) {
+    const client = getClient();
+    if (!client) return { success: false, error: 'Sin conexión a base de datos' };
+    try {
+      const { error } = await client.from('user_marketing_bonuses').delete().eq('id', id);
+      if (error) throw error;
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  },
+
+  // ==========================================================================
+  // 9. LANZAMIENTO COMPLETO DE CAMPAÑAS CON ASIGNACIÓN INMEDIATA
+  // ==========================================================================
+  async launchCampaignWithAssignments({ campaign, userIds = [] }) {
+    const client = getClient();
+    if (!client) return { success: false, error: 'Sin conexión a base de datos' };
+    try {
+      // 1. Crear campaña
+      const campRes = await this.createMarketingBonus(campaign);
+      if (!campRes.success) return campRes;
+      const createdCamp = campRes.data;
+
+      // 2. Si hay usuarios seleccionados, crear asignaciones
+      if (userIds.length > 0) {
+        const now = new Date().toISOString();
+        const assignments = userIds.map(uid => ({
+          campaign_id: createdCamp.id,
+          user_id: uid,
+          amount: Number(createdCamp.amount || 0),
+          status: 'active',
+          granted_at: now,
+          expires_at: createdCamp.expires_at || null
+        }));
+
+        await this.createUserMarketingBonusesBatch(assignments);
+      }
+
+      return { success: true, data: createdCamp, assignedCount: userIds.length };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  },
+
+  // ==========================================================================
   // RESUMEN GLOBAL PARA MÉTRICAS
   // ==========================================================================
   async getMarketingOverview() {
-    const [news, flashMissions, missions, exclusivePiggies, cycleMissions, tips] = await Promise.all([
+    const [news, flashMissions, missions, exclusivePiggies, cycleMissions, tips, bonuses, userBonuses] = await Promise.all([
       this.getNews(),
       this.getUserFlashMissions(),
       this.getMissions(),
       this.getExclusiveConfigs(),
       this.getCycleMissions(),
-      this.getDynamicTips()
+      this.getDynamicTips(),
+      this.getMarketingBonuses(),
+      this.getUserMarketingBonuses()
     ]);
 
     return {
@@ -595,7 +802,12 @@ export const marketingService = {
       activeExclusiveCount: exclusivePiggies.filter(e => e.is_enabled).length,
       cycleCount: cycleMissions.length,
       tipsCount: tips.length,
-      activeTipsCount: tips.filter(t => t.is_active).length
+      activeTipsCount: tips.filter(t => t.is_active).length,
+      bonusesCount: bonuses.length,
+      activeBonusesCount: bonuses.filter(b => b.is_active).length,
+      userBonusesCount: userBonuses.length,
+      activeUserBonusesCount: userBonuses.filter(ub => ub.status === 'active').length,
+      redeemedUserBonusesCount: userBonuses.filter(ub => ub.status === 'redeemed').length
     };
   }
 };

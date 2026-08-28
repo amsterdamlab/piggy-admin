@@ -1,10 +1,11 @@
 /* ==========================================================================
    PIGGY MASTER ADMIN DASHBOARD - MARKETING OPERATIONS CENTER VIEW
-   4 Main Tabs:
+   5 Main Tabs:
    1. Banners (news_billboard)
    2. Misiones (Misiones Globales + Misiones Flash)
-   3. Ciclos Completados (Granja Piggys Exclusivos + Piggys Exclusivos Config)
-   4. Tips Dinámicos (dynamic_tips)
+   3. Bonos Consumo (Campañas Activas + Seguimiento Usuarios)
+   4. Ciclos Completados (Granja Piggys Exclusivos + Piggys Exclusivos Config)
+   5. Tips Dinámicos (dynamic_tips)
    ========================================================================== */
 
 import { marketingService } from '../services/marketingService.js';
@@ -14,15 +15,18 @@ import { icons } from '../icons.js';
 import { NewsTab } from './marketing/NewsTab.js';
 import { MissionsTab } from './marketing/MissionsTab.js';
 import { FlashMissionsTab } from './marketing/FlashMissionsTab.js';
+import { MarketingBonusesTab } from './marketing/MarketingBonusesTab.js';
+import { UserMarketingBonusesTab } from './marketing/UserMarketingBonusesTab.js';
 import { CycleMissionsTab } from './marketing/CycleMissionsTab.js';
 import { ExclusiveConfigTab } from './marketing/ExclusiveConfigTab.js';
 import { DynamicTipsTab } from './marketing/DynamicTipsTab.js';
 
 export class MarketingView {
   constructor() {
-    this.mainTab = 'banners'; // 'banners' | 'missions' | 'cycles' | 'tips'
+    this.mainTab = 'banners'; // 'banners' | 'missions' | 'bonuses' | 'cycles' | 'tips'
     this.subTabs = {
       missions: 'global_missions', // 'global_missions' | 'flash_missions'
+      bonuses: 'campaigns',        // 'campaigns' | 'user_bonuses'
       cycles: 'exclusive_farm'     // 'exclusive_farm' | 'exclusive_config'
     };
 
@@ -35,6 +39,8 @@ export class MarketingView {
       news_billboard: [],
       missions: [],
       user_flash_missions: [],
+      marketing_bonuses: [],
+      user_marketing_bonuses: [],
       cycle_completion_missions: [],
       exclusive_piggy_config: [],
       dynamic_tips: []
@@ -45,6 +51,8 @@ export class MarketingView {
       news_billboard: new NewsTab(this),
       missions: new MissionsTab(this),
       user_flash_missions: new FlashMissionsTab(this),
+      marketing_bonuses: new MarketingBonusesTab(this),
+      user_marketing_bonuses: new UserMarketingBonusesTab(this),
       cycle_completion_missions: new CycleMissionsTab(this),
       exclusive_piggy_config: new ExclusiveConfigTab(this),
       dynamic_tips: new DynamicTipsTab(this)
@@ -52,11 +60,13 @@ export class MarketingView {
   }
 
   async render() {
-    const [overview, news, missions, flashMissions, cycleMissions, exclusiveConfigs, tips, profiles, piggies] = await Promise.all([
+    const [overview, news, missions, flashMissions, bonuses, userBonuses, cycleMissions, exclusiveConfigs, tips, profiles, piggies] = await Promise.all([
       marketingService.getMarketingOverview(),
       marketingService.getNews(),
       marketingService.getMissions(),
       marketingService.getUserFlashMissions(),
+      marketingService.getMarketingBonuses(),
+      marketingService.getUserMarketingBonuses(),
       marketingService.getCycleMissions(),
       marketingService.getExclusiveConfigs(),
       marketingService.getDynamicTips(),
@@ -68,6 +78,8 @@ export class MarketingView {
     this.dataStore.news_billboard = news;
     this.dataStore.missions = missions;
     this.dataStore.user_flash_missions = flashMissions;
+    this.dataStore.marketing_bonuses = bonuses;
+    this.dataStore.user_marketing_bonuses = userBonuses;
     this.dataStore.cycle_completion_missions = cycleMissions;
     this.dataStore.exclusive_piggy_config = exclusiveConfigs;
     this.dataStore.dynamic_tips = tips;
@@ -75,6 +87,7 @@ export class MarketingView {
     this.piggiesList = piggies || [];
 
     const totalMissions = this.dataStore.missions.length + this.dataStore.user_flash_missions.length;
+    const totalBonuses = this.dataStore.marketing_bonuses.length + this.dataStore.user_marketing_bonuses.length;
     const totalCycles = this.dataStore.cycle_completion_missions.length + this.dataStore.exclusive_piggy_config.length;
 
     return `
@@ -99,6 +112,15 @@ export class MarketingView {
             <div class="stat-subtitle">Retos y recompensas para usuarios</div>
           </div>
 
+          <div class="stat-card" style="border-left: 4px solid var(--accent-green);">
+            <div class="stat-header">
+              <span class="stat-title">Bonos Consumo</span>
+              <div class="stat-icon" style="color: var(--accent-green);">${icons.gift}</div>
+            </div>
+            <div class="stat-value">${this.overview.activeBonusesCount || 0} <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: 500;">campañas (${this.overview.activeUserBonusesCount || 0} activos)</span></div>
+            <div class="stat-subtitle">Incentivos para compras de carne</div>
+          </div>
+
           <div class="stat-card" style="border-left: 4px solid var(--accent-purple);">
             <div class="stat-header">
               <span class="stat-title">Ciclos Completados</span>
@@ -108,17 +130,17 @@ export class MarketingView {
             <div class="stat-subtitle">Piggys exclusivos post-ciclo</div>
           </div>
 
-          <div class="stat-card" style="border-left: 4px solid var(--accent-green);">
+          <div class="stat-card" style="border-left: 4px solid var(--accent-blue);">
             <div class="stat-header">
               <span class="stat-title">Tips Dinámicos</span>
-              <div class="stat-icon" style="color: var(--accent-green);">${icons.lightbulb}</div>
+              <div class="stat-icon" style="color: var(--accent-blue);">${icons.lightbulb}</div>
             </div>
             <div class="stat-value">${this.overview.activeTipsCount} <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: 500;">/ ${this.overview.tipsCount} total</span></div>
             <div class="stat-subtitle">Educación financiera activa</div>
           </div>
         </div>
 
-        <!-- 4 Viñetas Principales de Marketing -->
+        <!-- 5 Viñetas Principales de Marketing -->
         <div class="marketing-tabs-wrapper">
           <button class="marketing-tab-btn ${this.mainTab === 'banners' ? 'active' : ''}" data-maintab="banners">
             ${icons.megaphone}
@@ -130,6 +152,12 @@ export class MarketingView {
             ${icons.target}
             <span>Misiones</span>
             <span class="marketing-tab-badge" id="badge-main-missions">${totalMissions}</span>
+          </button>
+
+          <button class="marketing-tab-btn ${this.mainTab === 'bonuses' ? 'active' : ''}" data-maintab="bonuses">
+            ${icons.gift}
+            <span>Bonos Consumo</span>
+            <span class="marketing-tab-badge" id="badge-main-bonuses">${totalBonuses}</span>
           </button>
 
           <button class="marketing-tab-btn ${this.mainTab === 'cycles' ? 'active' : ''}" data-maintab="cycles">
@@ -178,6 +206,25 @@ export class MarketingView {
       `;
     }
 
+    if (this.mainTab === 'bonuses') {
+      const activeSub = this.subTabs.bonuses;
+      return `
+        <div class="marketing-subtabs-wrapper">
+          <button class="marketing-subtab-btn ${activeSub === 'campaigns' ? 'active' : ''}" data-subtab="campaigns">
+            ${icons.gift}
+            <span>Campañas Activas (marketing_bonuses)</span>
+            <span class="marketing-subtab-badge" id="badge-sub-campaigns">${this.dataStore.marketing_bonuses.length}</span>
+          </button>
+
+          <button class="marketing-subtab-btn ${activeSub === 'user_bonuses' ? 'active' : ''}" data-subtab="user_bonuses">
+            ${icons.users}
+            <span>Seguimiento Usuarios (user_marketing_bonuses)</span>
+            <span class="marketing-subtab-badge" id="badge-sub-user-bonuses">${this.dataStore.user_marketing_bonuses.length}</span>
+          </button>
+        </div>
+      `;
+    }
+
     if (this.mainTab === 'cycles') {
       const activeSub = this.subTabs.cycles;
       return `
@@ -205,6 +252,9 @@ export class MarketingView {
     if (this.mainTab === 'tips') return 'dynamic_tips';
     if (this.mainTab === 'missions') {
       return this.subTabs.missions === 'global_missions' ? 'missions' : 'user_flash_missions';
+    }
+    if (this.mainTab === 'bonuses') {
+      return this.subTabs.bonuses === 'campaigns' ? 'marketing_bonuses' : 'user_marketing_bonuses';
     }
     if (this.mainTab === 'cycles') {
       return this.subTabs.cycles === 'exclusive_farm' ? 'cycle_completion_missions' : 'exclusive_piggy_config';
@@ -249,6 +299,8 @@ export class MarketingView {
         const sub = btn.getAttribute('data-subtab');
         if (this.mainTab === 'missions') {
           this.subTabs.missions = sub;
+        } else if (this.mainTab === 'bonuses') {
+          this.subTabs.bonuses = sub;
         } else if (this.mainTab === 'cycles') {
           this.subTabs.cycles = sub;
         }
@@ -296,6 +348,9 @@ export class MarketingView {
     const badgeMissions = this.container.querySelector('#badge-main-missions');
     if (badgeMissions) badgeMissions.textContent = this.dataStore.missions.length + this.dataStore.user_flash_missions.length;
 
+    const badgeBonuses = this.container.querySelector('#badge-main-bonuses');
+    if (badgeBonuses) badgeBonuses.textContent = this.dataStore.marketing_bonuses.length + this.dataStore.user_marketing_bonuses.length;
+
     const badgeCycles = this.container.querySelector('#badge-main-cycles');
     if (badgeCycles) badgeCycles.textContent = this.dataStore.cycle_completion_missions.length + this.dataStore.exclusive_piggy_config.length;
 
@@ -307,6 +362,12 @@ export class MarketingView {
 
     const badgeSubFlash = this.container.querySelector('#badge-sub-flash');
     if (badgeSubFlash) badgeSubFlash.textContent = this.dataStore.user_flash_missions.length;
+
+    const badgeSubCampaigns = this.container.querySelector('#badge-sub-campaigns');
+    if (badgeSubCampaigns) badgeSubCampaigns.textContent = this.dataStore.marketing_bonuses.length;
+
+    const badgeSubUserBonuses = this.container.querySelector('#badge-sub-user-bonuses');
+    if (badgeSubUserBonuses) badgeSubUserBonuses.textContent = this.dataStore.user_marketing_bonuses.length;
 
     const badgeSubCycle = this.container.querySelector('#badge-sub-cycle-missions');
     if (badgeSubCycle) badgeSubCycle.textContent = this.dataStore.cycle_completion_missions.length;
