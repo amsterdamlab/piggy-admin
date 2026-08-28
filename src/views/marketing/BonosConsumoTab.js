@@ -67,19 +67,13 @@ export class BonosConsumoTab {
           render: (row) => {
             const p = profileMap[row.user_id] || {};
             const name = p.fullName || p.full_name || p.name || `Usuario ${row.user_id ? row.user_id.slice(0, 8) : 'N/A'}`;
-            const email = p.email || (row.user_id ? `ID: ${row.user_id.slice(0, 8)}...` : '');
-            const phone = p.whatsapp || p.phone || '';
 
             return `
               <div>
                 <div style="font-weight: 800; color: var(--text-primary); font-size: 0.95rem;">
                   ${name}
                 </div>
-                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 2px;">
-                  ${phone ? `<span style="color: var(--accent-green); margin-right: 6px;">${icons.phone} ${phone}</span>` : ''}
-                  <span>${email}</span>
-                </div>
-                <div style="font-size: 0.72rem; color: var(--accent-gold); margin-top: 3px; display: flex; align-items: center; gap: 4px;">
+                <div style="font-size: 0.78rem; color: var(--accent-gold); margin-top: 4px; display: flex; align-items: center; gap: 4px; font-weight: 600;">
                   ${icons.wallet} Saldo Bonos: $${Number(p.bonosConsumo || p.consumption_balance || 0).toLocaleString('es-CO')}
                 </div>
               </div>
@@ -331,7 +325,7 @@ export class BonosConsumoTab {
     if (!item) return;
 
     if (action === 'mark-redeemed') {
-      if (confirm(`¿Marcar este bono de $${Number(item.amount || 0).toLocaleString('es-CO')} como Redimido / Canjeado por el usuario? Se debitará del saldo de bonos del usuario y se registrará la transacción contable.`)) {
+      if (confirm(`¿Marcar este bono de $${Number(item.amount || 0).toLocaleString('es-CO')} como Redimido / Canjeado por el usuario? Se registrará el canje de carne en tienda.`)) {
         const res = await marketingService.updateUserMarketingBonus(id, { status: 'redeemed' });
         if (res.success) {
           toast.success('¡Bono marcado como redimido exitosamente!');
@@ -438,7 +432,7 @@ export class BonosConsumoTab {
               <option value="" disabled selected>-- Elige un usuario --</option>
               ${profiles.map(p => `
                 <option value="${p.id}">
-                  ${p.fullName || p.full_name || 'Sin Nombre'} (${p.email || p.whatsapp || p.id.slice(0, 6)})
+                  ${p.fullName || p.full_name || 'Sin Nombre'} (${p.id.slice(0, 6)})
                 </option>
               `).join('')}
             </select>
@@ -467,9 +461,12 @@ export class BonosConsumoTab {
               Estado Inicial:
             </label>
             <select id="uab-status" class="form-control" style="width: 100%; padding: 0.6rem; background: var(--bg-dark); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: var(--radius-sm);">
-              <option value="active" selected>Disponible / Activo (Para redimir en tienda)</option>
-              <option value="redeemed">Redimido / Canjeado Inmediatamente</option>
+              <option value="active" selected>Disponible / Activo (Se acredita en su cuenta para compras)</option>
+              <option value="redeemed">Redimido / Canjeado (Ya entregado / usado en tienda)</option>
             </select>
+            <div style="font-size: 0.73rem; color: var(--text-muted); margin-top: 4px;">
+              * <strong>Disponible</strong>: El bono queda cargado en la cuenta del usuario para que lo use. <strong>Redimido</strong>: Se marca como ya utilizado.
+            </div>
           </div>
 
         </form>
