@@ -1,12 +1,13 @@
 /* ==========================================================================
    PIGGY MASTER ADMIN DASHBOARD - MARKETING SERVICE
-   Centralized real-time Supabase operations for the 6 marketing & engagement tables:
+   Centralized real-time Supabase operations for marketing & engagement tables:
    1. news_billboard
    2. user_flash_missions
    3. missions
    4. exclusive_piggy_config
    5. cycle_completion_missions
    6. dynamic_tips
+   7. user_marketing_bonuses (Bonos de Consumo & Campañas)
    ========================================================================== */
 
 import { getClient } from './supabase.js';
@@ -29,7 +30,6 @@ export const marketingService = {
   },
 
   // ==========================================================================
-  // ==========================================================================
   // 0.1. CERDITOS EN ENGORDE (piggies)
   // ==========================================================================
   async getPiggies() {
@@ -48,6 +48,7 @@ export const marketingService = {
     }
   },
 
+  // ==========================================================================
   // 1. NOTICIAS Y BANNERS (news_billboard)
   // ==========================================================================
   async getNews() {
@@ -572,95 +573,8 @@ export const marketingService = {
   },
 
   // ==========================================================================
-  // 7. CAMPAÑAS DE BONOS DE CONSUMO (marketing_bonuses)
-  // ==========================================================================
-  async getMarketingBonuses() {
-    const client = getClient();
-    if (!client) return [];
-    try {
-      const { data, error } = await client
-        .from('marketing_bonuses')
-        .select('*')
-        .order('created_at', { ascending: false });
-      if (error) throw error;
-      return data || [];
-    } catch (err) {
-      console.error('Error fetching marketing_bonuses:', err);
-      return [];
-    }
-  },
-
-  async createMarketingBonus(item) {
-    const client = getClient();
-    if (!client) return { success: false, error: 'Sin conexión a base de datos' };
-    try {
-      const payload = {
-        campaign_name: item.campaign_name || 'Nueva Campaña de Bonos',
-        description: item.description || '',
-        amount: Number(item.amount || 0),
-        target_audience: item.target_audience || 'ALL',
-        expires_at: item.expires_at || null,
-        is_active: item.is_active !== undefined ? Boolean(item.is_active) : true
-      };
-      const { data, error } = await client.from('marketing_bonuses').insert([payload]).select().single();
-      if (error) throw error;
-      return { success: true, data };
-    } catch (err) {
-      return { success: false, error: err.message };
-    }
-  },
-
-  async updateMarketingBonus(id, item) {
-    const client = getClient();
-    if (!client) return { success: false, error: 'Sin conexión a base de datos' };
-    try {
-      const payload = {
-        campaign_name: item.campaign_name,
-        description: item.description,
-        amount: Number(item.amount || 0),
-        target_audience: item.target_audience || 'ALL',
-        expires_at: item.expires_at || null,
-        is_active: Boolean(item.is_active)
-      };
-      const { data, error } = await client.from('marketing_bonuses').update(payload).eq('id', id).select().single();
-      if (error) throw error;
-      return { success: true, data };
-    } catch (err) {
-      return { success: false, error: err.message };
-    }
-  },
-
-  async toggleMarketingBonusStatus(id, isActive) {
-    const client = getClient();
-    if (!client) return { success: false, error: 'Sin conexión a base de datos' };
-    try {
-      const { error } = await client.from('marketing_bonuses').update({ is_active: isActive }).eq('id', id);
-      if (error) throw error;
-      return { success: true };
-    } catch (err) {
-      return { success: false, error: err.message };
-    }
-  },
-
-  async deleteMarketingBonus(id) {
-    const client = getClient();
-    if (!client) return { success: false, error: 'Sin conexión a base de datos' };
-    try {
-      // Borrar primero asignaciones dependientes si existen
-      try {
-        await client.from('user_marketing_bonuses').delete().eq('campaign_id', id);
-      } catch (_) {}
-
-      const { error } = await client.from('marketing_bonuses').delete().eq('id', id);
-      if (error) throw error;
-      return { success: true };
-    } catch (err) {
-      return { success: false, error: err.message };
-    }
-  },
-
-  // ==========================================================================
-  // 8. ASIGNACIONES DE BONOS A USUARIOS (user_marketing_bonuses)
+  // 7. BONOS DE CONSUMO & CAMPAÑAS (user_marketing_bonuses)
+  // Modelo unificado en la tabla user_marketing_bonuses
   // ==========================================================================
   async getUserMarketingBonuses() {
     const client = getClient();
@@ -683,11 +597,11 @@ export const marketingService = {
     if (!client) return { success: false, error: 'Sin conexión a base de datos' };
     try {
       const payload = {
-        campaign_id: item.campaign_id || null,
         user_id: item.user_id,
+        campaign_name: item.campaign_name || 'Bono de Consumo',
         amount: Number(item.amount || 0),
         status: item.status || 'active',
-        granted_at: item.granted_at || new Date().toISOString(),
+        is_active: item.is_active !== undefined ? Boolean(item.is_active) : true,
         expires_at: item.expires_at || null
       };
       const { data, error } = await client.from('user_marketing_bonuses').insert([payload]).select().single();
@@ -704,7 +618,14 @@ export const marketingService = {
     try {
       const batchSize = 50;
       for (let i = 0; i < items.length; i += batchSize) {
-        const slice = items.slice(i, i + batchSize);
+        const slice = items.slice(i, i + batchSize).map(item => ({
+          user_id: item.user_id,
+          campaign_name: item.campaign_name || 'Bono de Consumo',
+          amount: Number(item.amount || 0),
+          status: item.status || 'active',
+          is_active: item.is_active !== undefined ? Boolean(item.is_active) : true,
+          expires_at: item.expires_at || null
+        }));
         const { error } = await client.from('user_marketing_bonuses').insert(slice);
         if (error) throw error;
       }
@@ -718,14 +639,28 @@ export const marketingService = {
     const client = getClient();
     if (!client) return { success: false, error: 'Sin conexión a base de datos' };
     try {
-      const payload = {
-        status: item.status,
-        expires_at: item.expires_at || null
-      };
+      const payload = {};
+      if (item.campaign_name !== undefined) payload.campaign_name = item.campaign_name;
       if (item.amount !== undefined) payload.amount = Number(item.amount);
+      if (item.status !== undefined) payload.status = item.status;
+      if (item.is_active !== undefined) payload.is_active = Boolean(item.is_active);
+      if (item.expires_at !== undefined) payload.expires_at = item.expires_at || null;
+
       const { data, error } = await client.from('user_marketing_bonuses').update(payload).eq('id', id).select().single();
       if (error) throw error;
       return { success: true, data };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  },
+
+  async toggleUserMarketingBonusStatus(id, isActive) {
+    const client = getClient();
+    if (!client) return { success: false, error: 'Sin conexión a base de datos' };
+    try {
+      const { error } = await client.from('user_marketing_bonuses').update({ is_active: isActive }).eq('id', id);
+      if (error) throw error;
+      return { success: true };
     } catch (err) {
       return { success: false, error: err.message };
     }
@@ -743,53 +678,65 @@ export const marketingService = {
     }
   },
 
-  // ==========================================================================
-  // 9. LANZAMIENTO COMPLETO DE CAMPAÑAS CON ASIGNACIÓN INMEDIATA
-  // ==========================================================================
-  async launchCampaignWithAssignments({ campaign, userIds = [] }) {
+  async toggleCampaignBatchStatus(campaignName, isActive) {
     const client = getClient();
     if (!client) return { success: false, error: 'Sin conexión a base de datos' };
     try {
-      // 1. Crear campaña
-      const campRes = await this.createMarketingBonus(campaign);
-      if (!campRes.success) return campRes;
-      const createdCamp = campRes.data;
-
-      // 2. Si hay usuarios seleccionados, crear asignaciones
-      if (userIds.length > 0) {
-        const now = new Date().toISOString();
-        const assignments = userIds.map(uid => ({
-          campaign_id: createdCamp.id,
-          user_id: uid,
-          amount: Number(createdCamp.amount || 0),
-          status: 'active',
-          granted_at: now,
-          expires_at: createdCamp.expires_at || null
-        }));
-
-        await this.createUserMarketingBonusesBatch(assignments);
-      }
-
-      return { success: true, data: createdCamp, assignedCount: userIds.length };
+      const { error } = await client.from('user_marketing_bonuses').update({ is_active: isActive }).eq('campaign_name', campaignName);
+      if (error) throw error;
+      return { success: true };
     } catch (err) {
       return { success: false, error: err.message };
     }
+  },
+
+  async deleteCampaignBatch(campaignName) {
+    const client = getClient();
+    if (!client) return { success: false, error: 'Sin conexión a base de datos' };
+    try {
+      const { error } = await client.from('user_marketing_bonuses').delete().eq('campaign_name', campaignName);
+      if (error) throw error;
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  },
+
+  async launchCampaign({ campaign_name, amount, expires_at = null, is_active = true, userIds = [] }) {
+    if (!userIds || userIds.length === 0) {
+      return { success: false, error: 'No se seleccionaron usuarios para asignar la campaña' };
+    }
+
+    const items = userIds.map(uid => ({
+      user_id: uid,
+      campaign_name: campaign_name || 'Campaña de Bonos',
+      amount: Number(amount || 0),
+      status: 'active',
+      is_active: Boolean(is_active),
+      expires_at: expires_at || null
+    }));
+
+    return await this.createUserMarketingBonusesBatch(items);
   },
 
   // ==========================================================================
   // RESUMEN GLOBAL PARA MÉTRICAS
   // ==========================================================================
   async getMarketingOverview() {
-    const [news, flashMissions, missions, exclusivePiggies, cycleMissions, tips, bonuses, userBonuses] = await Promise.all([
+    const [news, flashMissions, missions, exclusivePiggies, cycleMissions, tips, userBonuses] = await Promise.all([
       this.getNews(),
       this.getUserFlashMissions(),
       this.getMissions(),
       this.getExclusiveConfigs(),
       this.getCycleMissions(),
       this.getDynamicTips(),
-      this.getMarketingBonuses(),
       this.getUserMarketingBonuses()
     ]);
+
+    const now = new Date();
+    const uniqueCampaigns = new Set(userBonuses.map(ub => ub.campaign_name).filter(Boolean));
+    const activeBonuses = userBonuses.filter(ub => ub.is_active && ub.status === 'active' && (!ub.expires_at || new Date(ub.expires_at) >= now));
+    const redeemedBonuses = userBonuses.filter(ub => ub.status === 'redeemed');
 
     return {
       newsCount: news.length,
@@ -803,11 +750,10 @@ export const marketingService = {
       cycleCount: cycleMissions.length,
       tipsCount: tips.length,
       activeTipsCount: tips.filter(t => t.is_active).length,
-      bonusesCount: bonuses.length,
-      activeBonusesCount: bonuses.filter(b => b.is_active).length,
+      campaignsCount: uniqueCampaigns.size,
       userBonusesCount: userBonuses.length,
-      activeUserBonusesCount: userBonuses.filter(ub => ub.status === 'active').length,
-      redeemedUserBonusesCount: userBonuses.filter(ub => ub.status === 'redeemed').length
+      activeUserBonusesCount: activeBonuses.length,
+      redeemedUserBonusesCount: redeemedBonuses.length
     };
   }
 };

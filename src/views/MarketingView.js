@@ -39,7 +39,6 @@ export class MarketingView {
       news_billboard: [],
       missions: [],
       user_flash_missions: [],
-      marketing_bonuses: [],
       user_marketing_bonuses: [],
       cycle_completion_missions: [],
       exclusive_piggy_config: [],
@@ -60,12 +59,11 @@ export class MarketingView {
   }
 
   async render() {
-    const [overview, news, missions, flashMissions, bonuses, userBonuses, cycleMissions, exclusiveConfigs, tips, profiles, piggies] = await Promise.all([
+    const [overview, news, missions, flashMissions, userBonuses, cycleMissions, exclusiveConfigs, tips, profiles, piggies] = await Promise.all([
       marketingService.getMarketingOverview(),
       marketingService.getNews(),
       marketingService.getMissions(),
       marketingService.getUserFlashMissions(),
-      marketingService.getMarketingBonuses(),
       marketingService.getUserMarketingBonuses(),
       marketingService.getCycleMissions(),
       marketingService.getExclusiveConfigs(),
@@ -78,7 +76,6 @@ export class MarketingView {
     this.dataStore.news_billboard = news;
     this.dataStore.missions = missions;
     this.dataStore.user_flash_missions = flashMissions;
-    this.dataStore.marketing_bonuses = bonuses;
     this.dataStore.user_marketing_bonuses = userBonuses;
     this.dataStore.cycle_completion_missions = cycleMissions;
     this.dataStore.exclusive_piggy_config = exclusiveConfigs;
@@ -87,7 +84,7 @@ export class MarketingView {
     this.piggiesList = piggies || [];
 
     const totalMissions = this.dataStore.missions.length + this.dataStore.user_flash_missions.length;
-    const totalBonuses = this.dataStore.marketing_bonuses.length + this.dataStore.user_marketing_bonuses.length;
+    const totalBonuses = this.dataStore.user_marketing_bonuses.length;
     const totalCycles = this.dataStore.cycle_completion_missions.length + this.dataStore.exclusive_piggy_config.length;
 
     return `
@@ -117,7 +114,7 @@ export class MarketingView {
               <span class="stat-title">Bonos Consumo</span>
               <div class="stat-icon" style="color: var(--accent-green);">${icons.gift}</div>
             </div>
-            <div class="stat-value">${this.overview.activeBonusesCount || 0} <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: 500;">campañas (${this.overview.activeUserBonusesCount || 0} activos)</span></div>
+            <div class="stat-value">${this.overview.campaignsCount || 0} <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: 500;">campañas (${this.overview.activeUserBonusesCount || 0} activos)</span></div>
             <div class="stat-subtitle">Incentivos para compras de carne</div>
           </div>
 
@@ -208,17 +205,18 @@ export class MarketingView {
 
     if (this.mainTab === 'bonuses') {
       const activeSub = this.subTabs.bonuses;
+      const uniqueCampaigns = new Set((this.dataStore.user_marketing_bonuses || []).map(ub => ub.campaign_name).filter(Boolean));
       return `
         <div class="marketing-subtabs-wrapper">
           <button class="marketing-subtab-btn ${activeSub === 'campaigns' ? 'active' : ''}" data-subtab="campaigns">
             ${icons.gift}
-            <span>Campañas Activas (marketing_bonuses)</span>
-            <span class="marketing-subtab-badge" id="badge-sub-campaigns">${this.dataStore.marketing_bonuses.length}</span>
+            <span>Campañas Activas</span>
+            <span class="marketing-subtab-badge" id="badge-sub-campaigns">${uniqueCampaigns.size}</span>
           </button>
 
           <button class="marketing-subtab-btn ${activeSub === 'user_bonuses' ? 'active' : ''}" data-subtab="user_bonuses">
             ${icons.users}
-            <span>Seguimiento Usuarios (user_marketing_bonuses)</span>
+            <span>Seguimiento Usuarios</span>
             <span class="marketing-subtab-badge" id="badge-sub-user-bonuses">${this.dataStore.user_marketing_bonuses.length}</span>
           </button>
         </div>
@@ -266,6 +264,9 @@ export class MarketingView {
     const key = this.getActiveKey();
     const controller = this.controllers[key];
     if (controller) {
+      if (key === 'marketing_bonuses' || key === 'user_marketing_bonuses') {
+        return controller.render(this.dataStore.user_marketing_bonuses);
+      }
       return controller.render(this.dataStore[key]);
     }
     return '<div class="p-4 text-center">Selecciona una opción</div>';
@@ -349,7 +350,7 @@ export class MarketingView {
     if (badgeMissions) badgeMissions.textContent = this.dataStore.missions.length + this.dataStore.user_flash_missions.length;
 
     const badgeBonuses = this.container.querySelector('#badge-main-bonuses');
-    if (badgeBonuses) badgeBonuses.textContent = this.dataStore.marketing_bonuses.length + this.dataStore.user_marketing_bonuses.length;
+    if (badgeBonuses) badgeBonuses.textContent = this.dataStore.user_marketing_bonuses.length;
 
     const badgeCycles = this.container.querySelector('#badge-main-cycles');
     if (badgeCycles) badgeCycles.textContent = this.dataStore.cycle_completion_missions.length + this.dataStore.exclusive_piggy_config.length;
@@ -363,8 +364,9 @@ export class MarketingView {
     const badgeSubFlash = this.container.querySelector('#badge-sub-flash');
     if (badgeSubFlash) badgeSubFlash.textContent = this.dataStore.user_flash_missions.length;
 
+    const uniqueCampaigns = new Set((this.dataStore.user_marketing_bonuses || []).map(ub => ub.campaign_name).filter(Boolean));
     const badgeSubCampaigns = this.container.querySelector('#badge-sub-campaigns');
-    if (badgeSubCampaigns) badgeSubCampaigns.textContent = this.dataStore.marketing_bonuses.length;
+    if (badgeSubCampaigns) badgeSubCampaigns.textContent = uniqueCampaigns.size;
 
     const badgeSubUserBonuses = this.container.querySelector('#badge-sub-user-bonuses');
     if (badgeSubUserBonuses) badgeSubUserBonuses.textContent = this.dataStore.user_marketing_bonuses.length;
