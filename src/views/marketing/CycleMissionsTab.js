@@ -9,6 +9,7 @@ import { modal } from '../../components/Modal.js';
 import { toast } from '../../components/Toast.js';
 import { icons } from '../../icons.js';
 import { getPiggyCategoryBadge, getPiggyCategoryInfo, renderCategorySelectOptions } from '../../utils/piggyCategories.js';
+import { formatCurrency, parseCurrency, setupCurrencyInput, setupDateTimePicker } from '../../utils/formUtils.js';
 
 export class CycleMissionsTab {
   constructor(parentView) {
@@ -666,11 +667,14 @@ export class CycleMissionsTab {
 
           <div class="form-row">
             <div class="form-group">
-              <label class="form-label" for="cycle-price">Precio de la Oferta ($)</label>
-              <input type="number" id="cycle-price" class="form-input" value="${item?.price !== undefined ? item.price : defaultInitialPrice}" step="50000" min="0" required />
+              <label class="form-label" for="cycle-price">Precio de la Oferta</label>
+              <div class="currency-input-wrapper">
+                <span class="currency-input-prefix">$</span>
+                <input type="text" id="cycle-price" class="form-input" value="${formatCurrency(item?.price !== undefined ? item.price : defaultInitialPrice)}" placeholder="1.200.000" required />
+              </div>
             </div>
 
-            <div class="form-group">
+            <div class="form-group datetime-enhanced-group">
               <label class="form-label" for="cycle-expires">Fecha de Expiración</label>
               <input type="datetime-local" id="cycle-expires" class="form-input" value="${expiresVal}" />
             </div>
@@ -688,6 +692,13 @@ export class CycleMissionsTab {
       onInit: (modalBody) => {
         const typeSelect = modalBody.querySelector('#cycle-type');
         const priceInput = modalBody.querySelector('#cycle-price');
+        const expiresInput = modalBody.querySelector('#cycle-expires');
+
+        // Formato de moneda con puntos de miles
+        const priceCtrl = setupCurrencyInput(priceInput);
+
+        // Selector de fecha y hora con botones de expiración rápida (+6h, +12h, +24h, etc.)
+        setupDateTimePicker(expiresInput);
 
         if (typeSelect) {
           typeSelect.addEventListener('change', (e) => {
@@ -695,8 +706,8 @@ export class CycleMissionsTab {
             const selectedOpt = typeSelect.options[typeSelect.selectedIndex];
             const catInfo = getPiggyCategoryInfo(selectedKey);
             const suggestedPrice = selectedOpt.getAttribute('data-price') || catInfo.defaultPrice;
-            if (priceInput && (!isEdit || Number(priceInput.value) === 0)) {
-              priceInput.value = suggestedPrice;
+            if (priceCtrl && (!isEdit || priceCtrl.getRawValue() === 0)) {
+              priceCtrl.setRawValue(suggestedPrice);
             }
           });
         }
@@ -707,11 +718,12 @@ export class CycleMissionsTab {
           text: isEdit ? 'Guardar Cambios' : 'Disparar Oferta',
           class: 'btn-primary',
           onClick: async (e, m) => {
-            const user_id = document.querySelector('#cycle-user').value || null;
-            const piggy_type = document.querySelector('#cycle-type').value;
-            const price = document.querySelector('#cycle-price').value;
-            const expires_at = document.querySelector('#cycle-expires').value;
-            const is_completed = document.querySelector('#cycle-completed').value === 'true';
+            const root = m?.overlay || document;
+            const user_id = root.querySelector('#cycle-user')?.value || null;
+            const piggy_type = root.querySelector('#cycle-type')?.value;
+            const price = parseCurrency(root.querySelector('#cycle-price')?.value);
+            const expires_at = root.querySelector('#cycle-expires')?.value;
+            const is_completed = root.querySelector('#cycle-completed')?.value === 'true';
 
             const catInfo = getPiggyCategoryInfo(piggy_type);
             const exConfig = exclusiveConfigs.find(c => c.piggy_type === piggy_type);
@@ -723,7 +735,7 @@ export class CycleMissionsTab {
               piggy_type,
               piggy_label,
               extra_roi_bonus,
-              price: Number(price),
+              price: Number(price || 0),
               expires_at: expires_at ? new Date(expires_at).toISOString() : null,
               is_completed,
               purchased_at: is_completed ? (item?.purchased_at || new Date().toISOString()) : null

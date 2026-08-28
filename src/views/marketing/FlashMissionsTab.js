@@ -9,6 +9,7 @@ import { modal } from '../../components/Modal.js';
 import { toast } from '../../components/Toast.js';
 import { icons } from '../../icons.js';
 import { getPiggyCategoryBadge, getPiggyCategoryInfo, renderCategorySelectOptions } from '../../utils/piggyCategories.js';
+import { formatCurrency, parseCurrency, setupCurrencyInput, setupDateTimePicker } from '../../utils/formUtils.js';
 
 export class FlashMissionsTab {
   constructor(parentView) {
@@ -524,11 +525,14 @@ export class FlashMissionsTab {
 
           <div class="form-row">
             <div class="form-group">
-              <label class="form-label" for="flash-price">Precio ($)</label>
-              <input type="number" id="flash-price" class="form-input" value="${item?.price !== undefined ? item.price : defaultInitialPrice}" step="50000" min="0" required />
+              <label class="form-label" for="flash-price">Precio de la Oferta</label>
+              <div class="currency-input-wrapper">
+                <span class="currency-input-prefix">$</span>
+                <input type="text" id="flash-price" class="form-input" value="${formatCurrency(item?.price !== undefined ? item.price : defaultInitialPrice)}" placeholder="1.200.000" required />
+              </div>
             </div>
 
-            <div class="form-group">
+            <div class="form-group datetime-enhanced-group">
               <label class="form-label" for="flash-scheduled">Caducidad (Fecha y Hora)</label>
               <input type="datetime-local" id="flash-scheduled" class="form-input" value="${scheduledVal}" />
             </div>
@@ -558,6 +562,13 @@ export class FlashMissionsTab {
         const priceInput = modalBody.querySelector('#flash-price');
         const titleInput = modalBody.querySelector('#flash-title');
         const descInput = modalBody.querySelector('#flash-desc');
+        const scheduledInput = modalBody.querySelector('#flash-scheduled');
+
+        // Formato monetario con separador de miles dinámico
+        const priceCtrl = setupCurrencyInput(priceInput);
+
+        // Selector mini-calendario con botones de expiración rápida (+6h, +12h, +24h, etc.)
+        setupDateTimePicker(scheduledInput);
 
         if (typeSelect) {
           typeSelect.addEventListener('change', (e) => {
@@ -566,8 +577,8 @@ export class FlashMissionsTab {
             const catInfo = getPiggyCategoryInfo(selectedKey);
 
             const suggestedPrice = selectedOpt.getAttribute('data-price') || catInfo.defaultPrice;
-            if (priceInput && (!isEdit || Number(priceInput.value) === 0)) {
-              priceInput.value = suggestedPrice;
+            if (priceCtrl && (!isEdit || priceCtrl.getRawValue() === 0)) {
+              priceCtrl.setRawValue(suggestedPrice);
             }
 
             if (!isEdit && titleInput) {
@@ -586,14 +597,15 @@ export class FlashMissionsTab {
           text: isEdit ? 'Guardar Cambios' : 'Lanzar Misión Flash',
           class: 'btn-primary',
           onClick: async (e, m) => {
-            const title = document.querySelector('#flash-title').value.trim();
-            const description = document.querySelector('#flash-desc').value.trim();
-            const user_id = document.querySelector('#flash-user').value || null;
-            const piggy_type = document.querySelector('#flash-type').value;
-            const price = document.querySelector('#flash-price').value;
-            const scheduled_at = document.querySelector('#flash-scheduled').value;
-            const is_purchased = document.querySelector('#flash-purchased').value === 'true';
-            const is_active = document.querySelector('#flash-active').value === 'true';
+            const root = m?.overlay || document;
+            const title = root.querySelector('#flash-title')?.value?.trim();
+            const description = root.querySelector('#flash-desc')?.value?.trim();
+            const user_id = root.querySelector('#flash-user')?.value || null;
+            const piggy_type = root.querySelector('#flash-type')?.value;
+            const price = parseCurrency(root.querySelector('#flash-price')?.value);
+            const scheduled_at = root.querySelector('#flash-scheduled')?.value;
+            const is_purchased = root.querySelector('#flash-purchased')?.value === 'true';
+            const is_active = root.querySelector('#flash-active')?.value === 'true';
 
             if (!title) {
               toast.error('Ingresa el título de la misión flash');
@@ -607,7 +619,7 @@ export class FlashMissionsTab {
               description,
               user_id,
               piggy_type,
-              price: Number(price),
+              price: Number(price || 0),
               scheduled_at: scheduled_at ? new Date(scheduled_at).toISOString() : null,
               is_purchased,
               purchased_at: is_purchased ? (item?.purchased_at || new Date().toISOString()) : null,

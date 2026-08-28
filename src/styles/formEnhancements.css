@@ -1,0 +1,155 @@
+/* ==========================================================================
+   PIGGY MASTER ADMIN DASHBOARD - FORM ENHANCEMENTS CSS
+   Styles for Currency inputs with thousand separators & Mini Calendar Picker
+   ========================================================================== */
+
+/* Currency Input Styling */
+.currency-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.currency-input-prefix {
+  position: absolute;
+  left: 0.85rem;
+  font-weight: 800;
+  color: var(--accent-gold);
+  font-size: 0.95rem;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.currency-input-wrapper .form-input {
+  padding-left: 1.85rem !important;
+  font-weight: 700;
+  color: var(--accent-gold);
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  letter-spacing: 0.02em;
+}
+
+/* Date Time Picker Enhanced Container */
+.datetime-enhanced-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  width: 100%;
+}
+
+.datetime-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.datetime-input-wrapper .form-input {
+  padding-right: 2.6rem !important;
+  color-scheme: dark;
+  cursor: pointer;
+}
+
+.datetime-calendar-btn {
+  position: absolute;
+  right: 0.5rem;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  color: var(--accent-blue);
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  padding: 0;
+}
+
+.datetime-calendar-btn:hover {
+  background: rgba(59, 130, 246, 0.2);
+  border-color: var(--accent-blue);
+  color: #fff;
+  transform: scale(1.05);
+}
+
+.datetime-calendar-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Quick Expiration Presets Pills */
+.datetime-presets-wrapper {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.2rem;
+}
+
+.datetime-presets-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-right: 0.2rem;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.datetime-preset-pill {
+  background: var(--bg-dark);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.25rem 0.55rem;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.datetime-preset-pill:hover {
+  background: rgba(59, 130, 246, 0.15);
+  border-color: rgba(59, 130, 246, 0.4);
+  color: var(--accent-blue);
+  transform: translateY(-1px);
+}
+
+.datetime-preset-pill.active {
+  background: var(--accent-blue);
+  border-color: var(--accent-blue);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
+}
+
+/* Expiration Live Preview Badge */
+.datetime-preview-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.75rem;
+  padding: 0.35rem 0.65rem;
+  border-radius: var(--radius-sm);
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.25);
+  color: var(--accent-blue);
+  font-weight: 600;
+  margin-top: 0.2rem;
+  width: fit-content;
+}
+
+.datetime-preview-badge.expired {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.3);
+  color: var(--accent-red);
+}
+
+.datetime-preview-badge.soon {
+  background: rgba(245, 158, 11, 0.1);
+  border-color: rgba(245, 158, 11, 0.3);
+  color: var(--accent-gold);
+}
