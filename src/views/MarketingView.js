@@ -80,58 +80,78 @@ export class MarketingView {
     this.profilesList = profiles || [];
     this.piggiesList = piggies || [];
 
-    const totalMissions = this.dataStore.missions.length + this.dataStore.user_flash_missions.length;
-    const totalBonuses = this.dataStore.user_marketing_bonuses.length;
-    const totalCycles = this.dataStore.cycle_completion_missions.length + this.dataStore.exclusive_piggy_config.length;
+    const now = new Date();
+
+    // 1. Cálculos de Inteligencia de Negocio para Misiones & Ofertas Flash
+    const flashList = this.dataStore.user_flash_missions || [];
+    const acceptedFlash = flashList.filter(f => f.is_purchased === true);
+    const flashSales = acceptedFlash.reduce((sum, f) => sum + Number(f.price || 0), 0);
+    const flashConvRate = flashList.length > 0 ? Math.round((acceptedFlash.length / flashList.length) * 100) : 0;
+
+    // 2. Cálculos para Bonos de Consumo
+    const bonusesList = this.dataStore.user_marketing_bonuses || [];
+    const activeBonuses = bonusesList.filter(b => b.is_active && b.status === 'active' && (!b.expires_at || new Date(b.expires_at) >= now));
+    const activeBonusesVolume = activeBonuses.reduce((sum, b) => sum + Number(b.amount || 0), 0);
+    const redeemedBonuses = bonusesList.filter(b => b.status === 'redeemed');
+    const redeemedBonusesVolume = redeemedBonuses.reduce((sum, b) => sum + Number(b.amount || 0), 0);
+
+    // 3. Cálculos para Ciclos Completados & Piggys Exclusivos
+    const cyclesList = this.dataStore.cycle_completion_missions || [];
+    const completedCycles = cyclesList.filter(c => c.is_completed === true);
+    const activeExclusiveConfigs = (this.dataStore.exclusive_piggy_config || []).filter(c => c.is_enabled !== false);
+    const cycleConvRate = cyclesList.length > 0 ? Math.round((completedCycles.length / cyclesList.length) * 100) : 0;
+
+    const totalMissions = (this.dataStore.missions || []).length + flashList.length;
+    const totalBonuses = bonusesList.length;
+    const totalCycles = cyclesList.length + (this.dataStore.exclusive_piggy_config || []).length;
 
     return `
       <div class="marketing-view">
-        <!-- Tarjetas de métricas de operaciones de marketing -->
+        <!-- 3 Tarjetas de Métricas de Alto Impacto Financiero y Operativo -->
         <div class="marketing-header-metrics">
-          <div class="stat-card" style="border-left: 4px solid var(--primary-pink);">
-            <div class="stat-header">
-              <span class="stat-title">Banners Activos</span>
-              <div class="stat-icon" style="color: var(--primary-pink);">${icons.megaphone}</div>
-            </div>
-            <div class="stat-value">${this.overview.activeNewsCount} <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: 500;">/ ${this.overview.newsCount} total</span></div>
-            <div class="stat-subtitle">En rotación en el Home</div>
-          </div>
-
+          
+          <!-- Bloque 1: Misiones & Ofertas Flash -->
           <div class="stat-card" style="border-left: 4px solid var(--accent-gold);">
-            <div class="stat-header">
-              <span class="stat-title">Misiones</span>
-              <div class="stat-icon" style="color: var(--accent-gold);">${icons.target}</div>
+            <div class="stat-icon-wrapper gold">${icons.zap || icons.target}</div>
+            <div class="stat-content">
+              <div class="stat-title">Misiones & Ofertas Flash</div>
+              <div class="stat-value">
+                ${acceptedFlash.length} <span style="font-size: 0.85rem; color: var(--accent-green); font-weight: 700;">Aceptadas (${flashConvRate}%)</span>
+              </div>
+              <div class="stat-subtitle">
+                $${flashSales.toLocaleString('es-CO')} ventas • ${flashMissions.length} flash (${this.dataStore.missions.length} retos)
+              </div>
             </div>
-            <div class="stat-value">${this.dataStore.missions.length} <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: 500;">registradas + ${this.overview.activeFlashCount} flash</span></div>
-            <div class="stat-subtitle">Retos y recompensas para usuarios</div>
           </div>
 
+          <!-- Bloque 2: Bonos de Consumo -->
           <div class="stat-card" style="border-left: 4px solid var(--accent-green);">
-            <div class="stat-header">
-              <span class="stat-title">Bonos Consumo</span>
-              <div class="stat-icon" style="color: var(--accent-green);">${icons.gift}</div>
+            <div class="stat-icon-wrapper green">${icons.gift}</div>
+            <div class="stat-content">
+              <div class="stat-title">Bonos de Consumo</div>
+              <div class="stat-value">
+                $${activeBonusesVolume.toLocaleString('es-CO')} <span style="font-size: 0.82rem; color: var(--text-muted); font-weight: 600;">(${activeBonuses.length} activos)</span>
+              </div>
+              <div class="stat-subtitle">
+                $${redeemedBonusesVolume.toLocaleString('es-CO')} canjeados en granja (${redeemedBonuses.length} redimidos)
+              </div>
             </div>
-            <div class="stat-value">${this.dataStore.user_marketing_bonuses.length} <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: 500;">otorgados (${this.overview.activeUserBonusesCount || 0} activos)</span></div>
-            <div class="stat-subtitle">Incentivos para compras de carne</div>
           </div>
 
+          <!-- Bloque 3: Ciclos & Piggys Exclusivos -->
           <div class="stat-card" style="border-left: 4px solid var(--accent-purple);">
-            <div class="stat-header">
-              <span class="stat-title">Ciclos Completados</span>
-              <div class="stat-icon" style="color: var(--accent-purple);">${icons.award}</div>
+            <div class="stat-icon-wrapper purple">${icons.award}</div>
+            <div class="stat-content">
+              <div class="stat-title">Ciclos & Piggys Exclusivos</div>
+              <div class="stat-value">
+                ${completedCycles.length} <span style="font-size: 0.85rem; color: var(--accent-purple); font-weight: 700;">Reinversiones (${cycleConvRate}%)</span>
+              </div>
+              <div class="stat-subtitle">
+                ${cycleMissions.length} ofertas post-ciclo • ${activeExclusiveConfigs.length} cerditos config
+              </div>
             </div>
-            <div class="stat-value">${this.dataStore.cycle_completion_missions.length} <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: 500;">ofertas (${this.dataStore.exclusive_piggy_config.length} config)</span></div>
-            <div class="stat-subtitle">Piggys exclusivos post-ciclo</div>
           </div>
 
-          <div class="stat-card" style="border-left: 4px solid var(--accent-blue);">
-            <div class="stat-header">
-              <span class="stat-title">Tips Dinámicos</span>
-              <div class="stat-icon" style="color: var(--accent-blue);">${icons.lightbulb}</div>
-            </div>
-            <div class="stat-value">${this.overview.activeTipsCount} <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: 500;">/ ${this.overview.tipsCount} total</span></div>
-            <div class="stat-subtitle">Educación financiera activa</div>
-          </div>
         </div>
 
         <!-- 5 Viñetas Principales de Marketing -->
