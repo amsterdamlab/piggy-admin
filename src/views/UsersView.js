@@ -76,7 +76,7 @@ export class UsersView {
               </div>
               ${u.bonosConsumo > 0 ? `
                 <div style="font-size: 0.72rem; color: var(--accent-gold); font-weight: 700; margin-top: 2px; display: flex; align-items: center; gap: 3px;">
-                  <span>${icons.coupon}</span> $${u.bonosConsumo.toLocaleString('es-CO')} Bonos Consumo
+                  <span>${icons.tag}</span> $${u.bonosConsumo.toLocaleString('es-CO')} Bonos Consumo
                 </div>
               ` : ''}
             </div>
@@ -192,7 +192,7 @@ export class UsersView {
             this.users[idx] = {
               ...oldUser,
               walletBalance: Number(updatedProfile.wallet_balance || 0),
-              bonosConsumo: Number(updatedProfile.referral_balance || 0),
+              bonosConsumo: Number(updatedProfile.consumption_balance || 0),
               referralCode: updatedProfile.referral_code || oldUser.referralCode,
               fullName: updatedProfile.full_name || oldUser.fullName,
               whatsapp: updatedProfile.whatsapp || oldUser.whatsapp,

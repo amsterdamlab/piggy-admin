@@ -67,7 +67,7 @@ export const usersService = {
             bankAccountNumber: u.bank_account_number || '',
             bankBreveKey: u.bank_breve_key || '',
             walletBalance: Number(u.wallet_balance || 0),
-            bonosConsumo: Number(u.referral_balance || 0),
+            bonosConsumo: Number(u.consumption_balance || 0),
             referralCode: u.referral_code || 'Sin código',
             referralsCount,
             totalCompraPiggies,
