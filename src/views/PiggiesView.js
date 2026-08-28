@@ -9,6 +9,7 @@ import { modal } from '../components/Modal.js';
 import { toast } from '../components/Toast.js';
 import { icons } from '../icons.js';
 import { resolveImageUrl, getFallbackImageUrl } from '../utils/imageUtils.js';
+import { formatCurrency, parseCurrency, setupCurrencyInput } from '../utils/formUtils.js';
 
 export class PiggiesView {
   constructor() {
@@ -273,7 +274,10 @@ export class PiggiesView {
 
             <div class="form-group">
               <label class="form-label" for="new-piggy-amount">Inversión</label>
-              <input type="number" id="new-piggy-amount" class="form-input" value="1000000" step="100000" required />
+              <div class="currency-input-wrapper">
+                <span class="currency-input-prefix">$</span>
+                <input type="text" id="new-piggy-amount" class="form-input" value="${formatCurrency(1000000)}" placeholder="1.000.000" required />
+              </div>
             </div>
           </div>
 
@@ -290,17 +294,22 @@ export class PiggiesView {
           </div>
         </form>
       `,
+      onInit: (modalBody) => {
+        const amountInput = modalBody.querySelector('#new-piggy-amount');
+        setupCurrencyInput(amountInput);
+      },
       footerButtons: [
         { text: 'Cancelar', class: 'btn-secondary', onClick: (e, m) => m.close() },
         {
           text: 'Asignar y Crear',
           class: 'btn-primary',
           onClick: async (e, m) => {
-            const userId = document.querySelector('#piggy-user-select').value;
-            const name = document.querySelector('#new-piggy-name').value;
-            const amount = document.querySelector('#new-piggy-amount').value;
-            const weight = document.querySelector('#new-piggy-weight').value;
-            const roi = document.querySelector('#new-piggy-roi').value;
+            const root = m?.overlay || document;
+            const userId = root.querySelector('#piggy-user-select')?.value;
+            const name = root.querySelector('#new-piggy-name')?.value?.trim();
+            const amount = parseCurrency(root.querySelector('#new-piggy-amount')?.value);
+            const weight = root.querySelector('#new-piggy-weight')?.value;
+            const roi = root.querySelector('#new-piggy-roi')?.value;
 
             if (!name) {
               toast.error('Ingresa un nombre para el cerdito');
@@ -309,7 +318,7 @@ export class PiggiesView {
 
             const res = await piggiesService.createPiggyForUser(userId, {
               name,
-              investmentAmount: Number(amount),
+              investmentAmount: Number(amount || 0),
               currentWeight: Number(weight),
               extraRoiBonus: Number(roi),
               status: 'engorde'

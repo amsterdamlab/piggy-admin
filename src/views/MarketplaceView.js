@@ -9,6 +9,7 @@ import { modal } from '../components/Modal.js';
 import { toast } from '../components/Toast.js';
 import { icons } from '../icons.js';
 import { resolveImageUrl, getFallbackImageUrl, PIGGY_PRESET_IMAGES } from '../utils/imageUtils.js';
+import { formatCurrency, parseCurrency, setupCurrencyInput } from '../utils/formUtils.js';
 import { PIGGY_CATEGORIES, getPiggyCategoryInfo, renderCategorySelectOptions } from '../utils/piggyCategories.js';
 
 export class MarketplaceView {
@@ -182,7 +183,10 @@ export class MarketplaceView {
           <div class="form-row">
             <div class="form-group">
               <label class="form-label" for="mk-price">Precio de Compra</label>
-              <input type="number" id="mk-price" class="form-input" value="${initial.price}" step="100000" required />
+              <div class="currency-input-wrapper">
+                <span class="currency-input-prefix">$</span>
+                <input type="text" id="mk-price" class="form-input" value="${formatCurrency(initial.price)}" placeholder="1.000.000" required />
+              </div>
             </div>
 
             <div class="form-group">
@@ -259,6 +263,10 @@ export class MarketplaceView {
         const daysInput = modalBody.querySelector('#mk-days-advanced');
         const weightInput = modalBody.querySelector('#mk-weight');
         const gallery = modalBody.querySelector('#mk-preset-gallery');
+        const priceInput = modalBody.querySelector('#mk-price');
+
+        // Formateador monetario con puntos de miles
+        setupCurrencyInput(priceInput);
 
         const updatePreview = (val) => {
           const clean = (val || '').trim();
@@ -318,7 +326,7 @@ export class MarketplaceView {
             const root = m?.overlay || document;
             const name = root.querySelector('#mk-name')?.value?.trim();
             const category = root.querySelector('#mk-category')?.value;
-            const price = root.querySelector('#mk-price')?.value;
+            const price = parseCurrency(root.querySelector('#mk-price')?.value);
             const roi = root.querySelector('#mk-roi')?.value;
             const stock = root.querySelector('#mk-stock')?.value;
             const daysAdvanced = root.querySelector('#mk-days-advanced')?.value;
@@ -334,7 +342,7 @@ export class MarketplaceView {
             const payload = {
               itemName: name,
               category,
-              price: Number(price),
+              price: Number(price || 0),
               extraRoi: Number(roi),
               stock: Number(stock),
               daysAdvanced: Number(daysAdvanced || 0),

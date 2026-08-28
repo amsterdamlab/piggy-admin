@@ -8,6 +8,7 @@ import { DataTable } from '../../components/DataTable.js';
 import { modal } from '../../components/Modal.js';
 import { toast } from '../../components/Toast.js';
 import { icons } from '../../icons.js';
+import { formatCurrency, parseCurrency, setupCurrencyInput } from '../../utils/formUtils.js';
 
 export class ExclusiveConfigTab {
   constructor(parentView) {
@@ -155,8 +156,11 @@ export class ExclusiveConfigTab {
 
           <div class="form-row">
             <div class="form-group">
-              <label class="form-label" for="exclusive-price">Precio de Venta ($)</label>
-              <input type="number" id="exclusive-price" class="form-input" placeholder="1300000" value="${item?.price || 1300000}" step="50000" min="0" required />
+              <label class="form-label" for="exclusive-price">Precio de Venta</label>
+              <div class="currency-input-wrapper">
+                <span class="currency-input-prefix">$</span>
+                <input type="text" id="exclusive-price" class="form-input" placeholder="1.300.000" value="${formatCurrency(item?.price || 1300000)}" required />
+              </div>
             </div>
 
             <div class="form-group">
@@ -186,19 +190,24 @@ export class ExclusiveConfigTab {
           </div>
         </form>
       `,
+      onInit: (modalBody) => {
+        const priceInput = modalBody.querySelector('#exclusive-price');
+        setupCurrencyInput(priceInput);
+      },
       footerButtons: [
         { text: 'Cancelar', class: 'btn-secondary', onClick: (e, m) => m.close() },
         {
           text: isEdit ? 'Guardar Cambios' : 'Crear Piggy Exclusivo',
           class: 'btn-primary',
           onClick: async (e, m) => {
-            const piggy_label = document.querySelector('#exclusive-label').value.trim();
-            const piggy_type = document.querySelector('#exclusive-type').value.trim().toLowerCase();
-            const price = document.querySelector('#exclusive-price').value;
-            const roiPercent = document.querySelector('#exclusive-roi').value;
-            const duration_hours = document.querySelector('#exclusive-duration').value;
-            const min_piggies = document.querySelector('#exclusive-min-piggies').value;
-            const is_enabled = document.querySelector('#exclusive-enabled').value === 'true';
+            const root = m?.overlay || document;
+            const piggy_label = root.querySelector('#exclusive-label')?.value?.trim();
+            const piggy_type = root.querySelector('#exclusive-type')?.value?.trim().toLowerCase();
+            const price = parseCurrency(root.querySelector('#exclusive-price')?.value);
+            const roiPercent = root.querySelector('#exclusive-roi')?.value;
+            const duration_hours = root.querySelector('#exclusive-duration')?.value;
+            const min_piggies = root.querySelector('#exclusive-min-piggies')?.value;
+            const is_enabled = root.querySelector('#exclusive-enabled')?.value === 'true';
 
             if (!piggy_label || !piggy_type) {
               toast.error('Ingresa el nombre y tipo del piggy');

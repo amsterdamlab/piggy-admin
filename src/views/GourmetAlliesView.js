@@ -8,6 +8,7 @@ import { modal } from '../components/Modal.js';
 import { toast } from '../components/Toast.js';
 import { icons } from '../icons.js';
 import { resolveImageUrl, getFallbackImageUrl } from '../utils/imageUtils.js';
+import { formatCurrency, parseCurrency, setupCurrencyInput } from '../utils/formUtils.js';
 
 export class GourmetAlliesView {
   constructor() {
@@ -264,7 +265,10 @@ export class GourmetAlliesView {
           <div class="form-row">
             <div class="form-group">
               <label class="form-label" for="g-price">Precio</label>
-              <input type="number" id="g-price" class="form-input" value="${initial.price}" step="1000" required />
+              <div class="currency-input-wrapper">
+                <span class="currency-input-prefix">$</span>
+                <input type="text" id="g-price" class="form-input" value="${formatCurrency(initial.price)}" placeholder="150.000" required />
+              </div>
             </div>
 
             <div class="form-group">
@@ -300,6 +304,11 @@ export class GourmetAlliesView {
       onInit: (modalBody) => {
         const input = modalBody.querySelector('#g-image-url');
         const box = modalBody.querySelector('#g-image-preview-box');
+        const priceInput = modalBody.querySelector('#g-price');
+
+        // Formato monetario con separador de miles
+        setupCurrencyInput(priceInput);
+
         if (input && box) {
           input.addEventListener('input', (e) => {
             const url = e.target.value.trim();
@@ -317,13 +326,14 @@ export class GourmetAlliesView {
           text: isEdit ? 'Actualizar Producto' : 'Crear Producto',
           class: 'btn-primary',
           onClick: async (e, m) => {
-            const name = document.querySelector('#g-name').value.trim();
-            const category = document.querySelector('#g-category').value;
-            const price = document.querySelector('#g-price').value;
-            const points = document.querySelector('#g-points').value;
-            const stock = document.querySelector('#g-stock').value;
-            const desc = document.querySelector('#g-desc').value.trim();
-            const imageUrl = document.querySelector('#g-image-url').value.trim();
+            const root = m?.overlay || document;
+            const name = root.querySelector('#g-name')?.value?.trim();
+            const category = root.querySelector('#g-category')?.value;
+            const price = parseCurrency(root.querySelector('#g-price')?.value);
+            const points = root.querySelector('#g-points')?.value;
+            const stock = root.querySelector('#g-stock')?.value;
+            const desc = root.querySelector('#g-desc')?.value?.trim();
+            const imageUrl = root.querySelector('#g-image-url')?.value?.trim();
 
             if (!name) {
               toast.error('El nombre del producto es obligatorio');
@@ -333,7 +343,7 @@ export class GourmetAlliesView {
             const payload = {
               name,
               category,
-              price: Number(price),
+              price: Number(price || 0),
               pointsPrice: Number(points),
               stock: Number(stock),
               description: desc,
