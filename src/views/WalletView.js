@@ -305,7 +305,7 @@ export class WalletView {
       ],
       columns: [
         {
-          header: 'Usuario / Inversionista',
+          header: 'USUARIO',
           key: 'userName',
           sortValue: (m) => m.userName,
           render: (m) => `
@@ -319,7 +319,7 @@ export class WalletView {
           `
         },
         {
-          header: 'Operación & Monto',
+          header: 'OPERACIÓN',
           key: 'amount',
           sortValue: (m) => m.amount,
           render: (m) => `
@@ -332,7 +332,7 @@ export class WalletView {
           `
         },
         {
-          header: 'Referencia / Concepto',
+          header: 'REFERENCIA',
           key: 'referenceCode',
           sortValue: (m) => m.referenceCode,
           render: (m) => `
@@ -358,7 +358,7 @@ export class WalletView {
           sortValue: (m) => m.status,
           render: (m) => {
             if (m.status === 'pending') return `<span class="badge badge-warning">Pendiente</span>`;
-            if (m.status === 'approved') return `<span class="badge badge-success">Aprobado / Despachado</span>`;
+            if (m.status === 'approved') return `<span class="badge badge-success">Aprobado</span>`;
             return `<span class="badge badge-danger">Rechazado</span>`;
           }
         },
@@ -632,7 +632,7 @@ export class WalletView {
       title: 'Crear Operación Manual en Pagos & Recargas',
       size: 'medium',
       contentHtml: `
-        <form id="form-manual-wallet-request" style="display: flex-direction: column; gap: 1rem;">
+        <form id="form-manual-wallet-request" style="display: flex; flex-direction: column; gap: 1rem;">
           
           <div style="background: rgba(255, 184, 0, 0.08); border: 1px solid var(--accent-gold); padding: 0.75rem; border-radius: var(--radius-sm); font-size: 0.8rem; color: var(--text-secondary);">
             <strong style="color: var(--accent-gold);">${icons.shieldCheck} Control de Auditoría:</strong> Registra recargas, ventas asistidas de carne, retiros o abonos de bonos con balance automático y total trazabilidad contable.
@@ -663,8 +663,8 @@ export class WalletView {
             <select id="m-user-id" class="form-control" style="width: 100%; padding: 0.6rem; background: var(--bg-dark); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: var(--radius-sm);">
               <option value="" disabled selected>-- Elige un usuario --</option>
               ${users.map(u => `
-                <option value="${u.id}" data-name="${u.full_name || ''}" data-balance="${u.wallet_balance || 0}" data-bonos="${u.referral_balance || 0}">
-                  ${u.full_name || 'Sin Nombre'} (${u.email || u.whatsapp || u.id.substring(0, 6)}) — Saldo: $${Number(u.wallet_balance || 0).toLocaleString('es-CO')} | Bonos: $${Number(u.referral_balance || 0).toLocaleString('es-CO')}
+                <option value="${u.id}" data-name="${u.full_name || ''}" data-balance="${u.wallet_balance || 0}" data-bonos="${u.consumption_balance || 0}">
+                  ${u.full_name || 'Sin Nombre'} (${u.email || u.whatsapp || u.id.substring(0, 6)}) — Saldo: $${Number(u.wallet_balance || 0).toLocaleString('es-CO')} | Bonos: $${Number(u.consumption_balance || 0).toLocaleString('es-CO')}
                 </option>
               `).join('')}
             </select>

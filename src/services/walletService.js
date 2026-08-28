@@ -122,7 +122,7 @@ export const walletService = {
             .from('wallet_requests')
             .select('*')
             .order('created_at', { ascending: false }),
-          client.from('profiles').select('id, full_name, whatsapp, email, wallet_balance, referral_balance')
+          client.from('profiles').select('id, full_name, whatsapp, phone, email, wallet_balance, consumption_balance')
         ]);
 
         const rawData = reqRes.data || [];
@@ -149,12 +149,12 @@ export const walletService = {
             return {
               id: b.id,
               userId: b.user_id,
-              userName: user.full_name || `Usuario ${b.user_id ? b.user_id.substring(0, 8) : 'N/A'}...`,
-              userPhone: user.whatsapp || 'No registrado',
+              userName: user.full_name || (b.user_name && b.user_name !== 'Usuario' ? b.user_name : (b.user_id ? `Usuario ${b.user_id.substring(0, 8)}...` : 'Usuario')),
+              userPhone: user.whatsapp || user.phone || 'No registrado',
               userEmail: user.email || (b.user_id ? `user_${b.user_id.substring(0, 6)}@piggy.co` : ''),
               userBalance: Number(user.wallet_balance || 0),
-              userBonos: Number(user.referral_balance || 0),
-              walletType: 'consumo',
+              userBonos: Number(user.consumption_balance || 0),
+              walletType: b.wallet_type || 'consumo',
               isCredit: isCredit,
               subtype: subtype,
               amount: Number(b.amount || 0),
@@ -391,7 +391,7 @@ export const walletService = {
       try {
         const { data, error } = await client
           .from('profiles')
-          .select('id, full_name, email, whatsapp, cedula, bank_name, wallet_balance, referral_balance')
+          .select('id, full_name, email, whatsapp, cedula, bank_name, wallet_balance, consumption_balance')
           .order('full_name', { ascending: true });
 
         if (!error && data) return data;
@@ -504,9 +504,9 @@ export const walletService = {
               const updatedVal = isCredit ? (currentVal + numAmount) : Math.max(0, currentVal - numAmount);
               await client.from('profiles').update({ wallet_balance: updatedVal }).eq('id', u.id);
             } else if (targetWallet === 'consumo') {
-              const currentVal = Number(u.referral_balance || 0);
+              const currentVal = Number(u.consumption_balance || 0);
               const updatedVal = isCredit ? (currentVal + numAmount) : Math.max(0, currentVal - numAmount);
-              await client.from('profiles').update({ referral_balance: updatedVal }).eq('id', u.id);
+              await client.from('profiles').update({ consumption_balance: updatedVal }).eq('id', u.id);
             }
           }
         }
@@ -570,7 +570,7 @@ export const walletService = {
           if (txErr) console.warn('Error al insertar transacción en wallet_transactions:', txErr);
 
           // 2. Actualizar perfil
-          const { data: profile } = await client.from('profiles').select('wallet_balance, referral_balance').eq('id', userId).single();
+          const { data: profile } = await client.from('profiles').select('wallet_balance, consumption_balance').eq('id', userId).single();
           if (profile) {
             if (targetWallet === 'dinero') {
               const currentVal = Number(profile.wallet_balance || 0);
@@ -578,10 +578,10 @@ export const walletService = {
               const { error: profErr } = await client.from('profiles').update({ wallet_balance: updatedVal }).eq('id', userId);
               if (profErr) console.warn('Error al actualizar wallet_balance:', profErr);
             } else if (targetWallet === 'consumo') {
-              const currentVal = Number(profile.referral_balance || 0);
+              const currentVal = Number(profile.consumption_balance || 0);
               const updatedVal = isCredit ? (currentVal + numAmount) : Math.max(0, currentVal - numAmount);
-              const { error: profErr } = await client.from('profiles').update({ referral_balance: updatedVal }).eq('id', userId);
-              if (profErr) console.warn('Error al actualizar referral_balance:', profErr);
+              const { error: profErr } = await client.from('profiles').update({ consumption_balance: updatedVal }).eq('id', userId);
+              if (profErr) console.warn('Error al actualizar consumption_balance:', profErr);
             }
           }
         } catch (txErr) {
