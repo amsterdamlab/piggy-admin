@@ -1,6 +1,6 @@
 /* ==========================================================================
    PIGGY MASTER ADMIN DASHBOARD - FORM ENHANCEMENTS CSS
-   Styles for Currency inputs with thousand separators & Mini Calendar Picker Button
+   Clean dark-mode controls, custom currency inputs, and datepicker styling
    ========================================================================== */
 
 /* Currency Input Styling */
@@ -11,22 +11,20 @@
   width: 100%;
 }
 
-.currency-input-prefix {
-  position: absolute;
-  left: 0.85rem;
-  font-weight: 800;
-  color: var(--accent-gold);
-  font-size: 0.95rem;
-  pointer-events: none;
-  z-index: 2;
+.currency-input-wrapper input {
+  padding-left: 1.8rem !important;
+  font-weight: 700;
+  color: var(--accent-green) !important;
 }
 
-.currency-input-wrapper .form-input {
-  padding-left: 1.85rem !important;
-  font-weight: 700;
-  color: var(--accent-gold);
-  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
-  letter-spacing: 0.02em;
+.currency-symbol-prefix {
+  position: absolute;
+  left: 0.75rem;
+  font-weight: 800;
+  color: var(--accent-green);
+  pointer-events: none;
+  font-size: 1rem;
+  z-index: 2;
 }
 
 /* Date Time Picker Enhanced Container */
@@ -67,11 +65,13 @@
 /* Botón estilo calendario azul personalizado */
 .datetime-calendar-btn {
   position: absolute;
-  right: 0.4rem;
-  background: rgba(59, 130, 246, 0.15);
-  border: 1px solid rgba(59, 130, 246, 0.35);
+  right: 0.45rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(59, 130, 246, 0.2);
+  border: 1px solid rgba(59, 130, 246, 0.5);
   border-radius: var(--radius-sm);
-  color: var(--accent-blue);
+  color: #3b82f6;
   width: 32px;
   height: 32px;
   display: flex;
@@ -80,19 +80,20 @@
   cursor: pointer;
   transition: all 0.2s ease;
   padding: 0;
-  z-index: 2;
+  z-index: 5;
 }
 
 .datetime-calendar-btn:hover {
-  background: var(--accent-blue);
-  border-color: var(--accent-blue);
+  background: #3b82f6;
+  border-color: #3b82f6;
   color: #fff;
-  transform: scale(1.05);
-  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
+  transform: translateY(-50%) scale(1.06);
+  box-shadow: 0 2px 10px rgba(59, 130, 246, 0.5);
 }
 
 .datetime-calendar-btn svg {
   width: 16px;
   height: 16px;
+  stroke: currentColor;
   pointer-events: none;
 }
