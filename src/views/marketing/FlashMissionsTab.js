@@ -595,7 +595,7 @@ export class FlashMissionsTab {
           
           <!-- Banner Informativo -->
           <div style="background: rgba(245, 158, 11, 0.08); border: 1px solid var(--accent-gold); padding: 0.75rem; border-radius: var(--radius-sm); font-size: 0.8rem; color: var(--text-primary);">
-            <strong style="color: var(--accent-gold);">${icons.zap} Misiones Flash Automatizadas:</strong> Configura ofertas exclusivas de cerditos temporales con retorno preferencial. Puedes activarlas de inmediato o programar su fecha y hora límite de compra / caducidad.
+            <strong style="color: var(--accent-gold);">${icons.zap} Misiones Flash Automatizadas:</strong> Configura ofertas exclusivas de cerditos temporales con retorno preferencial. Puedes activarlas de inmediato o programar su fecha y hora exacta de lanzamiento.
           </div>
 
           <!-- Selector de Audiencia / Destinatario -->
@@ -685,8 +685,11 @@ export class FlashMissionsTab {
             </div>
 
             <div class="form-group datetime-enhanced-group">
-              <label class="form-label" for="flash-scheduled">Caducidad (Fecha y Hora)</label>
+              <label class="form-label" for="flash-scheduled">Fecha de Lanzamiento / Programación</label>
               <input type="datetime-local" id="flash-scheduled" class="form-input" value="${scheduledVal}" style="color-scheme: dark;" />
+              <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 2px;">
+                Vacío = Inmediato. Fecha futura = Se dispara automáticamente en esa fecha/hora.
+              </div>
             </div>
           </div>
 
