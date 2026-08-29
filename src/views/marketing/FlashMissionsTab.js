@@ -1,6 +1,6 @@
 /* ==========================================================================
    MARKETING - MISIONES: SUB-TAB 2: MISIONES FLASH MANUALES (user_flash_missions)
-   Columnas: Nombre Usuario, Misión Flash, Oferta (Tipo + Precio + Estado Compra), Estado (Activa + Caducidad + Creación), Acciones
+   Columnas: Nombre Usuario, Misión Flash, Oferta (Tipo + Precio + Estado Compra), Estado (Activa + Programación + Caducidad + Creación), Acciones
    ========================================================================== */
 
 import { marketingService } from '../../services/marketingService.js';
@@ -31,8 +31,17 @@ export class FlashMissionsTab {
     const totalFlash = rawData.length;
     const acceptedMissions = rawData.filter(f => f.is_purchased === true);
     const acceptedCount = acceptedMissions.length;
-    const expiredMissions = rawData.filter(f => f.is_purchased !== true && f.scheduled_at && new Date(f.scheduled_at) < now);
-    const pendingMissions = rawData.filter(f => f.is_purchased !== true && (!f.scheduled_at || new Date(f.scheduled_at) >= now));
+    
+    // Ofertas programadas (fecha futura)
+    const scheduledMissions = rawData.filter(f => f.is_purchased !== true && f.scheduled_at && new Date(f.scheduled_at) > now);
+    const scheduledCount = scheduledMissions.length;
+
+    // Ofertas vencidas
+    const expiredMissions = rawData.filter(f => f.is_purchased !== true && f.scheduled_at && new Date(f.scheduled_at) <= now && (!f.is_active || f.is_expired));
+    
+    // Ofertas activas/pendientes vigentes
+    const pendingMissions = rawData.filter(f => f.is_purchased !== true && (!f.scheduled_at || new Date(f.scheduled_at) <= now) && f.is_active);
+    
     const conversionRate = totalFlash > 0 ? Math.round((acceptedCount / totalFlash) * 100) : 0;
     const totalAcceptedVolume = acceptedMissions.reduce((sum, f) => sum + Number(f.price || 0), 0);
 
@@ -65,7 +74,8 @@ export class FlashMissionsTab {
     this.dataTable = new DataTable({
       searchPlaceholder: 'Buscar misiones flash, usuario o tipo de piggy...',
       filters: [
-        { label: 'Pendientes / Activas', value: 'pending' },
+        { label: 'Disponibles / Activas', value: 'active' },
+        { label: 'Programadas', value: 'scheduled' },
         { label: 'Aceptadas (Compradas)', value: 'purchased' },
         { label: 'Vencidas / Expiradas', value: 'expired' },
         { label: 'Inactivas', value: 'inactive' }
@@ -77,10 +87,10 @@ export class FlashMissionsTab {
       },
       columns: [
         {
-          header: 'Nombre Usuario',
+          header: 'Usuario',
           render: (row) => {
             if (!row.user_id) {
-              return '<span class="badge badge-neutral" style="font-weight: 700;">Global (Todos)</span>';
+              return '<span class="badge badge-neutral" style="font-weight: 700;">Global (Todos los Usuarios)</span>';
             }
             const p = profileMap[row.user_id] || {};
             const name = p.fullName || p.full_name || p.name || 'Usuario';
@@ -137,12 +147,14 @@ export class FlashMissionsTab {
               </div>
             `;
 
-            // Lógica de 3 estados para la oferta:
+            // Lógica de estados para la oferta:
             // 1. Aceptada (Comprada)
-            // 2. Vencida (No comprada y fecha expirada)
-            // 3. Pendiente (No comprada y vigente o sin fecha)
+            // 2. Programada (Fecha futura)
+            // 3. Vencida
+            // 4. Pendiente / Activa
             const isPurchased = row.is_purchased === true;
-            const isExpired = !isPurchased && row.scheduled_at && new Date(row.scheduled_at) < new Date();
+            const isScheduled = !isPurchased && row.scheduled_at && new Date(row.scheduled_at) > now;
+            const isExpired = !isPurchased && !isScheduled && row.scheduled_at && new Date(row.scheduled_at) <= now && (!row.is_active || row.is_expired);
 
             let offerBadge;
             if (isPurchased) {
@@ -150,6 +162,14 @@ export class FlashMissionsTab {
                 <div style="margin-top: 3px; display: flex; align-items: center; gap: 5px;">
                   <span class="badge badge-success" style="padding: 1px 7px; font-size: 0.7rem; font-weight: 800;">Aceptada</span>
                   ${row.purchased_at ? `<span style="font-size: 0.72rem; color: var(--text-muted); font-family: monospace;">${new Date(row.purchased_at).toLocaleDateString('es-CO')}</span>` : ''}
+                </div>
+              `;
+            } else if (isScheduled) {
+              offerBadge = `
+                <div style="margin-top: 3px;">
+                  <span class="badge badge-warning" style="padding: 1px 7px; font-size: 0.7rem; font-weight: 800; background: rgba(245, 158, 11, 0.15); color: var(--accent-gold); border: 1px solid rgba(245, 158, 11, 0.3); display: inline-flex; align-items: center; gap: 3px;">
+                    ${icons.clock} Programada
+                  </span>
                 </div>
               `;
             } else if (isExpired) {
@@ -161,7 +181,7 @@ export class FlashMissionsTab {
             } else {
               offerBadge = `
                 <div style="margin-top: 3px;">
-                  <span class="badge badge-warning" style="padding: 1px 7px; font-size: 0.7rem; font-weight: 800; background: rgba(245, 158, 11, 0.15); color: var(--accent-gold); border: 1px solid rgba(245, 158, 11, 0.3);">Pendiente</span>
+                  <span class="badge badge-info" style="padding: 1px 7px; font-size: 0.7rem; font-weight: 800;">Disponible</span>
                 </div>
               `;
             }
@@ -177,8 +197,29 @@ export class FlashMissionsTab {
           }
         },
         {
-          header: 'Estado',
+          header: 'Estado en Tiempo Real',
           render: (row) => {
+            const isPurchased = row.is_purchased === true;
+            const isScheduled = !isPurchased && row.scheduled_at && new Date(row.scheduled_at) > now;
+
+            if (isScheduled) {
+              const startDate = new Date(row.scheduled_at);
+              const diffHours = Math.max(1, Math.round((startDate - now) / (1000 * 60 * 60)));
+              const diffDays = Math.ceil(diffHours / 24);
+              const timeLabel = diffDays > 1 ? `Inicia en ${diffDays} días` : `Inicia en ${diffHours} horas`;
+
+              return `
+                <div>
+                  <span class="badge badge-warning" style="font-size: 0.75rem; padding: 3px 8px; display: inline-flex; align-items: center; gap: 4px; background: rgba(245, 158, 11, 0.15); color: var(--accent-gold); border: 1px solid rgba(245, 158, 11, 0.3);">
+                    ${icons.clock} Programada
+                  </span>
+                  <div style="font-size: 0.72rem; color: var(--accent-gold); margin-top: 3px; font-weight: 600;">
+                    ${timeLabel} (${startDate.toLocaleDateString('es-CO')})
+                  </div>
+                </div>
+              `;
+            }
+
             const activeBadge = `
               <span class="badge ${row.is_active ? 'badge-success' : 'badge-neutral'}">
                 ${row.is_active ? 'Activa' : 'Inactiva'}
@@ -188,10 +229,10 @@ export class FlashMissionsTab {
             const expHtml = row.scheduled_at ? `
               <div style="margin-top: 4px;">
                 <span class="badge badge-info" style="font-size: 0.72rem; padding: 2px 7px; background: rgba(59, 130, 246, 0.15); border: 1px solid rgba(59, 130, 246, 0.3); color: var(--accent-blue); display: inline-flex; align-items: center; gap: 4px;">
-                  <span>⏳ Exp: ${new Date(row.scheduled_at).toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' })}</span>
+                  <span>📅 ${new Date(row.scheduled_at).toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' })}</span>
                 </span>
               </div>
-            ` : '<div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 4px;">Sin caducidad</div>';
+            ` : '<div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 4px;">Lanzamiento Inmediato</div>';
 
             const createdHtml = `
               <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 3px; font-family: monospace;">
@@ -244,7 +285,7 @@ export class FlashMissionsTab {
               ${totalFlash}
             </div>
             <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">
-              <span style="color: var(--accent-gold); font-weight: 700;">${pendingMissions.length} activas</span> | ${expiredMissions.length} vencidas
+              <span style="color: var(--accent-green); font-weight: 700;">${pendingMissions.length} activas</span> | ${scheduledCount > 0 ? `<span style="color: var(--accent-gold); font-weight: 700;">${scheduledCount} programadas</span>` : `${expiredMissions.length} vencidas`}
             </div>
           </div>
 
@@ -286,7 +327,7 @@ export class FlashMissionsTab {
               $${totalAvailableWallet.toLocaleString('es-CO')}
             </div>
             <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">
-              <strong>${usersWithBalanceCount}</strong> inversionistas con saldo para comprar
+              <strong>${usersWithBalanceCount}</strong> usuarios con saldo para comprar
             </div>
           </div>
 
@@ -387,7 +428,7 @@ export class FlashMissionsTab {
     const baseRoiPct = piggyCount >= 3 ? 0.10 : (piggyCount === 2 ? 0.09 : 0.08);
 
     modal.open({
-      title: `Detalle del Inversionista: ${user.fullName || user.full_name || 'Usuario'}`,
+      title: `Detalle del Usuario: ${user.fullName || user.full_name || 'Usuario'}`,
       size: 'large',
       contentHtml: `
         <div style="display: flex; flex-direction: column; gap: 1.25rem;">
@@ -412,7 +453,7 @@ export class FlashMissionsTab {
             </div>
           </div>
 
-          <!-- Métricas del Inversionista -->
+          <!-- Métricas del Usuario -->
           <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.75rem;">
             <div style="background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.2); padding: 0.9rem; border-radius: var(--radius-sm);">
               <div style="font-size: 0.72rem; color: var(--accent-blue); font-weight: 700; text-transform: uppercase;">Cerditos Activos</div>
@@ -443,7 +484,7 @@ export class FlashMissionsTab {
                     <th style="padding: 6px 10px;">Misión / Tipo</th>
                     <th style="padding: 6px 10px;">Precio</th>
                     <th style="padding: 6px 10px;">Estado Oferta</th>
-                    <th style="padding: 6px 10px;">Caducidad</th>
+                    <th style="padding: 6px 10px;">Programación / Caducidad</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -457,10 +498,10 @@ export class FlashMissionsTab {
                       </td>
                       <td style="padding: 6px 10px; font-weight: 700; color: var(--accent-gold);">$${Number(f.price || 0).toLocaleString('es-CO')}</td>
                       <td style="padding: 6px 10px;">
-                        ${f.is_purchased ? '<span class="badge badge-success" style="font-size: 0.68rem;">Aceptada</span>' : (f.scheduled_at && new Date(f.scheduled_at) < new Date() ? '<span class="badge badge-danger" style="font-size: 0.68rem;">Vencida</span>' : '<span class="badge badge-warning" style="font-size: 0.68rem;">Pendiente</span>')}
+                        ${f.is_purchased ? '<span class="badge badge-success" style="font-size: 0.68rem;">Aceptada</span>' : (f.scheduled_at && new Date(f.scheduled_at) > new Date() ? '<span class="badge badge-warning" style="font-size: 0.68rem;">Programada</span>' : (f.scheduled_at && new Date(f.scheduled_at) <= new Date() && !f.is_active ? '<span class="badge badge-danger" style="font-size: 0.68rem;">Vencida</span>' : '<span class="badge badge-info" style="font-size: 0.68rem;">Disponible</span>'))}
                       </td>
                       <td style="padding: 6px 10px; font-size: 0.72rem; color: var(--text-muted);">
-                        ${f.scheduled_at ? new Date(f.scheduled_at).toLocaleDateString('es-CO') : 'Sin caducidad'}
+                        ${f.scheduled_at ? new Date(f.scheduled_at).toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' }) : 'Inmediato'}
                       </td>
                     </tr>
                   `).join('')}
@@ -471,7 +512,7 @@ export class FlashMissionsTab {
 
           <!-- Cerditos en Engorde Actuales -->
           <div>
-            <h4 style="font-size: 0.88rem; font-weight: 800; margin-bottom: 0.5rem; color: var(--text-primary);">Cerditos del Inversionista (${userPiggies.length})</h4>
+            <h4 style="font-size: 0.88rem; font-weight: 800; margin-bottom: 0.5rem; color: var(--text-primary);">Cerditos del Usuario (${userPiggies.length})</h4>
             <div style="max-height: 180px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: var(--radius-sm);">
               <table style="width: 100%; border-collapse: collapse; font-size: 0.78rem; text-align: left;">
                 <thead style="background: var(--bg-dark); color: var(--text-muted); position: sticky; top: 0;">
@@ -527,37 +568,44 @@ export class FlashMissionsTab {
     const isEdit = !!item;
     const profiles = this.parentView.profilesList || [];
 
+    // Conteos dinámicos para cada filtro de audiencia
+    const allUsersCount = profiles.length;
+    const activeInvestorsCount = profiles.filter(p => (p.activePiggiesCount || 0) > 0).length;
+    const noPiggiesCount = profiles.filter(p => (p.activePiggiesCount || 0) === 0).length;
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000);
+    const newUsersCount = profiles.filter(p => p.createdAt && new Date(p.createdAt) >= thirtyDaysAgo).length;
+
     const scheduledVal = item?.scheduled_at ? new Date(item.scheduled_at).toISOString().slice(0, 16) : '';
     const initialPiggyType = item?.piggy_type || 'dorado';
     const initialCatInfo = getPiggyCategoryInfo(initialPiggyType);
     const defaultInitialPrice = initialCatInfo.defaultPrice;
 
     modal.open({
-      title: isEdit ? 'Editar Misión Flash' : 'Lanzar Nueva Misión Flash',
+      title: isEdit ? 'Editar Misión Flash' : 'Lanzar / Programar Misión Flash',
       size: 'medium',
       contentHtml: `
         <form id="form-flash-mission" class="form-grid" style="display: flex; flex-direction: column; gap: 1rem;">
           
           <!-- Banner Informativo -->
           <div style="background: rgba(245, 158, 11, 0.08); border: 1px solid var(--accent-gold); padding: 0.75rem; border-radius: var(--radius-sm); font-size: 0.8rem; color: var(--text-primary);">
-            <strong style="color: var(--accent-gold);">${icons.zap} Misiones Flash Automatizadas:</strong> Configura ofertas exclusivas de cerditos temporales con retorno preferencial. Puedes activarlas de inmediato o programar su caducidad.
+            <strong style="color: var(--accent-gold);">${icons.zap} Misiones Flash Automatizadas:</strong> Configura ofertas exclusivas de cerditos temporales con retorno preferencial. Puedes activarlas de inmediato o programar su fecha y hora exacta de lanzamiento.
           </div>
 
           <!-- Selector de Audiencia / Destinatario -->
           ${!isEdit ? `
             <div class="form-group">
-              <label class="form-label" for="flash-audience">Audiencia / Destinatarios</label>
+              <label class="form-label" for="flash-audience">Alcance de la Asignación / Destinatarios: *</label>
               <select id="flash-audience" class="form-select">
-                <option value="ALL" ${!preselectedUserId ? 'selected' : ''}>🌟 Todos los Inversionistas (${profiles.length} usuarios)</option>
-                <option value="ACTIVE_INVESTORS">Inversionistas con Cerditos Activos</option>
-                <option value="NEW_USERS">Nuevos Usuarios Registrados</option>
-                <option value="NO_PIGGIES">Usuarios sin Cerditos Activos</option>
-                <option value="SINGLE" ${preselectedUserId ? 'selected' : ''}>👤 Inversionista Individual Específico</option>
+                <option value="ALL" ${!preselectedUserId ? 'selected' : ''}>🌟 Todos los Usuarios (${allUsersCount})</option>
+                <option value="ACTIVE_INVESTORS">Usuarios con Cerditos Activos (${activeInvestorsCount})</option>
+                <option value="NEW_USERS">Nuevos Usuarios Registrados (${newUsersCount})</option>
+                <option value="NO_PIGGIES">Usuarios sin Cerditos Activos (${noPiggiesCount})</option>
+                <option value="SINGLE" ${preselectedUserId ? 'selected' : ''}>👤 Usuario Individual Específico</option>
               </select>
             </div>
 
             <div class="form-group" id="flash-single-user-cont" style="display: ${preselectedUserId ? 'block' : 'none'};">
-              <label class="form-label" for="flash-user-id">Seleccionar Inversionista</label>
+              <label class="form-label" for="flash-user-id">Seleccionar Usuario:</label>
               <select id="flash-user-id" class="form-select">
                 <option value="" disabled ${!preselectedUserId ? 'selected' : ''}>-- Elige un usuario --</option>
                 ${profiles.map(p => `
@@ -569,7 +617,7 @@ export class FlashMissionsTab {
             </div>
           ` : `
             <div class="form-group">
-              <label class="form-label">Inversionista Asignado</label>
+              <label class="form-label">Usuario Asignado</label>
               <div style="font-weight: 700; color: var(--text-primary); font-size: 0.88rem; padding: 0.5rem; background: var(--bg-dark); border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
                 ${item?.user_id ? ((profiles.find(p => p.id === item.user_id)?.fullName) || (profiles.find(p => p.id === item.user_id)?.full_name) || `Usuario ${item.user_id.slice(0, 8)}`) : 'Global (Todos los usuarios)'}
               </div>
@@ -630,12 +678,12 @@ export class FlashMissionsTab {
             </div>
 
             <div class="form-group datetime-enhanced-group">
-              <label class="form-label" for="flash-scheduled">Programación / Caducidad</label>
+              <label class="form-label" for="flash-scheduled">Fecha de Lanzamiento / Programación</label>
               <div class="datetime-input-wrapper">
                 <input type="datetime-local" id="flash-scheduled" class="form-input" value="${scheduledVal}" style="color-scheme: dark;" />
               </div>
               <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 2px;">
-                Fecha límite para activar y/o comprar la oferta
+                Vacío = Activación inmediata. Fecha futura = Se activa y dispara automáticamente en esa fecha/hora.
               </div>
             </div>
           </div>
@@ -713,7 +761,7 @@ export class FlashMissionsTab {
       footerButtons: [
         { text: 'Cancelar', class: 'btn-secondary', onClick: (e, m) => m.close() },
         {
-          text: isEdit ? 'Guardar Cambios' : 'Lanzar Misión Flash',
+          text: isEdit ? 'Guardar Cambios' : 'Lanzar / Programar Misión Flash',
           class: 'btn-primary',
           onClick: async (e, m) => {
             const root = m?.overlay || document;
@@ -775,9 +823,9 @@ export class FlashMissionsTab {
               let targetUserIds = [];
               if (audience === 'SINGLE') {
                 if (!singleUserId) {
-                  toast.error('Selecciona un inversionista específico');
+                  toast.error('Selecciona un usuario específico');
                   btn.disabled = false;
-                  btn.textContent = 'Lanzar Misión Flash';
+                  btn.textContent = 'Lanzar / Programar Misión Flash';
                   return;
                 }
                 targetUserIds = [singleUserId];
