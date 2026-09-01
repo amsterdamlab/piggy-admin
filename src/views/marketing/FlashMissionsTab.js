@@ -105,7 +105,8 @@ export class FlashMissionsTab {
         onClick: () => this.openModal()
       },
       columns: [
-        {\n          header: 'Usuario',
+        {
+          header: 'Usuario',
           render: (row) => {
             if (!row.user_id) {
               return '<span class="badge badge-neutral" style="font-weight: 700;">Global (Todos los Usuarios)</span>';
@@ -138,8 +139,9 @@ export class FlashMissionsTab {
                 ${row.title || row.mission_title || 'Misión Flash'}
               </div>
               ${row.benefit_title ? `
-                <div style="font-size: 0.75rem; color: var(--accent-gold); font-weight: 700; margin-top: 2px;">
-                  ✨ ${row.benefit_title}
+                <div style="font-size: 0.75rem; color: var(--accent-gold); font-weight: 700; margin-top: 2px; display: flex; align-items: center; gap: 4px;">
+                  <span style="display: inline-flex; width: 14px; height: 14px;">${icons.sparkles}</span>
+                  <span>${row.benefit_title}</span>
                 </div>
               ` : ''}
               <div style="font-size: 0.75rem; color: var(--text-muted); max-width: 260px; margin-top: 2px;">
@@ -235,7 +237,8 @@ export class FlashMissionsTab {
                 launchHtml = `
                   <div style="margin-top: 4px;">
                     <span class="badge badge-warning" style="font-size: 0.72rem; padding: 2px 7px; background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.3); color: var(--accent-gold); display: inline-flex; align-items: center; gap: 4px;">
-                      <span>🕒 Inicia: ${formattedLaunch}</span>
+                      <span style="display: inline-flex; width: 12px; height: 12px;">${icons.clock}</span>
+                      <span>Inicia: ${formattedLaunch}</span>
                     </span>
                   </div>
                 `;
@@ -257,7 +260,8 @@ export class FlashMissionsTab {
                 expHtml = `
                   <div style="margin-top: 3px;">
                     <span class="badge badge-danger" style="font-size: 0.72rem; padding: 2px 7px; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); color: var(--accent-red); display: inline-flex; align-items: center; gap: 4px;">
-                      <span>⏳ Venció: ${formattedExp}</span>
+                      <span style="display: inline-flex; width: 12px; height: 12px;">${icons.clock}</span>
+                      <span>Venció: ${formattedExp}</span>
                     </span>
                   </div>
                 `;
@@ -610,7 +614,7 @@ export class FlashMissionsTab {
     const activeInvestorsCount = profiles.filter(p => (p.activePiggiesCount || 0) > 0).length;
     const noPiggiesCount = profiles.filter(p => (p.activePiggiesCount || 0) === 0).length;
     const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000);
-    const newUsersCount = profiles.filter(p => (p.createdAt || p.created_at) && new Date(p.createdAt || p.created_at) >= thirtyDaysAgo).length;
+    const newUsersCount = profiles.filter(p => p.createdAt && new Date(p.createdAt) >= thirtyDaysAgo).length;
 
     const scheduledVal = item?.scheduled_at ? new Date(item.scheduled_at).toISOString().slice(0, 16) : '';
     const expiresVal = item?.expires_at ? new Date(item.expires_at).toISOString().slice(0, 16) : '';
@@ -634,11 +638,11 @@ export class FlashMissionsTab {
             <div class="form-group">
               <label class="form-label" for="flash-audience">Alcance de la Asignación / Destinatarios: *</label>
               <select id="flash-audience" class="form-select">
-                <option value="ALL" ${!preselectedUserId ? 'selected' : ''}>🌟 Todos los Usuarios (${allUsersCount})</option>
+                <option value="ALL" ${!preselectedUserId ? 'selected' : ''}>Todos los Usuarios (${allUsersCount})</option>
                 <option value="ACTIVE_INVESTORS">Usuarios con Cerditos Activos (${activeInvestorsCount})</option>
                 <option value="NEW_USERS">Nuevos Usuarios Registrados (${newUsersCount})</option>
                 <option value="NO_PIGGIES">Usuarios sin Cerditos Activos (${noPiggiesCount})</option>
-                <option value="SINGLE" ${preselectedUserId ? 'selected' : ''}>👤 Usuario Individual Específico</option>
+                <option value="SINGLE" ${preselectedUserId ? 'selected' : ''}>Usuario Individual Específico</option>
               </select>
             </div>
 
@@ -685,7 +689,7 @@ export class FlashMissionsTab {
 
             <div class="form-group">
               <label class="form-label" for="flash-badge">Etiqueta Visual (Badge)</label>
-              <input type="text" id="flash-badge" class="form-input" value="${item?.badge || (isEdit ? '' : initialCatInfo.badge)}" placeholder="Ej: 🏆 12% Extra / 🚀 15% ROI" />
+              <input type="text" id="flash-badge" class="form-input" value="${item?.badge || (isEdit ? '' : initialCatInfo.badge)}" placeholder="Ej: 12% Extra / 15% ROI" />
             </div>
           </div>
 
@@ -848,7 +852,7 @@ export class FlashMissionsTab {
               purchased_at: is_purchased ? (item?.purchased_at || new Date().toISOString()) : null,
               is_active,
               mission_title: 'MISIÓN FLASH',
-              icon: catInfo.icon || '⚡'
+              icon: catInfo.icon || 'zap'
             };
 
             const btn = e.target;
