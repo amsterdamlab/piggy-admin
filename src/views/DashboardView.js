@@ -116,7 +116,7 @@ export class DashboardView {
           <!-- Quick Actions & Protocol -->
           <div class="card">
             <div class="card-header">
-              <h3 class="card-title">${icons.zap} Acciones Rápidas & Pagos</h3>
+              <h3 class="card-title">${icons.zap} Acciones Rápidas</h3>
             </div>
             <div style="display: flex; flex-direction: column; gap: 0.85rem;">
               <a href="#wallet" class="btn btn-secondary" style="justify-content: space-between; padding: 1rem;">
@@ -134,19 +134,19 @@ export class DashboardView {
                 <div style="display: flex; align-items: center; gap: 0.75rem;">
                   <span style="color: var(--primary-pink);">${icons.marketplace}</span>
                   <div style="text-align: left;">
-                    <div style="font-weight: 700;">Lanzar Nuevo Piggy o Acelerador</div>
+                    <div style="font-weight: 700;">Agregar un Nuevo Piggy al Mercado</div>
                     <div style="font-size: 0.75rem; color: var(--text-muted);">Crear oferta con bono ROI para usuarios</div>
                   </div>
                 </div>
                 ${icons.arrowUpRight}
               </a>
 
-              <a href="#piggies" class="btn btn-secondary" style="justify-content: space-between; padding: 1rem;">
+              <a href="#flash-missions" class="btn btn-secondary" style="justify-content: space-between; padding: 1rem;">
                 <div style="display: flex; align-items: center; gap: 0.75rem;">
-                  <span style="color: var(--accent-green);">${icons.pig}</span>
+                  <span style="color: var(--accent-gold);">${icons.zap}</span>
                   <div style="text-align: left;">
-                    <div style="font-weight: 700;">Actualizar Pesaje de Granja</div>
-                    <div style="font-size: 0.75rem; color: var(--text-muted);">Ajustar el peso de los Piggys de los usuarios</div>
+                    <div style="font-weight: 700;">Lanzar Ofertas Flash</div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted);">Crear y programar misiones u ofertas flash</div>
                   </div>
                 </div>
                 ${icons.arrowUpRight}

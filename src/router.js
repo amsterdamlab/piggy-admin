@@ -66,6 +66,16 @@ export class Router {
         title: 'Centro de Marketing',
         subtitle: 'Gestión integral de noticias, misiones, promociones, cerditos exclusivos y tips de la app'
       },
+      '#flash-missions': {
+        view: MarketingView,
+        title: 'Centro de Marketing',
+        subtitle: 'Gestión integral de noticias, misiones, promociones, cerditos exclusivos y tips de la app'
+      },
+      '#missions-flash': {
+        view: MarketingView,
+        title: 'Centro de Marketing',
+        subtitle: 'Gestión integral de noticias, misiones, promociones, cerditos exclusivos y tips de la app'
+      },
       '#wallet': {
         view: WalletView,
         title: 'Pagos & Recargas',

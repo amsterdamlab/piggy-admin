@@ -22,9 +22,13 @@ import { DynamicTipsTab } from './marketing/DynamicTipsTab.js';
 
 export class MarketingView {
   constructor() {
-    this.mainTab = 'banners'; // 'banners' | 'missions' | 'bonuses' | 'cycles' | 'tips'
+    const hash = window.location.hash || '';
+    const isFlashRoute = hash === '#flash-missions' || hash === '#missions-flash';
+    const isMissionsRoute = hash === '#missions' || isFlashRoute;
+
+    this.mainTab = isMissionsRoute ? 'missions' : 'banners'; // 'banners' | 'missions' | 'bonuses' | 'cycles' | 'tips'
     this.subTabs = {
-      missions: 'global_missions', // 'global_missions' | 'flash_missions'
+      missions: isFlashRoute ? 'flash_missions' : 'global_missions', // 'global_missions' | 'flash_missions'
       cycles: 'exclusive_farm'     // 'exclusive_farm' | 'exclusive_config'
     };
 

@@ -80,7 +80,8 @@ export class Sidebar {
   }
 
   renderNavItem(item, currentRoute) {
-    const isActive = currentRoute === item.id;
+    const isMarketing = (currentRoute === '#flash-missions' || currentRoute === '#missions' || currentRoute === '#missions-flash') && item.id === '#marketing';
+    const isActive = currentRoute === item.id || isMarketing;
     return `
       <a href="${item.id}" class="nav-item ${isActive ? 'active' : ''}" data-route="${item.id}">
         <span class="nav-icon">${item.icon}</span>
@@ -121,8 +122,9 @@ export class Sidebar {
 
   updateActiveRoute(route) {
     if (!this.element) return;
+    const targetRoute = (route === '#flash-missions' || route === '#missions' || route === '#missions-flash') ? '#marketing' : route;
     this.element.querySelectorAll('.nav-item').forEach(el => {
-      if (el.getAttribute('data-route') === route) {
+      if (el.getAttribute('data-route') === targetRoute) {
         el.classList.add('active');
       } else {
         el.classList.remove('active');
