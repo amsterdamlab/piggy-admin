@@ -73,9 +73,22 @@ export class FlashMissionsTab {
       }
     });
 
-    // Total de saldo disponible en billeteras de usuarios listos para comprar
-    const totalAvailableWallet = profiles.reduce((sum, p) => sum + Number(p.walletBalance || p.wallet_balance || 0), 0);
-    const usersWithBalanceCount = profiles.filter(p => Number(p.walletBalance || p.wallet_balance || 0) > 0).length;
+    const enrichedData = rawData.map(f => {
+      let computedStatus = 'active';
+      if (f.is_purchased === true) {
+        computedStatus = 'purchased';
+      } else if (f.scheduled_at && new Date(f.scheduled_at) > now) {
+        computedStatus = 'scheduled';
+      } else if (f.expires_at && new Date(f.expires_at) < now) {
+        computedStatus = 'expired';
+      } else if (!f.is_active) {
+        computedStatus = 'inactive';
+      }
+      return {
+        ...f,
+        status: computedStatus
+      };
+    });
 
     this.dataTable = new DataTable({
       searchPlaceholder: 'Buscar misiones flash, usuario o tipo de piggy...',
@@ -92,8 +105,7 @@ export class FlashMissionsTab {
         onClick: () => this.openModal()
       },
       columns: [
-        {
-          header: 'Usuario',
+        {\n          header: 'Usuario',
           render: (row) => {
             if (!row.user_id) {
               return '<span class="badge badge-neutral" style="font-weight: 700;">Global (Todos los Usuarios)</span>';
@@ -292,7 +304,7 @@ export class FlashMissionsTab {
           `
         }
       ],
-      data: rawData
+      data: enrichedData
     });
 
     return `
@@ -598,7 +610,7 @@ export class FlashMissionsTab {
     const activeInvestorsCount = profiles.filter(p => (p.activePiggiesCount || 0) > 0).length;
     const noPiggiesCount = profiles.filter(p => (p.activePiggiesCount || 0) === 0).length;
     const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000);
-    const newUsersCount = profiles.filter(p => p.createdAt && new Date(p.createdAt) >= thirtyDaysAgo).length;
+    const newUsersCount = profiles.filter(p => (p.createdAt || p.created_at) && new Date(p.createdAt || p.created_at) >= thirtyDaysAgo).length;
 
     const scheduledVal = item?.scheduled_at ? new Date(item.scheduled_at).toISOString().slice(0, 16) : '';
     const expiresVal = item?.expires_at ? new Date(item.expires_at).toISOString().slice(0, 16) : '';
@@ -873,7 +885,7 @@ export class FlashMissionsTab {
                 targetUserIds = profiles.filter(p => (p.activePiggiesCount || 0) === 0).map(p => p.id);
               } else if (audience === 'NEW_USERS') {
                 const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000);
-                targetUserIds = profiles.filter(p => p.createdAt && new Date(p.createdAt) >= thirtyDaysAgo).map(p => p.id);
+                targetUserIds = profiles.filter(p => (p.createdAt || p.created_at) && new Date(p.createdAt || p.created_at) >= thirtyDaysAgo).map(p => p.id);
               } else {
                 targetUserIds = profiles.map(p => p.id);
               }
@@ -882,19 +894,21 @@ export class FlashMissionsTab {
                 targetUserIds = [null]; // Misión flash global
               }
 
-              let createdCount = 0;
-              for (const uid of targetUserIds) {
-                const payload = { ...basePayload, user_id: uid };
-                const res = await marketingService.createUserFlashMission(payload);
-                if (res.success) createdCount++;
-              }
+              const batchItems = targetUserIds.map(uid => ({ ...basePayload, user_id: uid }));
+              const res = await marketingService.createUserFlashMissionsBatch(batchItems);
 
-              toast.success(`¡Misión Flash asignada con éxito a ${createdCount} usuario(s)!`);
-              m.close();
-              const refreshed = await marketingService.getUserFlashMissions();
-              this.parentView.dataStore.user_flash_missions = refreshed;
-              this.parentView.updateView();
-              this.parentView.updateBadges();
+              if (res.success && (res.count > 0 || batchItems.length === 0)) {
+                toast.success(`¡Misión Flash asignada con éxito a ${res.count || batchItems.length} usuario(s)!`);
+                m.close();
+                const refreshed = await marketingService.getUserFlashMissions();
+                this.parentView.dataStore.user_flash_missions = refreshed;
+                this.parentView.updateView();
+                this.parentView.updateBadges();
+              } else {
+                toast.error(`Error al asignar misión flash: ${res.error || 'No se pudo guardar en la base de datos'}`);
+                btn.disabled = false;
+                btn.textContent = 'Lanzar Misión Flash';
+              }
             }
           }
         }
