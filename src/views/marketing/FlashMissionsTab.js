@@ -73,6 +73,11 @@ export class FlashMissionsTab {
       }
     });
 
+    // 4. Cálculos de Liquidez de Usuarios para ofertas
+    const usersWithBalance = profiles.filter(p => Number(p.walletBalance || p.wallet_balance || 0) > 0);
+    const usersWithBalanceCount = usersWithBalance.length;
+    const totalAvailableWallet = usersWithBalance.reduce((sum, p) => sum + Number(p.walletBalance || p.wallet_balance || 0), 0);
+
     const enrichedData = rawData.map(f => {
       let computedStatus = 'active';
       if (f.is_purchased === true) {

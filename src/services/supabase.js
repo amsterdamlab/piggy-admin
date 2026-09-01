@@ -5,8 +5,8 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://elhsvitbqzivgajccify.supabase.co';
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_GsffdyFVoy0M5t_4WfzZvA_KdpDr1HD';
+const SUPABASE_URL = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_SUPABASE_URL) || 'https://elhsvitbqzivgajccify.supabase.co';
+const SUPABASE_ANON_KEY = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_SUPABASE_ANON_KEY) || 'sb_publishable_GsffdyFVoy0M5t_4WfzZvA_KdpDr1HD';
 
 let supabaseClient = null;
 let isMockMode = false;
@@ -26,10 +26,10 @@ export async function initSupabase() {
       // Exponer globalmente para suscripciones realtime desde cualquier vista
       window.__piggySupabaseClient = supabaseClient;
       isMockMode = false;
-      console.log('\uD83D\uDC37 Supabase Admin: Conectado a la base de datos de producci\u00f3n.');
+      console.log('🐷 Supabase Admin: Conectado a la base de datos de producción.');
       return true;
     } catch (error) {
-      console.warn('\uD83D\uDC37 Supabase Admin: Error al inicializar cliente, usando modo fallback.', error);
+      console.warn('🐷 Supabase Admin: Error al inicializar cliente, usando modo fallback.', error);
     }
   }
 
