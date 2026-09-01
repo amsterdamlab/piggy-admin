@@ -175,7 +175,8 @@ export const marketingService = {
         if (error) throw error;
         return { success: true, data };
       } catch (insertErr) {
-        if (insertErr?.code === '42703' && payload.expires_at !== undefined) {
+        // Si la columna expires_at aún no ha sido agregada en la BD, reintentar sin ella
+        if ((insertErr?.code === '42703' || insertErr?.code === 'PGRST204' || insertErr?.message?.includes('expires_at')) && payload.expires_at !== undefined) {
           delete payload.expires_at;
           const { data, error } = await client.from('user_flash_missions').insert([payload]).select().single();
           if (error) throw error;
@@ -184,15 +185,18 @@ export const marketingService = {
         throw insertErr;
       }
     } catch (err) {
-      return { success: false, error: err.message };
+      console.error('Error creating user flash mission:', err);
+      return { success: false, error: err.message || 'Error al guardar en base de datos' };
     }
   },
 
   async createUserFlashMissionsBatch(items) {
     const client = getClient();
     if (!client) return { success: false, error: 'Sin conexión a base de datos' };
+    if (!items || items.length === 0) return { success: true, count: 0 };
     try {
       const batchSize = 50;
+      let insertedTotal = 0;
       for (let i = 0; i < items.length; i += batchSize) {
         const slice = items.slice(i, i + batchSize).map(item => {
           const row = {
@@ -220,19 +224,22 @@ export const marketingService = {
         try {
           const { error } = await client.from('user_flash_missions').insert(slice);
           if (error) throw error;
+          insertedTotal += slice.length;
         } catch (batchErr) {
-          if (batchErr?.code === '42703') {
+          if (batchErr?.code === '42703' || batchErr?.code === 'PGRST204' || batchErr?.message?.includes('expires_at')) {
             slice.forEach(r => delete r.expires_at);
             const { error } = await client.from('user_flash_missions').insert(slice);
             if (error) throw error;
+            insertedTotal += slice.length;
           } else {
             throw batchErr;
           }
         }
       }
-      return { success: true, count: items.length };
+      return { success: true, count: insertedTotal };
     } catch (err) {
-      return { success: false, error: err.message };
+      console.error('Error in batch insert user flash missions:', err);
+      return { success: false, error: err.message || 'Error al guardar lote en base de datos' };
     }
   },
 
@@ -265,7 +272,7 @@ export const marketingService = {
         if (error) throw error;
         return { success: true, data };
       } catch (updateErr) {
-        if (updateErr?.code === '42703' && payload.expires_at !== undefined) {
+        if ((updateErr?.code === '42703' || updateErr?.code === 'PGRST204' || updateErr?.message?.includes('expires_at')) && payload.expires_at !== undefined) {
           delete payload.expires_at;
           const { data, error } = await client.from('user_flash_missions').update(payload).eq('id', id).select().single();
           if (error) throw error;
@@ -274,7 +281,8 @@ export const marketingService = {
         throw updateErr;
       }
     } catch (err) {
-      return { success: false, error: err.message };
+      console.error('Error updating user flash mission:', err);
+      return { success: false, error: err.message || 'Error al actualizar en base de datos' };
     }
   },
 
@@ -691,7 +699,6 @@ export const marketingService = {
           amount: Number(item.amount || 0),
           status: item.status || 'active',
           is_active: item.is_active !== undefined ? Boolean(item.is_active) : true,
-          starts_at: item.starts_at || null,
           expires_at: item.expires_at || null,
           created_at: now
         }));
@@ -837,7 +844,6 @@ export const marketingService = {
       if (item.amount !== undefined) payload.amount = Number(item.amount);
       if (item.status !== undefined) payload.status = item.status;
       if (item.is_active !== undefined) payload.is_active = Boolean(item.is_active);
-      if (item.starts_at !== undefined) payload.starts_at = item.starts_at || null;
       if (item.expires_at !== undefined) payload.expires_at = item.expires_at || null;
 
       const { data, error } = await client.from('user_marketing_bonuses').update(payload).eq('id', id).select().single();
@@ -896,7 +902,7 @@ export const marketingService = {
     }
   },
 
-  async launchCampaign({ campaign_name, amount, starts_at = null, expires_at = null, is_active = true, userIds = [] }) {
+  async launchCampaign({ campaign_name, amount, expires_at = null, is_active = true, userIds = [] }) {
     if (!userIds || userIds.length === 0) {
       return { success: false, error: 'No se seleccionaron usuarios para asignar la campaña' };
     }
@@ -907,7 +913,6 @@ export const marketingService = {
       amount: Number(amount || 0),
       status: 'active',
       is_active: Boolean(is_active),
-      starts_at: starts_at || null,
       expires_at: expires_at || null
     }));
 
