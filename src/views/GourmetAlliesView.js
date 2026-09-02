@@ -138,7 +138,7 @@ export class GourmetAlliesView {
 
   renderAlliesTableHtml() {
     this.alliesTable = new DataTable({
-      searchPlaceholder: 'Buscar aliado o ciudad...',
+      searchPlaceholder: 'Buscar por aliado, categoría, especialidad o ciudad...',
       actionButton: {
         text: 'Nuevo Aliado Comercial',
         icon: icons.plus,
@@ -146,32 +146,60 @@ export class GourmetAlliesView {
       },
       columns: [
         {
-          header: 'Logo',
+          header: '# Orden',
           render: (a) => `
-            <div style="width: 44px; height: 44px; border-radius: var(--radius-md); overflow: hidden; background: var(--bg-dark); border: 1px solid var(--border-color); display: flex; align-items: center; justify-content: center;">
-              ${a.logoUrl 
-                ? `<img src="${a.logoUrl}" alt="${a.name}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.onerror=null; this.src='https://placehold.co/100x100/151B28/10B981?text=Aliado';" />`
-                : `<span style="color: var(--accent-green);">${icons.allies}</span>`
-              }
-            </div>
+            <span class="badge ${a.displayOrder !== null ? 'badge-primary' : 'badge-neutral'}" style="font-weight: 800; font-size: 0.75rem; min-width: 28px; text-align: center; display: inline-block;">
+              ${a.displayOrder !== null ? `#${a.displayOrder}` : '—'}
+            </span>
           `
         },
         {
-          header: 'Aliado / Marca',
+          header: 'Logo / Imagen',
+          render: (a) => {
+            const resolved = resolveImageUrl(a.imageUrl);
+            const fallback = getFallbackImageUrl(a.imageUrl);
+            return `
+              <div style="width: 44px; height: 44px; border-radius: var(--radius-md); overflow: hidden; background: var(--bg-dark); border: 1px solid var(--border-color); display: flex; align-items: center; justify-content: center;">
+                ${a.imageUrl 
+                  ? `<img src="${resolved}" alt="${a.name}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.onerror=null; this.src='${fallback}';" />`
+                  : `<span style="color: var(--accent-green);">${icons.allies}</span>`
+                }
+              </div>
+            `;
+          }
+        },
+        {
+          header: 'Aliado Comercial',
           render: (a) => `
             <div>
-              <div style="font-weight: 800; color: var(--text-primary);">${a.name}</div>
-              <div style="font-size: 0.75rem; color: var(--text-muted);">${a.location}</div>
+              <div style="font-weight: 800; color: var(--text-primary); font-size: 0.95rem;">${a.name}</div>
+              ${a.specialty ? `<div style="font-size: 0.75rem; color: var(--primary-pink); font-weight: 700; margin-top: 2px;">${a.specialty}</div>` : ''}
+              ${a.description ? `<div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 2px; max-width: 240px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${a.description}">${a.description}</div>` : ''}
             </div>
           `
         },
         {
           header: 'Categoría',
-          render: (a) => `<span class="badge badge-info">${a.category}</span>`
+          render: (a) => `<span class="badge badge-info" style="font-weight: 600;">${a.category}</span>`
         },
         {
-          header: 'Beneficio / Descuento',
-          render: (a) => `<div style="font-weight: 700; color: var(--accent-gold); font-size: 0.85rem;">${a.discountInfo}</div>`
+          header: 'Beneficio Piggy',
+          render: (a) => `
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <span style="color: var(--accent-gold); display: inline-flex; align-items: center;">${icons.gift}</span>
+              <span style="font-weight: 700; color: var(--accent-gold); font-size: 0.85rem;">${a.benefit || 'Beneficio exclusivo'}</span>
+            </div>
+          `
+        },
+        {
+          header: 'Contacto & Ubicación',
+          render: (a) => `
+            <div>
+              ${a.phone ? `<div style="font-size: 0.78rem; font-weight: 600; color: var(--text-primary); display: flex; align-items: center; gap: 4px;"><span style="color: var(--text-muted); display: inline-flex;">${icons.phone}</span> ${a.phone}</div>` : ''}
+              ${a.location ? `<div style="font-size: 0.75rem; color: var(--text-muted); display: flex; align-items: center; gap: 4px; margin-top: 2px;"><span style="color: var(--accent-green); display: inline-flex;">${icons.mapPin}</span> ${a.location}</div>` : ''}
+              ${a.address ? `<div style="font-size: 0.72rem; color: var(--text-secondary); margin-top: 1px; padding-left: 18px;">${a.address}</div>` : ''}
+            </div>
+          `
         },
         {
           header: 'Acciones',
@@ -376,60 +404,99 @@ export class GourmetAlliesView {
     const isEdit = !!ally;
     const initial = ally || {
       name: '',
-      category: 'Restaurante Gourmet',
-      location: 'Cali',
-      discountInfo: '10% de descuento',
-      logoUrl: ''
+      category: 'Restaurante',
+      specialty: '',
+      benefit: '',
+      phone: '',
+      location: 'Cali, Valle del Cauca',
+      address: '',
+      displayOrder: '',
+      imageUrl: '',
+      description: ''
     };
 
+    // Recopilar categorías existentes para el autocompletado
+    const defaultCategories = ['Restaurante', 'Barbería', 'Wash Clean', 'Ecológico', 'Petshop', 'Agencia', 'Carnicería Boutique', 'Punto de Distribución', 'Cafetería', 'Salud & Belleza'];
+    const currentCategories = this.allies.map(a => a.category).filter(Boolean);
+    const categoryOptions = Array.from(new Set([...defaultCategories, ...currentCategories]));
+
     modal.open({
+      size: 'large',
       title: isEdit ? `Editar Aliado: ${initial.name}` : 'Registrar Nuevo Aliado Comercial',
       contentHtml: `
         <form id="ally-form">
           <div class="form-row">
-            <div class="form-group">
-              <label class="form-label" for="a-name">Nombre del Establecimiento</label>
-              <input type="text" id="a-name" class="form-input" placeholder="Ej: Fogón & Cava" value="${initial.name}" required />
+            <div class="form-group" style="flex: 2;">
+              <label class="form-label" for="a-name">Nombre del Establecimiento / Marca <span style="color: var(--accent-red);">*</span></label>
+              <input type="text" id="a-name" class="form-input" placeholder="Ej: Prime Motors Wash" value="${initial.name || ''}" required />
             </div>
 
-            <div class="form-group">
-              <label class="form-label" for="a-category">Categoría</label>
-              <select id="a-category" class="form-select">
-                <option value="Restaurante Gourmet" ${initial.category === 'Restaurante Gourmet' ? 'selected' : ''}>Restaurante Gourmet</option>
-                <option value="Punto de Distribución" ${initial.category === 'Punto de Distribución' ? 'selected' : ''}>Punto de Distribución</option>
-                <option value="Carnicería Boutique" ${initial.category === 'Carnicería Boutique' ? 'selected' : ''}>Carnicería Boutique</option>
-              </select>
+            <div class="form-group" style="flex: 1;">
+              <label class="form-label" for="a-display-order">Orden de Visualización (#)</label>
+              <input type="number" id="a-display-order" class="form-input" placeholder="Ej: 1, 2, 3..." value="${initial.displayOrder !== null && initial.displayOrder !== undefined ? initial.displayOrder : ''}" min="1" step="1" />
             </div>
           </div>
 
           <div class="form-row">
             <div class="form-group">
-              <label class="form-label" for="a-location">Ubicación / Ciudad</label>
-              <input type="text" id="a-location" class="form-input" placeholder="Ej: Granada, Cali" value="${initial.location}" required />
+              <label class="form-label" for="a-category">Categoría del Negocio</label>
+              <input list="allies-category-options" id="a-category" class="form-input" placeholder="Selecciona o escribe..." value="${initial.category || 'Restaurante'}" />
+              <datalist id="allies-category-options">
+                ${categoryOptions.map(cat => `<option value="${cat}">${cat}</option>`).join('')}
+              </datalist>
             </div>
 
             <div class="form-group">
-              <label class="form-label" for="a-discount">Beneficio / Descuento</label>
-              <input type="text" id="a-discount" class="form-input" placeholder="Ej: 15% OFF en cortes" value="${initial.discountInfo}" required />
+              <label class="form-label" for="a-specialty">Especialidad / Subtítulo</label>
+              <input type="text" id="a-specialty" class="form-input" placeholder="Ej: Lavadero Premium, Marketing Digital..." value="${initial.specialty || ''}" />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="a-benefit">Beneficio / Descuento Piggy <span style="color: var(--accent-red);">*</span></label>
+              <input type="text" id="a-benefit" class="form-input" placeholder="Ej: 15% en Combo Ahorrador, 2x1 los jueves..." value="${initial.benefit || ''}" required />
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="a-phone">Teléfono / WhatsApp de Contacto</label>
+              <input type="text" id="a-phone" class="form-input" placeholder="Ej: 312 458 0036" value="${initial.phone || ''}" />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="a-location">Ciudad / Región</label>
+              <input type="text" id="a-location" class="form-input" placeholder="Ej: Cali, Valle del Cauca" value="${initial.location || ''}" />
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="a-address">Dirección Física</label>
+              <input type="text" id="a-address" class="form-input" placeholder="Ej: Calle 42 # 41-03 Antonio Nariño" value="${initial.address || ''}" />
             </div>
           </div>
 
           <div class="form-group">
-            <label class="form-label" for="a-logo-url">URL del Logo del Aliado</label>
-            <input type="url" id="a-logo-url" class="form-input" placeholder="https://..." value="${initial.logoUrl}" />
+            <label class="form-label" for="a-image-url">URL de la Imagen / Logotipo del Aliado</label>
+            <input type="url" id="a-image-url" class="form-input" placeholder="https://..." value="${initial.imageUrl || ''}" />
             
             <!-- Live Preview -->
-            <div class="image-preview-container" id="a-logo-preview-box">
-              ${initial.logoUrl 
-                ? `<img src="${initial.logoUrl}" class="image-preview-img" alt="Logo" onerror="this.parentElement.innerHTML='<span class=\\'image-preview-placeholder\\'>Logo no válido</span>';" />`
-                : `<span class="image-preview-placeholder">Vista previa del Logo</span>`
+            <div class="image-preview-container" id="a-logo-preview-box" style="margin-top: 0.5rem;">
+              ${initial.imageUrl 
+                ? `<img src="${initial.imageUrl}" class="image-preview-img" alt="Logo" onerror="this.parentElement.innerHTML='<span class=\\'image-preview-placeholder\\'>Logo no válido</span>';" />`
+                : `<span class="image-preview-placeholder">Vista previa del Logo / Foto del Aliado</span>`
               }
             </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="a-description">Descripción del Establecimiento / Servicios</label>
+            <textarea id="a-description" class="form-textarea" rows="3" placeholder="Describe brevemente el servicio, ambiente y especialidades del aliado...">${initial.description || ''}</textarea>
           </div>
         </form>
       `,
       onInit: (modalBody) => {
-        const input = modalBody.querySelector('#a-logo-url');
+        const input = modalBody.querySelector('#a-image-url');
         const box = modalBody.querySelector('#a-logo-preview-box');
         if (input && box) {
           input.addEventListener('input', (e) => {
@@ -437,7 +504,7 @@ export class GourmetAlliesView {
             if (url) {
               box.innerHTML = `<img src="${url}" class="image-preview-img" alt="Logo" onerror="this.parentElement.innerHTML='<span class=\\'image-preview-placeholder\\'>Logo no encontrado</span>';" />`;
             } else {
-              box.innerHTML = `<span class="image-preview-placeholder">Vista previa del Logo</span>`;
+              box.innerHTML = `<span class="image-preview-placeholder">Vista previa del Logo / Foto del Aliado</span>`;
             }
           });
         }
@@ -448,23 +515,39 @@ export class GourmetAlliesView {
           text: isEdit ? 'Actualizar Aliado' : 'Guardar Aliado',
           class: 'btn-primary',
           onClick: async (e, m) => {
-            const name = document.querySelector('#a-name').value.trim();
-            const category = document.querySelector('#a-category').value;
-            const location = document.querySelector('#a-location').value.trim();
-            const discountInfo = document.querySelector('#a-discount').value.trim();
-            const logoUrl = document.querySelector('#a-logo-url').value.trim();
+            const root = m?.overlay || document;
+            const name = root.querySelector('#a-name')?.value?.trim();
+            const displayOrderRaw = root.querySelector('#a-display-order')?.value?.trim();
+            const category = root.querySelector('#a-category')?.value?.trim() || 'Restaurante';
+            const specialty = root.querySelector('#a-specialty')?.value?.trim() || '';
+            const benefit = root.querySelector('#a-benefit')?.value?.trim() || '';
+            const phone = root.querySelector('#a-phone')?.value?.trim() || '';
+            const location = root.querySelector('#a-location')?.value?.trim() || '';
+            const address = root.querySelector('#a-address')?.value?.trim() || '';
+            const imageUrl = root.querySelector('#a-image-url')?.value?.trim() || '';
+            const description = root.querySelector('#a-description')?.value?.trim() || '';
 
             if (!name) {
               toast.error('El nombre del establecimiento es requerido');
               return;
             }
 
+            if (!benefit) {
+              toast.error('El beneficio o descuento para usuarios Piggy es requerido');
+              return;
+            }
+
             const payload = {
               name,
               category,
+              specialty,
+              benefit,
+              phone,
               location,
-              discountInfo,
-              logoUrl
+              address,
+              imageUrl,
+              description,
+              displayOrder: displayOrderRaw !== '' && !isNaN(Number(displayOrderRaw)) ? Number(displayOrderRaw) : null
             };
 
             let res;
@@ -475,12 +558,12 @@ export class GourmetAlliesView {
             }
 
             if (res.success) {
-              toast.success(isEdit ? 'Aliado actualizado' : '¡Aliado guardado!');
+              toast.success(isEdit ? 'Aliado actualizado correctamente' : '¡Aliado comercial registrado exitosamente!');
               this.allies = await gourmetAlliesService.getAllies();
               this.alliesTable.setData(this.allies);
               m.close();
             } else {
-              toast.error(res.error || 'Error al guardar');
+              toast.error(res.error || 'Error al guardar el aliado comercial');
             }
           }
         }

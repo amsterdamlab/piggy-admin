@@ -57,14 +57,12 @@ export const gourmetAlliesService = {
 
     if (client) {
       try {
-        const { data, error } = await client
+        const { error } = await client
           .from('gourmet_offers')
-          .insert(payload)
-          .select()
-          .single();
+          .insert([payload]);
 
         if (error) throw error;
-        return { success: true, data };
+        return { success: true };
       } catch (err) {
         return { success: false, error: err.message };
       }
@@ -87,15 +85,13 @@ export const gourmetAlliesService = {
 
     if (client) {
       try {
-        const { data, error } = await client
+        const { error } = await client
           .from('gourmet_offers')
           .update(payload)
-          .eq('id', id)
-          .select()
-          .single();
+          .eq('id', id);
 
         if (error) throw error;
-        return { success: true, data };
+        return { success: true };
       } catch (err) {
         return { success: false, error: err.message };
       }
@@ -125,21 +121,22 @@ export const gourmetAlliesService = {
         const { data, error } = await client
           .from('allies')
           .select('*')
+          .order('display_order', { ascending: true, nullsFirst: false })
           .order('name', { ascending: true });
 
         if (!error && data && data.length > 0) {
           return data.map((a) => ({
             id: a.id,
-            name: a.name,
-            category: a.category || 'Restaurante',
-            location: a.location || 'Colombia',
-            logoUrl: a.logo_url || a.image_url || '',
+            name: a.name || '',
+            category: a.category || 'General',
+            location: a.location || '',
             imageUrl: a.image_url || '',
-            discountInfo: a.discount_info || a.benefit || 'Descuento exclusivo',
             description: a.description || '',
             specialty: a.specialty || '',
+            benefit: a.benefit || '',
             phone: a.phone || '',
-            address: a.address || ''
+            address: a.address || '',
+            displayOrder: a.display_order !== null && a.display_order !== undefined ? Number(a.display_order) : null
           }));
         }
         if (error) console.warn('Allies error:', error.message);
@@ -154,29 +151,28 @@ export const gourmetAlliesService = {
   async createAlly(ally) {
     const client = getClient();
     const payload = {
-      name: ally.name,
-      category: ally.category || 'Restaurante',
-      location: ally.location || 'Colombia',
-      logo_url: ally.logoUrl || null,
-      image_url: ally.logoUrl || ally.imageUrl || 'https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=800&q=80',
-      discount_info: ally.discountInfo || '10% de descuento',
-      benefit: ally.discountInfo || '10% de descuento',
-      description: ally.description || 'Aliado oficial de la red Piggy.',
-      specialty: ally.specialty || ally.category || 'Gourmet',
-      phone: ally.phone || '300 000 0000',
-      address: ally.address || ally.location || 'Colombia'
+      name: ally.name ? ally.name.trim() : '',
+      category: ally.category ? ally.category.trim() : 'Comercio',
+      location: ally.location ? ally.location.trim() : '',
+      image_url: ally.imageUrl ? ally.imageUrl.trim() : '',
+      description: ally.description ? ally.description.trim() : '',
+      specialty: ally.specialty ? ally.specialty.trim() : '',
+      benefit: ally.benefit ? ally.benefit.trim() : '',
+      phone: ally.phone ? ally.phone.trim() : '',
+      address: ally.address ? ally.address.trim() : '',
+      display_order: ally.displayOrder !== null && ally.displayOrder !== undefined && ally.displayOrder !== ''
+        ? Number(ally.displayOrder)
+        : null
     };
 
     if (client) {
       try {
-        const { data, error } = await client
+        const { error } = await client
           .from('allies')
-          .insert(payload)
-          .select()
-          .single();
+          .insert([payload]);
 
         if (error) throw error;
-        return { success: true, data };
+        return { success: true };
       } catch (err) {
         return { success: false, error: err.message };
       }
@@ -188,29 +184,30 @@ export const gourmetAlliesService = {
   async updateAlly(id, ally) {
     const client = getClient();
     const payload = {};
-    if (ally.name !== undefined) payload.name = ally.name;
-    if (ally.category !== undefined) payload.category = ally.category;
-    if (ally.location !== undefined) payload.location = ally.location;
-    if (ally.logoUrl !== undefined) {
-      payload.logo_url = ally.logoUrl;
-      payload.image_url = ally.logoUrl;
-    }
-    if (ally.discountInfo !== undefined) {
-      payload.discount_info = ally.discountInfo;
-      payload.benefit = ally.discountInfo;
+    if (ally.name !== undefined) payload.name = ally.name.trim();
+    if (ally.category !== undefined) payload.category = ally.category.trim();
+    if (ally.location !== undefined) payload.location = ally.location.trim();
+    if (ally.imageUrl !== undefined) payload.image_url = ally.imageUrl.trim();
+    if (ally.description !== undefined) payload.description = ally.description.trim();
+    if (ally.specialty !== undefined) payload.specialty = ally.specialty.trim();
+    if (ally.benefit !== undefined) payload.benefit = ally.benefit.trim();
+    if (ally.phone !== undefined) payload.phone = ally.phone.trim();
+    if (ally.address !== undefined) payload.address = ally.address.trim();
+    if (ally.displayOrder !== undefined) {
+      payload.display_order = ally.displayOrder !== null && ally.displayOrder !== undefined && ally.displayOrder !== ''
+        ? Number(ally.displayOrder)
+        : null;
     }
 
     if (client) {
       try {
-        const { data, error } = await client
+        const { error } = await client
           .from('allies')
           .update(payload)
-          .eq('id', id)
-          .select()
-          .single();
+          .eq('id', id);
 
         if (error) throw error;
-        return { success: true, data };
+        return { success: true };
       } catch (err) {
         return { success: false, error: err.message };
       }
