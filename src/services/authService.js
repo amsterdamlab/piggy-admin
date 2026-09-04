@@ -6,6 +6,14 @@
 import { getClient, isUsingMockData } from './supabase.js';
 import { store } from '../state.js';
 
+// Lista de correos con autorización administrativa garantizada
+const ADMIN_EMAILS_WHITELIST = [
+  'admin@piggyapp.co',
+  'tesoreria@piggyapp.co',
+  'gerencia@piggyapp.co',
+  'soporte@piggyapp.co'
+];
+
 export const authService = {
   /**
    * Log in admin with email & password or Master PIN
@@ -16,7 +24,7 @@ export const authService = {
     const cleanEmail = (email || '').trim().toLowerCase();
     const cleanPass = (password || '').trim();
 
-    // 1. Check Master Admin Emergency Access
+    // 1. Check Master Admin Emergency Access (Superadmin total)
     if (cleanPass === 'piggy2025' || cleanPass === 'admin123' || cleanPass === '7777' || cleanPass === 'piggyadmin') {
       const adminData = {
         id: 'admin-master-id',
@@ -54,11 +62,57 @@ export const authService = {
       }
 
       const user = data.user;
+      if (!user) {
+        throw new Error('No se pudo obtener la información de usuario.');
+      }
+
+      // Verificación estricta de permisos de administrador
+      const isWhitelisted = ADMIN_EMAILS_WHITELIST.includes(cleanEmail) || 
+                            cleanEmail.startsWith('admin@') || 
+                            cleanEmail.startsWith('tesoreria@');
+      
+      const userMetaRole = user.user_metadata?.role || user.app_metadata?.role || '';
+      let profileRole = '';
+      let isProfileAdmin = false;
+      let profileFullName = '';
+
+      try {
+        const { data: profile } = await client
+          .from('profiles')
+          .select('role, is_admin, full_name')
+          .eq('id', user.id)
+          .maybeSingle();
+
+        if (profile) {
+          profileRole = profile.role || '';
+          isProfileAdmin = Boolean(profile.is_admin);
+          profileFullName = profile.full_name || '';
+        }
+      } catch (pErr) {
+        console.warn('Perfil de usuario sin tabla profiles o error al consultar rol:', pErr);
+      }
+
+      const hasAdminRole = isWhitelisted || 
+                           userMetaRole === 'admin' || 
+                           userMetaRole === 'superadmin' || 
+                           profileRole === 'admin' || 
+                           profileRole === 'superadmin' || 
+                           isProfileAdmin;
+
+      // Si es un usuario común / inversionista de la app, denegar acceso inmediatamente
+      if (!hasAdminRole) {
+        await client.auth.signOut();
+        return {
+          success: false,
+          error: '⛔ Acceso Denegado: Esta cuenta no tiene permisos de Administrador.'
+        };
+      }
+
       const adminData = {
         id: user.id,
         email: user.email,
-        full_name: user.user_metadata?.full_name || 'Admin Piggy',
-        role: 'admin',
+        full_name: user.user_metadata?.full_name || profileFullName || 'Admin Piggy',
+        role: userMetaRole || profileRole || 'admin',
         login_at: new Date().toISOString()
       };
 
@@ -102,11 +156,50 @@ export const authService = {
         const { data } = await client.auth.getSession();
         if (data?.session?.user) {
           const user = data.session.user;
+          const cleanEmail = (user.email || '').toLowerCase().trim();
+
+          const isWhitelisted = ADMIN_EMAILS_WHITELIST.includes(cleanEmail) || 
+                                cleanEmail.startsWith('admin@') || 
+                                cleanEmail.startsWith('tesoreria@');
+
+          const userMetaRole = user.user_metadata?.role || user.app_metadata?.role || '';
+          
+          let profileRole = '';
+          let isProfileAdmin = false;
+          let profileFullName = '';
+
+          try {
+            const { data: profile } = await client
+              .from('profiles')
+              .select('role, is_admin, full_name')
+              .eq('id', user.id)
+              .maybeSingle();
+
+            if (profile) {
+              profileRole = profile.role || '';
+              isProfileAdmin = Boolean(profile.is_admin);
+              profileFullName = profile.full_name || '';
+            }
+          } catch (_) {}
+
+          const hasAdminRole = isWhitelisted || 
+                               userMetaRole === 'admin' || 
+                               userMetaRole === 'superadmin' || 
+                               profileRole === 'admin' || 
+                               profileRole === 'superadmin' || 
+                               isProfileAdmin;
+
+          if (!hasAdminRole) {
+            await client.auth.signOut();
+            store.logout();
+            return null;
+          }
+
           const adminData = {
             id: user.id,
             email: user.email,
-            full_name: user.user_metadata?.full_name || 'Admin Piggy',
-            role: 'admin',
+            full_name: user.user_metadata?.full_name || profileFullName || 'Admin Piggy',
+            role: userMetaRole || profileRole || 'admin',
             login_at: new Date().toISOString()
           };
           store.setAdmin(adminData);

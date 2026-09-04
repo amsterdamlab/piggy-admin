@@ -52,7 +52,7 @@ export class LoginView {
 
             <button type="submit" class="btn btn-primary" id="login-submit-btn" style="width: 100%; margin-top: 1rem;">
               <span>Ingresar al Panel</span>
-              \${icons.arrowUpRight}
+              ` + icons.arrowUpRight + `
             </button>
           </form>
 
@@ -81,17 +81,17 @@ export class LoginView {
       try {
         const result = await authService.login(email, password);
         if (result.success) {
-          toast.success(`¡Bienvenido, \${result.user.full_name}!`);
+          toast.success(`¡Bienvenido, ` + result.user.full_name + `!`);
           window.location.hash = '#dashboard';
         } else {
           toast.error(result.error || 'Credenciales no autorizadas');
           submitBtn.disabled = false;
-          submitBtn.innerHTML = `<span>Ingresar al Panel</span> \${icons.arrowUpRight}`;
+          submitBtn.innerHTML = `<span>Ingresar al Panel</span> ` + icons.arrowUpRight;
         }
       } catch (err) {
         toast.error('Ocurrió un error inesperado');
         submitBtn.disabled = false;
-        submitBtn.innerHTML = `<span>Ingresar al Panel</span> \${icons.arrowUpRight}`;
+        submitBtn.innerHTML = `<span>Ingresar al Panel</span> ` + icons.arrowUpRight;
       }
     });
   }
