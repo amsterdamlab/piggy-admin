@@ -80,7 +80,14 @@ export class Sidebar {
   }
 
   renderNavItem(item, currentRoute) {
-    const isMarketing = (currentRoute === '#flash-missions' || currentRoute === '#missions' || currentRoute === '#missions-flash') && item.id === '#marketing';
+    const isMarketing = (
+      currentRoute === '#marketing' ||
+      currentRoute === '#flash-missions' || 
+      currentRoute === '#missions' || 
+      currentRoute === '#missions-flash' || 
+      currentRoute === '#marketing-bonuses' || 
+      currentRoute === '#bonos-consumo'
+    ) && item.id === '#marketing';
     const isActive = currentRoute === item.id || isMarketing;
     return `
       <a href="${item.id}" class="nav-item ${isActive ? 'active' : ''}" data-route="${item.id}">

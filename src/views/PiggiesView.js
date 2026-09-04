@@ -65,6 +65,7 @@ export class PiggiesView {
     const sortedCats = Object.entries(catCounts).sort((a, b) => b[1] - a[1]);
     const top1 = sortedCats[0];
     const top2 = sortedCats[1];
+    const top3 = sortedCats[2];
 
     let topCatTitle = 'Sin datos';
     let topCatSubtitle = 'Sin compras';
@@ -72,10 +73,22 @@ export class PiggiesView {
     if (top1) {
       const info1 = getPiggyCategoryInfo(top1[0]);
       const pct1 = Math.round((top1[1] / (this.piggies.length || 1)) * 100);
-      topCatTitle = `${info1.shortLabel || info1.label} (${top1[1]})`;
+      topCatTitle = `${info1.shortLabel || info1.label} <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-secondary);">(${top1[1]})</span>`;
+
+      const subLines = [];
       if (top2) {
         const info2 = getPiggyCategoryInfo(top2[0]);
-        topCatSubtitle = `2° ${info2.shortLabel || info2.label} (${top2[1]} un.) · ${pct1}% pref.`;
+        const pct2 = Math.round((top2[1] / (this.piggies.length || 1)) * 100);
+        subLines.push(`<div style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">2° ${info2.shortLabel || info2.label} (${top2[1]} un.) · ${pct2}% pref.</div>`);
+      }
+      if (top3) {
+        const info3 = getPiggyCategoryInfo(top3[0]);
+        const pct3 = Math.round((top3[1] / (this.piggies.length || 1)) * 100);
+        subLines.push(`<div style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px;">3° ${info3.shortLabel || info3.label} (${top3[1]} un.) · ${pct3}% pref.</div>`);
+      }
+
+      if (subLines.length > 0) {
+        topCatSubtitle = subLines.join('');
       } else {
         topCatSubtitle = `${pct1}% de preferencia en compras`;
       }
@@ -242,7 +255,7 @@ export class PiggiesView {
         <!-- 1. BLOQUE DE MÉTRICAS ANALÍTICAS SUPERIORES -->
         <div class="stats-grid">
           ${renderStatCard({
-            title: 'Total Piggys Engorde',
+            title: 'Total Piggys<br>Engorde',
             value: `${metrics.engordeCount} <span style="font-size: 0.9rem; font-weight: 500; color: var(--text-secondary);">/ ${this.piggies.length}</span>`,
             subtitle: 'Ciclo biológico activo',
             iconSvg: icons.pig,

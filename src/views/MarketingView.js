@@ -25,8 +25,9 @@ export class MarketingView {
     const hash = window.location.hash || '';
     const isFlashRoute = hash === '#flash-missions' || hash === '#missions-flash';
     const isMissionsRoute = hash === '#missions' || isFlashRoute;
+    const isBonusesRoute = hash === '#marketing-bonuses' || hash === '#bonos-consumo' || hash === '#bonuses' || hash === '#marketing-bonos';
 
-    this.mainTab = isMissionsRoute ? 'missions' : 'banners'; // 'banners' | 'missions' | 'bonuses' | 'cycles' | 'tips'
+    this.mainTab = isBonusesRoute ? 'bonuses' : (isMissionsRoute ? 'missions' : 'banners'); // 'banners' | 'missions' | 'bonuses' | 'cycles' | 'tips'
     this.subTabs = {
       missions: isFlashRoute ? 'flash_missions' : 'global_missions', // 'global_missions' | 'flash_missions'
       cycles: 'exclusive_farm'     // 'exclusive_farm' | 'exclusive_config'

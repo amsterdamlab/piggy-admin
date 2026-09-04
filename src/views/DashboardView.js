@@ -151,6 +151,28 @@ export class DashboardView {
                 </div>
                 ${icons.arrowUpRight}
               </a>
+
+              <a href="#marketing-bonuses" class="btn btn-secondary" style="justify-content: space-between; padding: 1rem;">
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                  <span style="color: var(--accent-purple);">${icons.gift}</span>
+                  <div style="text-align: left;">
+                    <div style="font-weight: 700;">Asignar Bonos de Consumo</div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted);">Emitir y programar bonos de consumo en Marketing</div>
+                  </div>
+                </div>
+                ${icons.arrowUpRight}
+              </a>
+
+              <a href="#piggies" class="btn btn-secondary" style="justify-content: space-between; padding: 1rem;">
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                  <span style="color: var(--accent-red);">${icons.pig}</span>
+                  <div style="text-align: left;">
+                    <div style="font-weight: 700;">Próximos Piggys en Liquidación</div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted);">Monitorear cerditos a liquidar en Granja de Piggys</div>
+                  </div>
+                </div>
+                ${icons.arrowUpRight}
+              </a>
             </div>
           </div>
         </div>
