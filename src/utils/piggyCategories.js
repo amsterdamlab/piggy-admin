@@ -8,10 +8,10 @@ export const PIGGY_CATEGORIES = [
   // 1. Piggys Especiales con Bono de Rentabilidad (ROI Extra)
   {
     key: 'dorado',
-    label: 'Piggy Dorado (+2% ROI)',
-    shortLabel: 'Dorado',
-    piggyLabel: 'Piggy Dorado',
-    badge: '🌟 EDICIÓN ESPECIAL · +2% ROI',
+    label: 'DORADO',
+    shortLabel: 'DORADO',
+    piggyLabel: 'PIGGY DORADO',
+    badge: 'DORADO',
     benefitTitle: 'Bono de Rentabilidad +2% Extra',
     benefitDescription: 'Mayor margen de ganancia al finalizar el ciclo de engorde.',
     missionTitle: 'MISIÓN FLASH',
@@ -27,10 +27,10 @@ export const PIGGY_CATEGORIES = [
   },
   {
     key: 'premium',
-    label: 'Piggy Premium (+3% ROI)',
-    shortLabel: 'Premium',
-    piggyLabel: 'Piggy Premium',
-    badge: '💎 EDICIÓN PREMIUM · +3% ROI',
+    label: 'PREMIUM',
+    shortLabel: 'PREMIUM',
+    piggyLabel: 'PIGGY PREMIUM',
+    badge: 'PREMIUM',
     benefitTitle: 'Bono de Rentabilidad +3% Extra',
     benefitDescription: 'Cerdito de alta gama con el máximo rendimiento de engorde.',
     missionTitle: 'MISIÓN FLASH',
@@ -46,10 +46,10 @@ export const PIGGY_CATEGORIES = [
   },
   {
     key: 'plus',
-    label: 'Piggy Plus (+1% ROI)',
-    shortLabel: 'Plus',
-    piggyLabel: 'Piggy Plus',
-    badge: '✨ EDICIÓN PLUS · +1% ROI',
+    label: 'PLUS',
+    shortLabel: 'PLUS',
+    piggyLabel: 'PIGGY PLUS',
+    badge: 'PLUS',
     benefitTitle: 'Bono de Rentabilidad +1% Extra',
     benefitDescription: 'Bono adicional de rentabilidad para tu granja.',
     missionTitle: 'MISIÓN FLASH',
@@ -65,10 +65,10 @@ export const PIGGY_CATEGORIES = [
   },
   {
     key: 'estandar',
-    label: 'Piggy Estándar (Base 8-10%)',
-    shortLabel: 'Estándar',
-    piggyLabel: 'Piggy Estándar',
-    badge: '🐷 CICLO COMPLETO · 144 DÍAS',
+    label: 'ESTÁNDAR',
+    shortLabel: 'ESTÁNDAR',
+    piggyLabel: 'PIGGY ESTÁNDAR',
+    badge: 'ESTÁNDAR',
     benefitTitle: 'Engorde Biológico Estándar',
     benefitDescription: 'Ciclo completo de engorde biológico en granja de 144 días.',
     missionTitle: 'MISIÓN FLASH',
@@ -86,10 +86,10 @@ export const PIGGY_CATEGORIES = [
   // 2. Piggys Aceleradores (Ahorro de días de engorde en granja)
   {
     key: 'avanzado30',
-    label: 'Avanzado 30 Días (+30d Ahorro)',
-    shortLabel: 'Avanzado 30d',
-    piggyLabel: 'Piggy Flash 30D',
-    badge: '⚡ OFERTA FLASH · 30 DÍAS',
+    label: 'AVANZADO 30D',
+    shortLabel: 'AVANZADO 30D',
+    piggyLabel: 'AVANZADO 30D',
+    badge: 'AVANZADO 30D',
     benefitTitle: 'Reducción de 30 días de espera',
     benefitDescription: 'Inicia tu cerdito en el día 30 ahorrando un mes de engorde.',
     missionTitle: 'MISIÓN FLASH',
@@ -105,10 +105,10 @@ export const PIGGY_CATEGORIES = [
   },
   {
     key: 'avanzado45',
-    label: 'Avanzado 45 Días (+45d Ahorro)',
-    shortLabel: 'Avanzado 45d',
-    piggyLabel: 'Piggy Flash 45D',
-    badge: '⚡ OFERTA FLASH · 45 DÍAS',
+    label: 'AVANZADO 45D',
+    shortLabel: 'AVANZADO 45D',
+    piggyLabel: 'AVANZADO 45D',
+    badge: 'AVANZADO 45D',
     benefitTitle: 'Reducción de 45 días de espera',
     benefitDescription: 'Inicia tu cerdito en el día 45 ahorrando mes y medio de engorde.',
     missionTitle: 'MISIÓN FLASH',
@@ -124,10 +124,10 @@ export const PIGGY_CATEGORIES = [
   },
   {
     key: 'avanzado60',
-    label: 'Avanzado 60 Días (+60d Ahorro)',
-    shortLabel: 'Avanzado 60d',
-    piggyLabel: 'Piggy Flash 60D',
-    badge: '⚡ OFERTA FLASH · 60 DÍAS',
+    label: 'AVANZADO 60D',
+    shortLabel: 'AVANZADO 60D',
+    piggyLabel: 'AVANZADO 60D',
+    badge: 'AVANZADO 60D',
     benefitTitle: 'Reducción de 60 días de espera',
     benefitDescription: 'Inicia tu cerdito en el día 60 ahorrando dos meses de engorde.',
     missionTitle: 'MISIÓN FLASH',
@@ -143,10 +143,10 @@ export const PIGGY_CATEGORIES = [
   },
   {
     key: 'avanzado75',
-    label: 'Avanzado 75 Días (+75d Ahorro)',
-    shortLabel: 'Avanzado 75d',
-    piggyLabel: 'Piggy Flash 75D',
-    badge: '⚡ OFERTA FLASH · 75 DÍAS',
+    label: 'AVANZADO 75D',
+    shortLabel: 'AVANZADO 75D',
+    piggyLabel: 'AVANZADO 75D',
+    badge: 'AVANZADO 75D',
     benefitTitle: 'Reducción de 75 días de espera',
     benefitDescription: 'Inicia tu cerdito en el día 75 ahorrando dos meses y medio.',
     missionTitle: 'MISIÓN FLASH',
@@ -162,10 +162,10 @@ export const PIGGY_CATEGORIES = [
   },
   {
     key: 'avanzado90',
-    label: 'Avanzado 90 Días (+90d Ahorro)',
-    shortLabel: 'Avanzado 90d',
-    piggyLabel: 'Piggy Flash 90D',
-    badge: '⚡ OFERTA FLASH · 90 DÍAS',
+    label: 'AVANZADO 90D',
+    shortLabel: 'AVANZADO 90D',
+    piggyLabel: 'AVANZADO 90D',
+    badge: 'AVANZADO 90D',
     benefitTitle: 'Reducción de 90 días de espera',
     benefitDescription: 'Inicia tu cerdito en el día 90 ahorrando tres meses de engorde.',
     missionTitle: 'MISIÓN FLASH',
@@ -199,10 +199,10 @@ export function getPiggyCategoryInfo(key) {
   // Fallback con formato inteligente si llega una clave no registrada
   return {
     key: normalized,
-    label: normalized.charAt(0).toUpperCase() + normalized.slice(1),
+    label: normalized.toUpperCase(),
     shortLabel: normalized.toUpperCase(),
-    piggyLabel: `Piggy ${normalized.toUpperCase()}`,
-    badge: `⚡ OFERTA FLASH · ${normalized.toUpperCase()}`,
+    piggyLabel: normalized.toUpperCase(),
+    badge: normalized.toUpperCase(),
     benefitTitle: 'Beneficio Especial de Granja',
     benefitDescription: 'Oferta temporal con beneficios exclusivos de producción.',
     missionTitle: 'MISIÓN FLASH',
@@ -223,9 +223,9 @@ export function getPiggyCategoryInfo(key) {
  */
 export function getPiggyCategoryBadge(key, customLabel = null) {
   const info = getPiggyCategoryInfo(key);
-  const label = customLabel || info.badge || info.shortLabel || info.label;
+  const label = (customLabel || info.badge || info.shortLabel || info.label || key).toUpperCase();
   return `
-    <span class="badge ${info.badgeClass}" style="font-weight: 800; text-transform: uppercase; font-size: 0.72rem; padding: 1px 7px; margin-bottom: 3px; display: inline-block;">
+    <span class="badge ${info.badgeClass}" style="font-weight: 800; text-transform: uppercase; font-size: 0.72rem; padding: 2px 8px; margin-bottom: 2px; display: inline-block;">
       ${label}
     </span>
   `;

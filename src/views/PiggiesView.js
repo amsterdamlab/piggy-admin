@@ -11,7 +11,7 @@ import { modal } from '../components/Modal.js';
 import { toast } from '../components/Toast.js';
 import { icons } from '../icons.js';
 import { resolveImageUrl, getFallbackImageUrl, PIGGY_PRESET_IMAGES } from '../utils/imageUtils.js';
-import { formatCurrency, parseCurrency, setupCurrencyInput } from '../utils/formUtils.js';
+import { formatCurrency, parseCurrency, setupCurrencyInput, setupDateTimePicker } from '../utils/formUtils.js';
 import { 
   PIGGY_CATEGORIES, 
   getPiggyCategoryInfo, 
@@ -193,18 +193,20 @@ export class PiggiesView {
               return `<div style="font-size: 0.8rem; color: var(--text-muted);">19 semanas</div>`;
             }
             const days = this.calculateDaysRemaining(p.endDate);
-            const dateFormatted = new Date(p.endDate).toLocaleDateString('es-CO', { year: 'numeric', month: 'short', day: 'numeric' });
+            const dateFormatted = new Date(p.endDate).toLocaleDateString('es-CO', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
             
             let daysBadge = '';
             if (p.status === 'engorde' && days !== null) {
-              if (days >= 0 && days <= 7) {
-                daysBadge = `<div style="font-size: 0.72rem; color: var(--accent-red); font-weight: 800; margin-top: 2px;">🔴 En ${days} ${days === 1 ? 'día' : 'días'}</div>`;
+              if (days === 0) {
+                daysBadge = `<div style="font-size: 0.72rem; color: var(--accent-red); font-weight: 800; margin-top: 2px;">🔴 Vence: ¡Hoy!</div>`;
+              } else if (days > 0 && days <= 7) {
+                daysBadge = `<div style="font-size: 0.72rem; color: var(--accent-red); font-weight: 800; margin-top: 2px;">🔴 Vence en: ${days} ${days === 1 ? 'día' : 'días'}</div>`;
               } else if (days > 7 && days <= 15) {
-                daysBadge = `<div style="font-size: 0.72rem; color: var(--accent-gold); font-weight: 800; margin-top: 2px;">🟡 En ${days} días</div>`;
+                daysBadge = `<div style="font-size: 0.72rem; color: var(--accent-gold); font-weight: 800; margin-top: 2px;">🟡 Vence en: ${days} días</div>`;
               } else if (days > 15) {
-                daysBadge = `<div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 2px;">En ${days} días</div>`;
+                daysBadge = `<div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 2px;">Vence en: ${days} días</div>`;
               } else {
-                daysBadge = `<div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 2px;">Vencido</div>`;
+                daysBadge = `<div style="font-size: 0.72rem; color: var(--accent-red); margin-top: 2px; font-weight: 700;">Vencido</div>`;
               }
             }
 
@@ -312,7 +314,7 @@ export class PiggiesView {
                   const bgCol = isCritical ? 'rgba(239, 68, 68, 0.06)' : 'rgba(245, 158, 11, 0.06)';
                   const badgeCol = isCritical ? 'var(--accent-red)' : 'var(--accent-gold)';
                   const badgeBg = isCritical ? 'rgba(239, 68, 68, 0.18)' : 'rgba(245, 158, 11, 0.18)';
-                  const dateStr = new Date(piggy.endDate).toLocaleDateString('es-CO', { year: 'numeric', month: 'short', day: 'numeric' });
+                  const dateStr = new Date(piggy.endDate).toLocaleDateString('es-CO', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
                   const resolvedImg = resolveImageUrl(piggy.imageUrl || 'assets/piggies/stage3/et3-1.jpg');
                   const fallbackImg = getFallbackImageUrl(piggy.imageUrl || 'assets/piggies/stage3/et3-1.jpg');
                   const payout = piggy.investmentAmount * (1 + 0.10 + (piggy.extraRoiBonus || 0));
@@ -327,7 +329,7 @@ export class PiggiesView {
                           <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; margin-bottom: 2px;">
                             <div style="font-weight: 800; color: var(--text-primary); font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${piggy.name}</div>
                             <span style="background: ${badgeBg}; color: ${badgeCol}; border: 1px solid ${borderCol}; font-weight: 800; font-size: 0.72rem; padding: 2px 7px; border-radius: var(--radius-full); white-space: nowrap;">
-                              ${isCritical ? '🚨' : '⏳'} ${piggy.daysRemaining === 0 ? '¡Hoy!' : `Faltan ${piggy.daysRemaining}d`}
+                              ${isCritical ? '🚨' : '⏳'} ${piggy.daysRemaining === 0 ? '¡Vence Hoy!' : `Vence en: ${piggy.daysRemaining}d`}
                             </span>
                           </div>
                           <div style="font-size: 0.75rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.35rem;">
@@ -421,12 +423,17 @@ export class PiggiesView {
     }
   }
 
-  formatDateForInput(dateStr) {
+  formatDateTimeForInput(dateStr) {
     if (!dateStr) return '';
     try {
       const d = new Date(dateStr);
       if (isNaN(d.getTime())) return '';
-      return d.toISOString().split('T')[0];
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      const hours = String(d.getHours()).padStart(2, '0');
+      const minutes = String(d.getMinutes()).padStart(2, '0');
+      return `${year}-${month}-${day}T${hours}:${minutes}`;
     } catch {
       return '';
     }
@@ -434,7 +441,7 @@ export class PiggiesView {
 
   openEditPiggyModal(piggy) {
     const currentCat = (piggy.category || 'estandar').toLowerCase();
-    const formattedEndDate = this.formatDateForInput(piggy.endDate);
+    const formattedEndDate = this.formatDateTimeForInput(piggy.endDate);
     const resolvedInitialImg = resolveImageUrl(piggy.imageUrl || 'assets/piggies/stage1/et1-1.jpg');
     const fallbackInitialImg = getFallbackImageUrl(piggy.imageUrl || 'assets/piggies/stage1/et1-1.jpg');
 
@@ -503,16 +510,19 @@ export class PiggiesView {
           </div>
 
           <div class="form-row">
-            <div class="form-group">
-              <label class="form-label" for="edit-end-date-input">Fecha de Liquidación</label>
-              <input 
-                type="date" 
-                id="edit-end-date-input" 
-                class="form-input" 
-                value="${formattedEndDate}" 
-              />
+            <div class="form-group datetime-enhanced-group">
+              <label class="form-label" for="edit-end-date-input">Fecha y Hora de Liquidación</label>
+              <div class="datetime-input-wrapper">
+                <input 
+                  type="datetime-local" 
+                  id="edit-end-date-input" 
+                  class="form-input" 
+                  value="${formattedEndDate}" 
+                  style="color-scheme: dark;"
+                />
+              </div>
               <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 3px;">
-                Fecha proyectada para finalización y pago del ciclo
+                Fecha y hora proyectada para finalización y pago del ciclo
               </div>
             </div>
 
@@ -590,6 +600,11 @@ export class PiggiesView {
         </form>
       `,
       onInit: (modalBody) => {
+        const endDateInput = modalBody.querySelector('#edit-end-date-input');
+        if (endDateInput) {
+          setupDateTimePicker(endDateInput);
+        }
+
         const urlInput = modalBody.querySelector('#edit-image-url-input');
         const previewImg = modalBody.querySelector('#edit-image-preview-img');
         const presetCards = modalBody.querySelectorAll('.piggy-preset-card');
@@ -642,13 +657,15 @@ export class PiggiesView {
               return;
             }
 
+            const isoEndDate = endDateVal ? new Date(endDateVal).toISOString() : null;
+
             const res = await piggiesService.updatePiggy(piggy.id, {
               name,
               category,
               status,
               contractCode,
               contractUrl,
-              endDate: endDateVal ? new Date(endDateVal + 'T12:00:00Z').toISOString() : null,
+              endDate: isoEndDate,
               extraRoiBonus: Number(roi),
               currentWeight: Number(weight),
               finalWeight: finalWeight ? Number(finalWeight) : null,
@@ -663,7 +680,7 @@ export class PiggiesView {
               piggy.status = status;
               piggy.contractCode = contractCode;
               piggy.contractUrl = contractUrl;
-              piggy.endDate = endDateVal ? new Date(endDateVal + 'T12:00:00Z').toISOString() : null;
+              piggy.endDate = isoEndDate;
               piggy.extraRoiBonus = Number(roi);
               piggy.currentWeight = Number(weight);
               piggy.finalWeight = finalWeight ? Number(finalWeight) : null;
