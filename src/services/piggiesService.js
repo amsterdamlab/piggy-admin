@@ -37,6 +37,7 @@ export const piggiesService = {
             investmentAmount: Number(p.investment_amount || p.price || 1000000),
             extraRoiBonus: Number(p.extra_roi_bonus || p.extra_roi || 0),
             currentWeight: Number(p.current_weight || 15.0),
+            finalWeight: p.final_weight !== undefined && p.final_weight !== null ? Number(p.final_weight) : (p.target_weight !== undefined && p.target_weight !== null ? Number(p.target_weight) : 100.0),
             purchaseDate: p.purchase_date || p.created_at,
             endDate: p.end_date,
             contractCode: p.contract_code || '',
@@ -64,12 +65,19 @@ export const piggiesService = {
     if (client) {
       try {
         const payload = {};
-        if (updates.currentWeight !== undefined) payload.current_weight = Number(updates.currentWeight);
-        if (updates.extraRoiBonus !== undefined) payload.extra_roi_bonus = Number(updates.extraRoiBonus);
-        if (updates.status !== undefined) payload.status = updates.status;
-        if (updates.endDate !== undefined) payload.end_date = updates.endDate;
         if (updates.name !== undefined) payload.name = updates.name;
+        if (updates.category !== undefined) payload.category = updates.category;
+        if (updates.status !== undefined) payload.status = updates.status;
+        if (updates.contractCode !== undefined) payload.contract_code = updates.contractCode;
+        if (updates.contractUrl !== undefined) payload.contract_url = updates.contractUrl;
+        if (updates.currentWeight !== undefined) payload.current_weight = Number(updates.currentWeight);
+        if (updates.finalWeight !== undefined) {
+          payload.final_weight = updates.finalWeight !== '' && updates.finalWeight !== null ? Number(updates.finalWeight) : null;
+        }
+        if (updates.extraRoiBonus !== undefined) payload.extra_roi_bonus = Number(updates.extraRoiBonus);
+        if (updates.endDate !== undefined) payload.end_date = updates.endDate || null;
         if (updates.imageUrl !== undefined) payload.image_url = updates.imageUrl;
+        if (updates.investmentAmount !== undefined) payload.investment_amount = Number(updates.investmentAmount);
 
         const { error } = await client
           .from('piggies')
@@ -120,10 +128,7 @@ export const piggiesService = {
     const client = getClient();
     if (client) {
       try {
-        const { error } = await client
-          .from('piggies')
-          .delete().eq('id', piggyId);
-
+        const { error } = await client.from('piggies').delete().eq('id', piggyId);
         if (error) throw error;
         return { success: true };
       } catch (err) {
