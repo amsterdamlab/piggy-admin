@@ -1,5 +1,11 @@
+/* ==========================================================================
+   PIGGY MASTER ADMIN DASHBOARD - CHART.JS WRAPPER
+   Agnostic wrapper for financial and fattening trends
+   ========================================================================== */
+
 import { Chart, registerables } from 'chart.js';
 
+// Register all standard Chart.js components
 Chart.register(...registerables);
 
 export class ChartWrapper {
@@ -17,7 +23,7 @@ export class ChartWrapper {
     if (!ctx) return;
 
     this.chartInstance = new Chart(ctx, {
-      type: 'line',
+      type: 'bar',
       data: {
         labels,
         datasets
@@ -51,7 +57,17 @@ export class ChartWrapper {
             borderWidth: 1,
             padding: 12,
             boxPadding: 6,
-            usePointStyle: true
+            usePointStyle: true,
+            callbacks: {
+              label: function (context) {
+                const label = context.dataset.label || '';
+                const value = context.parsed.y;
+                if (context.dataset.yAxisID === 'y' || context.dataset.type === 'line') {
+                  return ` ${label}: $${Number(value || 0).toLocaleString('es-CO')}`;
+                }
+                return ` ${label}: ${value} ${value === 1 ? 'Piggy' : 'Piggys'}`;
+              }
+            }
           }
         },
         scales: {
@@ -67,6 +83,9 @@ export class ChartWrapper {
             }
           },
           y: {
+            type: 'linear',
+            position: 'left',
+            beginAtZero: true,
             grid: {
               color: 'rgba(255, 255, 255, 0.05)'
             },
@@ -79,7 +98,10 @@ export class ChartWrapper {
                 if (value >= 1000000) {
                   return '$' + (value / 1000000) + 'M';
                 }
-                return value;
+                if (value >= 1000) {
+                  return '$' + (value / 1000) + 'K';
+                }
+                return '$' + value;
               }
             }
           },
@@ -87,13 +109,21 @@ export class ChartWrapper {
             type: 'linear',
             display: true,
             position: 'right',
+            beginAtZero: true,
             grid: {
               drawOnChartArea: false
             },
             ticks: {
-              color: '#FFB800',
+              color: '#94A3B8',
+              precision: 0,
               font: {
                 family: "'Plus Jakarta Sans', sans-serif"
+              },
+              callback: function (value) {
+                if (Number.isInteger(value)) {
+                  return value;
+                }
+                return null;
               }
             }
           }

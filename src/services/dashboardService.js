@@ -67,52 +67,91 @@ export const dashboardService = {
           .order('created_at', { ascending: true });
 
         if (piggies && piggies.length > 0) {
-          const monthlyMap = {};
+          const monthMap = new Map();
 
           piggies.forEach((p) => {
-            const date = new Date(p.purchase_date || p.created_at);
-            const monthKey = date.toLocaleDateString('es-CO', { month: 'short', year: '2-digit' });
-            if (!monthlyMap[monthKey]) {
-              monthlyMap[monthKey] = { capital: 0, piggies: 0 };
+            const rawDate = p.purchase_date || p.created_at;
+            const date = rawDate ? new Date(rawDate) : new Date();
+            if (isNaN(date.getTime())) return;
+
+            // Sort key YYYY-MM ensures chronological order
+            const sortKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+            const label = date.toLocaleDateString('es-CO', { month: 'short', year: '2-digit' });
+
+            if (!monthMap.has(sortKey)) {
+              monthMap.set(sortKey, {
+                label,
+                sortKey,
+                capitalAdded: 0,
+                engorde: 0,
+                completado: 0
+              });
             }
-            monthlyMap[monthKey].capital += Number(p.investment_amount || 1000000);
-            monthlyMap[monthKey].piggies += 1;
+
+            const monthEntry = monthMap.get(sortKey);
+            monthEntry.capitalAdded += Number(p.investment_amount || 1000000);
+
+            const status = (p.status || 'engorde').toLowerCase();
+            if (status === 'completado' || status === 'liquidado') {
+              monthEntry.completado += 1;
+            } else {
+              monthEntry.engorde += 1;
+            }
           });
 
-          const labels = Object.keys(monthlyMap);
-          if (labels.length > 0) {
-            let runningCapital = 0;
-            let runningPiggies = 0;
+          const sortedMonths = Array.from(monthMap.values()).sort((a, b) => a.sortKey.localeCompare(b.sortKey));
 
-            const capitalData = labels.map((k) => {
-              runningCapital += monthlyMap[k].capital;
+          if (sortedMonths.length > 0) {
+            const labels = sortedMonths.map((m) => m.label);
+            let runningCapital = 0;
+
+            const capitalData = sortedMonths.map((m) => {
+              runningCapital += m.capitalAdded;
               return runningCapital;
             });
 
-            const piggiesData = labels.map((k) => {
-              runningPiggies += monthlyMap[k].piggies;
-              return runningPiggies;
-            });
+            const engordeData = sortedMonths.map((m) => m.engorde);
+            const completadoData = sortedMonths.map((m) => m.completado);
 
             return {
               labels,
               datasets: [
                 {
+                  type: 'line',
                   label: 'Capital Total Gestionado',
                   data: capitalData,
                   borderColor: '#FF4B8B',
                   backgroundColor: 'rgba(255, 75, 139, 0.12)',
                   fill: true,
-                  tension: 0.4
+                  tension: 0.4,
+                  yAxisID: 'y',
+                  order: 1,
+                  pointRadius: 4,
+                  pointHoverRadius: 6,
+                  pointBackgroundColor: '#FF4B8B',
+                  pointBorderColor: '#FF4B8B'
                 },
                 {
-                  label: 'Piggies en Engorde',
-                  data: piggiesData,
-                  borderColor: '#FFB800',
-                  backgroundColor: 'transparent',
-                  borderDash: [5, 5],
-                  tension: 0.4,
-                  yAxisID: 'y1'
+                  type: 'bar',
+                  label: 'Engorde',
+                  data: engordeData,
+                  backgroundColor: 'rgba(245, 158, 11, 0.85)',
+                  borderColor: '#F59E0B',
+                  borderWidth: 1.5,
+                  borderRadius: 6,
+                  yAxisID: 'y1',
+                  order: 2
+                },
+                {
+                  type: 'bar',
+                  label: 'Completado',
+                  data: completadoData,
+                  backgroundColor: 'rgba(16, 185, 129, 0.85)',
+                  borderColor: '#10B981',
+                  borderWidth: 1.5,
+                  borderRadius: 6,
+                  yAxisID: 'y1',
+                  order: 2
                 }
               ]
             };
@@ -124,24 +163,44 @@ export const dashboardService = {
     }
 
     return {
-      labels: ['Feb 26', 'Mar 26', 'May 26', 'Jul 26', 'Ago 26'],
+      labels: ['feb de 26', 'mar de 26', 'may de 26', 'jul de 26', 'ago de 26', 'sept de 26'],
       datasets: [
         {
+          type: 'line',
           label: 'Capital Total Gestionado',
-          data: [6000000, 14000000, 22000000, 31000000, 39000000],
+          data: [6000000, 14000000, 22000000, 31000000, 39000000, 48000000],
           borderColor: '#FF4B8B',
           backgroundColor: 'rgba(255, 75, 139, 0.12)',
           fill: true,
-          tension: 0.4
+          tension: 0.4,
+          yAxisID: 'y',
+          order: 1,
+          pointRadius: 4,
+          pointHoverRadius: 6,
+          pointBackgroundColor: '#FF4B8B',
+          pointBorderColor: '#FF4B8B'
         },
         {
-          label: 'Piggies en Engorde',
-          data: [6, 14, 22, 31, 39],
-          borderColor: '#FFB800',
-          backgroundColor: 'transparent',
-          borderDash: [5, 5],
-          tension: 0.4,
-          yAxisID: 'y1'
+          type: 'bar',
+          label: 'Engorde',
+          data: [5, 10, 12, 14, 18, 20],
+          backgroundColor: 'rgba(245, 158, 11, 0.85)',
+          borderColor: '#F59E0B',
+          borderWidth: 1.5,
+          borderRadius: 6,
+          yAxisID: 'y1',
+          order: 2
+        },
+        {
+          type: 'bar',
+          label: 'Completado',
+          data: [1, 4, 10, 17, 21, 28],
+          backgroundColor: 'rgba(16, 185, 129, 0.85)',
+          borderColor: '#10B981',
+          borderWidth: 1.5,
+          borderRadius: 6,
+          yAxisID: 'y1',
+          order: 2
         }
       ]
     };
