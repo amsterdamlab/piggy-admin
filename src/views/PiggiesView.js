@@ -23,9 +23,8 @@ export class PiggiesView {
     this.dataTable = new DataTable({
       searchPlaceholder: 'Buscar por cerdito, dueño o ID...',
       filters: [
-        { label: 'En Engorde', value: 'engorde' },
-        { label: 'Completados', value: 'completado' },
-        { label: 'Liquidados', value: 'liquidado' }
+        { label: 'Engorde', value: 'engorde' },
+        { label: 'Completado', value: 'completado' }
       ],
       actionButton: {
         text: 'Asignar Piggy Manual',
@@ -82,15 +81,9 @@ export class PiggiesView {
         {
           header: 'Estado',
           render: (p) => {
-            let badgeClass = 'badge-warning';
-            let label = 'En Engorde';
-            if (p.status === 'completado') {
-              badgeClass = 'badge-success';
-              label = 'Listo para Liquidar';
-            } else if (p.status === 'liquidado') {
-              badgeClass = 'badge-neutral';
-              label = 'Liquidado';
-            }
+            const isCompleted = p.status === 'completado';
+            const badgeClass = isCompleted ? 'badge-success' : 'badge-warning';
+            const label = isCompleted ? 'Completado' : 'Engorde';
             return `<span class="badge ${badgeClass}">${label}</span>`;
           }
         },
@@ -132,7 +125,7 @@ export class PiggiesView {
               </div>
             </div>
             <div>
-              <span class="badge badge-success">Activos: ${this.piggies.filter(p => p.status === 'engorde').length}</span>
+              <span class="badge badge-success">Engorde: ${this.piggies.filter(p => p.status === 'engorde').length}</span>
             </div>
           </div>
 
@@ -204,9 +197,8 @@ export class PiggiesView {
             <div class="form-group">
               <label class="form-label" for="edit-status-select">Estado del Ciclo</label>
               <select id="edit-status-select" class="form-select">
-                <option value="engorde" ${piggy.status === 'engorde' ? 'selected' : ''}>En Engorde (Activo)</option>
-                <option value="completado" ${piggy.status === 'completado' ? 'selected' : ''}>Completado (Listo para liquidar)</option>
-                <option value="liquidado" ${piggy.status === 'liquidado' ? 'selected' : ''}>Liquidado (Finalizado)</option>
+                <option value="engorde" ${piggy.status === 'engorde' ? 'selected' : ''}>Engorde</option>
+                <option value="completado" ${piggy.status === 'completado' ? 'selected' : ''}>Completado</option>
               </select>
             </div>
 
