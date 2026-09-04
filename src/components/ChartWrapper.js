@@ -39,21 +39,22 @@ export class ChartWrapper {
           legend: {
             position: 'top',
             labels: {
-              color: '#94A3B8',
+              color: '#CBD5E1',
               font: {
                 family: "'Plus Jakarta Sans', sans-serif",
                 size: 12,
                 weight: '600'
               },
               usePointStyle: true,
-              pointStyle: 'circle'
+              pointStyle: 'circle',
+              padding: 18
             }
           },
           tooltip: {
-            backgroundColor: '#151B28',
+            backgroundColor: '#111622',
             titleColor: '#F8FAFC',
-            bodyColor: '#94A3B8',
-            borderColor: '#334155',
+            bodyColor: '#E2E8F0',
+            borderColor: 'rgba(255, 255, 255, 0.12)',
             borderWidth: 1,
             padding: 12,
             boxPadding: 6,
@@ -73,12 +74,14 @@ export class ChartWrapper {
         scales: {
           x: {
             grid: {
-              color: 'rgba(255, 255, 255, 0.05)'
+              color: 'rgba(255, 255, 255, 0.04)',
+              drawBorder: false
             },
             ticks: {
-              color: '#64748B',
+              color: '#94A3B8',
               font: {
-                family: "'Plus Jakarta Sans', sans-serif"
+                family: "'Plus Jakarta Sans', sans-serif",
+                size: 11
               }
             }
           },
@@ -87,12 +90,14 @@ export class ChartWrapper {
             position: 'left',
             beginAtZero: true,
             grid: {
-              color: 'rgba(255, 255, 255, 0.05)'
+              color: 'rgba(255, 255, 255, 0.04)',
+              drawBorder: false
             },
             ticks: {
-              color: '#64748B',
+              color: '#94A3B8',
               font: {
-                family: "'Plus Jakarta Sans', sans-serif"
+                family: "'Plus Jakarta Sans', sans-serif",
+                size: 11
               },
               callback: function (value) {
                 if (value >= 1000000) {
@@ -117,7 +122,8 @@ export class ChartWrapper {
               color: '#94A3B8',
               precision: 0,
               font: {
-                family: "'Plus Jakarta Sans', sans-serif"
+                family: "'Plus Jakarta Sans', sans-serif",
+                size: 11
               },
               callback: function (value) {
                 if (Number.isInteger(value)) {

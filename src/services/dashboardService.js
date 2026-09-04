@@ -63,99 +63,136 @@ export const dashboardService = {
       try {
         const { data: piggies } = await client
           .from('piggies')
-          .select('investment_amount, purchase_date, created_at, status')
+          .select('investment_amount, purchase_date, created_at, end_date, status')
           .order('created_at', { ascending: true });
 
         if (piggies && piggies.length > 0) {
-          const monthMap = new Map();
+          // Generar línea de tiempo continua desde Febrero 2026 hasta el mes actual
+          const startYear = 2026;
+          const startMonth = 1; // Febrero (índice 0-based: 1)
+          const now = new Date();
+          const endYear = now.getFullYear();
+          const endMonth = now.getMonth();
+
+          const monthKeys = [];
+          let currY = startYear;
+          let currM = startMonth;
+
+          while (currY < endYear || (currY === endYear && currM <= endMonth)) {
+            const sortKey = `${currY}-${String(currM + 1).padStart(2, '0')}`;
+            const dateObj = new Date(currY, currM, 1);
+            const label = dateObj.toLocaleDateString('es-CO', { month: 'short', year: '2-digit' });
+            monthKeys.push({ sortKey, label });
+
+            currM++;
+            if (currM > 11) {
+              currM = 0;
+              currY++;
+            }
+          }
+
+          const monthlyMap = {};
+          monthKeys.forEach((m) => {
+            monthlyMap[m.sortKey] = {
+              label: m.label,
+              capitalAdded: 0,
+              engorde: 0,
+              completado: 0
+            };
+          });
 
           piggies.forEach((p) => {
-            const rawDate = p.purchase_date || p.created_at;
-            const date = rawDate ? new Date(rawDate) : new Date();
-            if (isNaN(date.getTime())) return;
-
-            // Sort key YYYY-MM ensures chronological order
-            const sortKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-            const label = date.toLocaleDateString('es-CO', { month: 'short', year: '2-digit' });
-
-            if (!monthMap.has(sortKey)) {
-              monthMap.set(sortKey, {
-                label,
-                sortKey,
-                capitalAdded: 0,
-                engorde: 0,
-                completado: 0
-              });
+            // Fecha de compra / ingreso a engorde
+            const pDateStr = p.purchase_date || p.created_at;
+            if (pDateStr) {
+              const pDate = new Date(pDateStr);
+              if (!isNaN(pDate.getTime())) {
+                const pKey = `${pDate.getFullYear()}-${String(pDate.getMonth() + 1).padStart(2, '0')}`;
+                const targetKey = monthlyMap[pKey] ? pKey : monthKeys[0].sortKey;
+                if (monthlyMap[targetKey]) {
+                  monthlyMap[targetKey].capitalAdded += Number(p.investment_amount || 1000000);
+                  monthlyMap[targetKey].engorde += 1;
+                }
+              }
             }
 
-            const monthEntry = monthMap.get(sortKey);
-            monthEntry.capitalAdded += Number(p.investment_amount || 1000000);
-
-            const status = (p.status || 'engorde').toLowerCase();
-            if (status === 'completado' || status === 'liquidado') {
-              monthEntry.completado += 1;
-            } else {
-              monthEntry.engorde += 1;
+            // Fecha de finalización / completado
+            const st = (p.status || '').toLowerCase();
+            if (st === 'completado' || st === 'liquidado') {
+              const eDateStr = p.end_date || p.purchase_date || p.created_at;
+              if (eDateStr) {
+                const eDate = new Date(eDateStr);
+                if (!isNaN(eDate.getTime())) {
+                  const eKey = `${eDate.getFullYear()}-${String(eDate.getMonth() + 1).padStart(2, '0')}`;
+                  if (monthlyMap[eKey]) {
+                    monthlyMap[eKey].completado += 1;
+                  }
+                }
+              }
             }
           });
 
-          const sortedMonths = Array.from(monthMap.values()).sort((a, b) => a.sortKey.localeCompare(b.sortKey));
+          const labels = monthKeys.map((m) => m.label);
+          let runningCapital = 0;
 
-          if (sortedMonths.length > 0) {
-            const labels = sortedMonths.map((m) => m.label);
-            let runningCapital = 0;
+          const capitalData = monthKeys.map((m) => {
+            runningCapital += monthlyMap[m.sortKey].capitalAdded;
+            return runningCapital;
+          });
 
-            const capitalData = sortedMonths.map((m) => {
-              runningCapital += m.capitalAdded;
-              return runningCapital;
-            });
+          const engordeData = monthKeys.map((m) => monthlyMap[m.sortKey].engorde);
+          const completadoData = monthKeys.map((m) => monthlyMap[m.sortKey].completado);
 
-            const engordeData = sortedMonths.map((m) => m.engorde);
-            const completadoData = sortedMonths.map((m) => m.completado);
-
-            return {
-              labels,
-              datasets: [
-                {
-                  type: 'line',
-                  label: 'Capital Total Gestionado',
-                  data: capitalData,
-                  borderColor: '#FF4B8B',
-                  backgroundColor: 'rgba(255, 75, 139, 0.12)',
-                  fill: true,
-                  tension: 0.4,
-                  yAxisID: 'y',
-                  order: 1,
-                  pointRadius: 4,
-                  pointHoverRadius: 6,
-                  pointBackgroundColor: '#FF4B8B',
-                  pointBorderColor: '#FF4B8B'
-                },
-                {
-                  type: 'bar',
-                  label: 'Engorde',
-                  data: engordeData,
-                  backgroundColor: 'rgba(245, 158, 11, 0.85)',
-                  borderColor: '#F59E0B',
-                  borderWidth: 1.5,
-                  borderRadius: 6,
-                  yAxisID: 'y1',
-                  order: 2
-                },
-                {
-                  type: 'bar',
-                  label: 'Completado',
-                  data: completadoData,
-                  backgroundColor: 'rgba(16, 185, 129, 0.85)',
-                  borderColor: '#10B981',
-                  borderWidth: 1.5,
-                  borderRadius: 6,
-                  yAxisID: 'y1',
-                  order: 2
-                }
-              ]
-            };
-          }
+          return {
+            labels,
+            datasets: [
+              {
+                type: 'line',
+                label: 'Capital Total Gestionado',
+                data: capitalData,
+                borderColor: '#FF2A85',
+                backgroundColor: 'rgba(255, 42, 133, 0.08)',
+                fill: true,
+                tension: 0.4,
+                yAxisID: 'y',
+                order: 1,
+                pointRadius: 4,
+                pointHoverRadius: 6,
+                pointBackgroundColor: '#FF2A85',
+                pointBorderColor: '#FF2A85'
+              },
+              {
+                type: 'bar',
+                label: 'Engorde',
+                data: engordeData,
+                backgroundColor: 'rgba(255, 184, 0, 0.65)',
+                borderColor: '#FFC72C',
+                borderWidth: 1.5,
+                borderRadius: 6,
+                borderSkipped: false,
+                barPercentage: 0.45,
+                categoryPercentage: 0.5,
+                maxBarThickness: 16,
+                yAxisID: 'y1',
+                order: 2
+              },
+              {
+                type: 'bar',
+                label: 'Completado',
+                data: completadoData,
+                backgroundColor: 'rgba(16, 217, 142, 0.65)',
+                borderColor: '#10D98E',
+                borderWidth: 1.5,
+                borderRadius: 6,
+                borderSkipped: false,
+                barPercentage: 0.45,
+                categoryPercentage: 0.5,
+                maxBarThickness: 16,
+                yAxisID: 'y1',
+                order: 2
+              }
+            ]
+          };
         }
       } catch (e) {
         console.warn('Chart data aggregation exception:', e);
@@ -163,42 +200,50 @@ export const dashboardService = {
     }
 
     return {
-      labels: ['feb de 26', 'mar de 26', 'may de 26', 'jul de 26', 'ago de 26', 'sept de 26'],
+      labels: ['feb de 26', 'mar de 26', 'abr de 26', 'may de 26', 'jun de 26', 'jul de 26', 'ago de 26', 'sept de 26'],
       datasets: [
         {
           type: 'line',
           label: 'Capital Total Gestionado',
-          data: [6000000, 14000000, 22000000, 31000000, 39000000, 48000000],
-          borderColor: '#FF4B8B',
-          backgroundColor: 'rgba(255, 75, 139, 0.12)',
+          data: [7000000, 12000000, 12000000, 17000000, 17000000, 25950000, 44250000, 47850000],
+          borderColor: '#FF2A85',
+          backgroundColor: 'rgba(255, 42, 133, 0.08)',
           fill: true,
           tension: 0.4,
           yAxisID: 'y',
           order: 1,
           pointRadius: 4,
           pointHoverRadius: 6,
-          pointBackgroundColor: '#FF4B8B',
-          pointBorderColor: '#FF4B8B'
+          pointBackgroundColor: '#FF2A85',
+          pointBorderColor: '#FF2A85'
         },
         {
           type: 'bar',
           label: 'Engorde',
-          data: [5, 10, 12, 14, 18, 20],
-          backgroundColor: 'rgba(245, 158, 11, 0.85)',
-          borderColor: '#F59E0B',
+          data: [7, 5, 0, 5, 0, 9, 15, 3],
+          backgroundColor: 'rgba(255, 184, 0, 0.65)',
+          borderColor: '#FFC72C',
           borderWidth: 1.5,
           borderRadius: 6,
+          borderSkipped: false,
+          barPercentage: 0.45,
+          categoryPercentage: 0.5,
+          maxBarThickness: 16,
           yAxisID: 'y1',
           order: 2
         },
         {
           type: 'bar',
           label: 'Completado',
-          data: [1, 4, 10, 17, 21, 28],
-          backgroundColor: 'rgba(16, 185, 129, 0.85)',
-          borderColor: '#10B981',
+          data: [0, 0, 0, 2, 1, 6, 7, 3],
+          backgroundColor: 'rgba(16, 217, 142, 0.65)',
+          borderColor: '#10D98E',
           borderWidth: 1.5,
           borderRadius: 6,
+          borderSkipped: false,
+          barPercentage: 0.45,
+          categoryPercentage: 0.5,
+          maxBarThickness: 16,
           yAxisID: 'y1',
           order: 2
         }
