@@ -16,10 +16,10 @@ export class LoginView {
       <div class="login-wrapper">
         <div class="login-card">
           <div style="margin-bottom: 1.25rem;">
-            <img src="/piggy-favicon.svg" alt="Piggy Logo" style="width: 68px; height: 68px; margin: 0 auto; display: block; border-radius: 50%;" />
+            <img src="/piggy-icon.png" alt="Piggy Logo" style="width: 68px; height: 68px; margin: 0 auto; display: block; border-radius: 50%;" />
           </div>
           <h2 class="login-title">Piggy Admin</h2>
-          <p class="login-subtitle">Ingreso seguro a la consola de administración y tesorería</p>
+          <p class="login-subtitle">Ingreso a la consola de administración general de la app.</p>
 
           <form id="admin-login-form">
             <div class="form-group" style="text-align: left;">
@@ -46,18 +46,18 @@ export class LoginView {
                 autocomplete="current-password"
               />
               <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.35rem;">
-                Puedes usar tu contraseña de Supabase o el PIN Maestro de Administrador.
+                Ingresa tu contraseña de Usuario o el PIN Maestro de Administrador.
               </div>
             </div>
 
             <button type="submit" class="btn btn-primary" id="login-submit-btn" style="width: 100%; margin-top: 1rem;">
               <span>Ingresar al Panel</span>
-              ${icons.arrowUpRight}
+              \${icons.arrowUpRight}
             </button>
           </form>
 
           <div style="margin-top: 1.5rem; font-size: 0.75rem; color: var(--text-muted);">
-            Piggy Agro-Fintech Platform &bull; v2.0
+            &copy; Todos los derechos reservados Piggy App. 2026
           </div>
         </div>
       </div>
@@ -81,17 +81,17 @@ export class LoginView {
       try {
         const result = await authService.login(email, password);
         if (result.success) {
-          toast.success(`¡Bienvenido, ${result.user.full_name}!`);
+          toast.success(`¡Bienvenido, \${result.user.full_name}!`);
           window.location.hash = '#dashboard';
         } else {
           toast.error(result.error || 'Credenciales no autorizadas');
           submitBtn.disabled = false;
-          submitBtn.innerHTML = `<span>Ingresar al Panel</span> ${icons.arrowUpRight}`;
+          submitBtn.innerHTML = `<span>Ingresar al Panel</span> \${icons.arrowUpRight}`;
         }
       } catch (err) {
         toast.error('Ocurrió un error inesperado');
         submitBtn.disabled = false;
-        submitBtn.innerHTML = `<span>Ingresar al Panel</span> ${icons.arrowUpRight}`;
+        submitBtn.innerHTML = `<span>Ingresar al Panel</span> \${icons.arrowUpRight}`;
       }
     });
   }
