@@ -54,7 +54,7 @@ trigger: always_on
 * **Prohibición Estricta de Otros Métodos:** Queda estrictamente prohibido utilizar el sistema o terminal de Windows para realizar despliegues o comandos de git (`git add`, `git commit`, `git push` o scripts locales), así como cualquier otro método alternativo que no sea MCP.
 * **Sincronización Continua con Vercel:** La sincronización entre GitHub (`amsterdamlab/piggy-admin`) y Vercel es automática; subir inmediatamente los archivos vía MCP asegura que el usuario pueda ver los cambios reflejados en tiempo real en la app online.
 * **Verificación Única de Conexión:** Al inicio de cada sesión, verifica **una sola vez** la conexión con GitHub vía MCP en el repositorio objetivo `piggy-admin`.
-* **Alcance Atómico del Push:** Sube **exclusivamente** los archivos modificados o creados para la tarea actual. No hagas push de todo el proyecto innecesariamente.
+* **Alcance Atómico del Push:** Sube **exclusivamente** los archivos modificados o creados para la tarea actual. No hagas push de todo el proyecto inneariamente.
 * **⚠️ Regla de Archivos Grandes (>1000 líneas):** Antes de hacer push de un archivo que supere las **1,000 líneas**, DETENTE y NO intentes subirlo automáticamente vía MCP. En su lugar:
   1. Informa al usuario que el archivo es demasiado grande para push automático.
   2. Proporciona el **paso a paso manual** para subir el archivo vía la interfaz web de GitHub:
@@ -76,3 +76,8 @@ trigger: always_on
 
 * **Prohibición de Filtros Ocultos en `wallet_transactions`:** Queda estrictamente prohibido aplicar filtros en el cliente, servicios o vistas que omitan, censuren, oculten o modifiquen transacciones de la tabla `wallet_transactions`. Toda transacción que entre o salga de esta tabla en la base de datos (sea abono, débito, recarga, liquidación, corrección, ajuste manual o error de prueba) debe reflejarse SIEMPRE de forma 1:1, íntegra y transparente en el Libro Contable (Auditoría).
 * **Trazabilidad Contable Absoluta:** La plataforma opera con dinero real; por tanto, el libro mayor contable es inmutable. Ningún agente o desarrollador debe silenciar, suprimir o simular estados que alteren la visibilidad total de los movimientos financieros históricos.
+
+**X. AISLAMIENTO DE ENTORNO Y NO INTERFERENCIA CON PIGGY APP**
+
+* **Aislamiento de Responsabilidad:** Este proyecto corresponde exclusivamente al panel administrativo (`piggy-admin`). Cualquier funcionalidad, ajuste o lógica implementada aquí jamás debe interferir de manera destructiva ni romper el funcionamiento de la aplicación principal de los usuarios (`piggy app`).
+* **Protocolo para Modificaciones en Base de Datos y Backend Central:** En caso de que se identifique que una solución, corrección o funcionalidad requiere ajustes directos en la estructura de la base de datos (tablas, triggers, funciones RPC, políticas RLS) o en el código de la app Piggy, NO se debe forzar una solución aislada desde este panel. Se debe notificar detalladamente al usuario indicando el diagnóstico y los pasos necesarios para cambiar de entorno al directorio del proyecto de la app correspondiente para ejecutar el ajuste de forma segura y consistente.
