@@ -79,7 +79,7 @@ export class DashboardView {
         </div>
 
         <!-- Bottom Grid: Top Investors & Quick Actions -->
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 1.5rem;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 1.25rem;">
           <!-- Top Investors Card -->
           <div class="card">
             <div class="card-header">

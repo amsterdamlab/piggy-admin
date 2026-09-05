@@ -6,6 +6,7 @@
 import { store } from './state.js';
 import { Sidebar } from './components/Sidebar.js';
 import { Header } from './components/Header.js';
+import { BottomNav } from './components/BottomNav.js';
 
 import { LoginView } from './views/LoginView.js';
 import { DashboardView } from './views/DashboardView.js';
@@ -23,6 +24,7 @@ export class Router {
     this.header = new Header({
       onRefresh: () => this.handleRefresh()
     });
+    this.bottomNav = new BottomNav();
 
     this.currentViewInstance = null;
     this.routes = {
@@ -144,6 +146,7 @@ export class Router {
     if (isFirstLayoutRender) {
       this.appContainer.innerHTML = `
         <div class="admin-layout">
+          <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
           <div id="sidebar-container">${this.sidebar.render()}</div>
           <div class="admin-main-wrapper">
             <div id="header-container">${this.header.render(routeConfig.title, routeConfig.subtitle)}</div>
@@ -153,15 +156,30 @@ export class Router {
               </div>
             </main>
           </div>
+          <div id="bottom-nav-container">${this.bottomNav.render()}</div>
         </div>
       `;
 
       this.sidebar.attachEvents(this.appContainer.querySelector('#sidebar-container'));
       this.header.attachEvents(this.appContainer.querySelector('#header-container'));
+      this.bottomNav.attachEvents(this.appContainer.querySelector('#bottom-nav-container'));
+
+      // Close mobile sidebar if clicking on backdrop
+      const backdrop = this.appContainer.querySelector('#sidebar-backdrop');
+      if (backdrop) {
+        backdrop.addEventListener('click', () => {
+          this.sidebar.closeMobileSidebar();
+        });
+      }
     } else {
       this.header.updateTitle(routeConfig.title, routeConfig.subtitle);
       this.sidebar.updateActiveRoute(hash);
+      this.bottomNav.updateActiveRoute(hash);
+      this.sidebar.closeMobileSidebar();
     }
+
+    // Scroll to top on route change
+    window.scrollTo({ top: 0, behavior: 'smooth' });
 
     // Render View Content
     const viewContainer = this.appContainer.querySelector('#view-content');

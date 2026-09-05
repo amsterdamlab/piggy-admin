@@ -1,3 +1,8 @@
+/* ==========================================================================
+   PIGGY MASTER ADMIN DASHBOARD - MODAL COMPONENT
+   Flexible modal dialog manager for CRUD forms and media previews
+   ========================================================================== */
+
 import { icons } from '../icons.js';
 
 class ModalManager {
@@ -15,6 +20,7 @@ class ModalManager {
     this.overlay.className = 'modal-overlay';
     this.overlay.innerHTML = `
       <div class="modal-container">
+        <div class="modal-drag-handle"></div>
         <div class="modal-header">
           <h3 class="modal-title" id="modal-title">Título Modal</h3>
           <button class="modal-close" id="modal-close-btn" aria-label="Cerrar">
@@ -84,6 +90,8 @@ class ModalManager {
       footerEl.style.display = 'none';
     }
 
+    // Lock body scroll
+    document.body.style.overflow = 'hidden';
     this.overlay.classList.add('active');
 
     if (onInit) {
@@ -95,6 +103,8 @@ class ModalManager {
     if (this.overlay) {
       this.overlay.classList.remove('active');
     }
+    // Restore body scroll
+    document.body.style.overflow = '';
     if (this.currentCloseCallback) {
       this.currentCloseCallback();
       this.currentCloseCallback = null;

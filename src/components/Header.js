@@ -1,3 +1,7 @@
+/* ==========================================================================
+   PIGGY MASTER ADMIN DASHBOARD - HEADER COMPONENT
+   ========================================================================== */
+
 import { icons } from '../icons.js';
 import { isUsingMockData } from '../services/supabase.js';
 
@@ -56,8 +60,12 @@ export class Header {
     if (menuToggle) {
       menuToggle.addEventListener('click', () => {
         const sidebar = document.querySelector('#main-admin-sidebar');
+        const backdrop = document.querySelector('#sidebar-backdrop');
         if (sidebar) {
-          sidebar.classList.toggle('open');
+          const isOpen = sidebar.classList.toggle('open');
+          if (backdrop) {
+            backdrop.classList.toggle('active', isOpen);
+          }
         }
       });
     }

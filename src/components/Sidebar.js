@@ -102,6 +102,15 @@ export class Sidebar {
     this.element = parentElement.querySelector('#main-admin-sidebar');
     if (!this.element) return;
 
+    // Close drawer when clicking any navigation link on mobile
+    this.element.querySelectorAll('.nav-item').forEach(link => {
+      link.addEventListener('click', () => {
+        if (window.innerWidth <= 900) {
+          this.closeMobileSidebar();
+        }
+      });
+    });
+
     // Logout button
     const logoutBtn = this.element.querySelector('#sidebar-logout-btn');
     if (logoutBtn) {
@@ -117,6 +126,9 @@ export class Sidebar {
     if (!this.unsubscribeRoute) {
       this.unsubscribeRoute = store.subscribe('route_changed', (newRoute) => {
         this.updateActiveRoute(newRoute);
+        if (window.innerWidth <= 900) {
+          this.closeMobileSidebar();
+        }
       });
     }
 
@@ -124,6 +136,16 @@ export class Sidebar {
       this.unsubscribePending = store.subscribe('pending_counts_changed', (counts) => {
         this.updatePendingBadge(counts.total);
       });
+    }
+  }
+
+  closeMobileSidebar() {
+    if (this.element) {
+      this.element.classList.remove('open');
+    }
+    const backdrop = document.querySelector('#sidebar-backdrop');
+    if (backdrop) {
+      backdrop.classList.remove('active');
     }
   }
 

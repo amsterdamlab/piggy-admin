@@ -1,6 +1,10 @@
+/* ==========================================================================
+   PIGGY MASTER ADMIN DASHBOARD - TOAST NOTIFICATION COMPONENT
+   ========================================================================== */
+
 import { icons } from '../icons.js';
 
-export class ToastManager {
+class ToastManager {
   constructor() {
     this.container = null;
   }
@@ -33,7 +37,7 @@ export class ToastManager {
 
     setTimeout(() => {
       toast.style.opacity = '0';
-      toast.style.transform = 'translateX(100%)';
+      toast.style.transform = window.innerWidth <= 768 ? 'translateY(15px)' : 'translateX(100%)';
       toast.style.transition = 'all 0.3s ease';
       setTimeout(() => {
         if (toast.parentNode) toast.parentNode.removeChild(toast);
