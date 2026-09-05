@@ -122,60 +122,80 @@ export class DashboardView {
             <div class="card-header">
               <h3 class="card-title">${icons.zap} Acciones Rápidas</h3>
             </div>
-            <div style="display: flex; flex-direction: column; gap: 0.85rem;">
-              <a href="#wallet" class="btn btn-secondary" style="justify-content: space-between; padding: 1rem;">
-                <div style="display: flex; align-items: center; gap: 0.75rem;">
-                  <span style="color: var(--accent-gold);">${icons.wallet}</span>
-                  <div style="text-align: left;">
-                    <div style="font-weight: 700;">Revisar Recargas de Saldo</div>
-                    <div style="font-size: 0.75rem; color: var(--text-muted);">Aprobar transferencias Bre-B y pagos QR</div>
+            <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+              <a href="#wallet" class="quick-action-item">
+                <div class="quick-action-content">
+                  <div class="quick-action-icon" style="color: var(--accent-gold);">
+                    ${icons.wallet}
+                  </div>
+                  <div class="quick-action-text">
+                    <div class="quick-action-title">Revisar Recargas de Saldo</div>
+                    <div class="quick-action-desc">Aprobar transferencias Bre-B y pagos QR</div>
                   </div>
                 </div>
-                ${icons.arrowUpRight}
+                <div class="quick-action-arrow">
+                  ${icons.arrowUpRight}
+                </div>
               </a>
 
-              <a href="#marketplace" class="btn btn-secondary" style="justify-content: space-between; padding: 1rem;">
-                <div style="display: flex; align-items: center; gap: 0.75rem;">
-                  <span style="color: var(--primary-pink);">${icons.marketplace}</span>
-                  <div style="text-align: left;">
-                    <div style="font-weight: 700;">Agregar un Nuevo Piggy al Mercado</div>
-                    <div style="font-size: 0.75rem; color: var(--text-muted);">Crear oferta con bono ROI para usuarios</div>
+              <a href="#marketplace" class="quick-action-item">
+                <div class="quick-action-content">
+                  <div class="quick-action-icon" style="color: var(--primary-pink);">
+                    ${icons.marketplace}
+                  </div>
+                  <div class="quick-action-text">
+                    <div class="quick-action-title">Agregar un Nuevo Piggy al Mercado</div>
+                    <div class="quick-action-desc">Crear oferta con bono ROI para usuarios</div>
                   </div>
                 </div>
-                ${icons.arrowUpRight}
+                <div class="quick-action-arrow">
+                  ${icons.arrowUpRight}
+                </div>
               </a>
 
-              <a href="#flash-missions" class="btn btn-secondary" style="justify-content: space-between; padding: 1rem;">
-                <div style="display: flex; align-items: center; gap: 0.75rem;">
-                  <span style="color: var(--accent-gold);">${icons.zap}</span>
-                  <div style="text-align: left;">
-                    <div style="font-weight: 700;">Lanzar Ofertas Flash</div>
-                    <div style="font-size: 0.75rem; color: var(--text-muted);">Crear y programar misiones u ofertas flash</div>
+              <a href="#flash-missions" class="quick-action-item">
+                <div class="quick-action-content">
+                  <div class="quick-action-icon" style="color: var(--accent-gold);">
+                    ${icons.zap}
+                  </div>
+                  <div class="quick-action-text">
+                    <div class="quick-action-title">Lanzar Ofertas Flash</div>
+                    <div class="quick-action-desc">Crear y programar misiones u ofertas flash</div>
                   </div>
                 </div>
-                ${icons.arrowUpRight}
+                <div class="quick-action-arrow">
+                  ${icons.arrowUpRight}
+                </div>
               </a>
 
-              <a href="#marketing-bonuses" class="btn btn-secondary" style="justify-content: space-between; padding: 1rem;">
-                <div style="display: flex; align-items: center; gap: 0.75rem;">
-                  <span style="color: var(--accent-purple);">${icons.gift}</span>
-                  <div style="text-align: left;">
-                    <div style="font-weight: 700;">Asignar Bonos de Consumo</div>
-                    <div style="font-size: 0.75rem; color: var(--text-muted);">Emitir y programar bonos de consumo en Marketing</div>
+              <a href="#marketing-bonuses" class="quick-action-item">
+                <div class="quick-action-content">
+                  <div class="quick-action-icon" style="color: var(--accent-purple);">
+                    ${icons.gift}
+                  </div>
+                  <div class="quick-action-text">
+                    <div class="quick-action-title">Asignar Bonos de Consumo</div>
+                    <div class="quick-action-desc">Emitir y programar bonos de consumo en Marketing</div>
                   </div>
                 </div>
-                ${icons.arrowUpRight}
+                <div class="quick-action-arrow">
+                  ${icons.arrowUpRight}
+                </div>
               </a>
 
-              <a href="#piggies" class="btn btn-secondary" style="justify-content: space-between; padding: 1rem;">
-                <div style="display: flex; align-items: center; gap: 0.75rem;">
-                  <span style="color: var(--accent-red);">${icons.pig}</span>
-                  <div style="text-align: left;">
-                    <div style="font-weight: 700;">Próximos Piggys en Liquidación</div>
-                    <div style="font-size: 0.75rem; color: var(--text-muted);">Monitorear cerditos a liquidar en Granja de Piggys</div>
+              <a href="#piggies" class="quick-action-item">
+                <div class="quick-action-content">
+                  <div class="quick-action-icon" style="color: var(--accent-red);">
+                    ${icons.pig}
+                  </div>
+                  <div class="quick-action-text">
+                    <div class="quick-action-title">Próximos Piggys en Liquidación</div>
+                    <div class="quick-action-desc">Monitorear cerditos a liquidar en Granja de Piggys</div>
                   </div>
                 </div>
-                ${icons.arrowUpRight}
+                <div class="quick-action-arrow">
+                  ${icons.arrowUpRight}
+                </div>
               </a>
             </div>
           </div>
