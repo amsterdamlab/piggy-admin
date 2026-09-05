@@ -257,7 +257,7 @@ export const dashboardService = {
       try {
         const [profRes, pigRes] = await Promise.all([
           client.from('profiles').select('id, full_name, whatsapp, email'),
-          client.from('piggies').select('user_id, investment_amount, extra_roi_bonus')
+          client.from('piggies').select('user_id, investment_amount, status')
         ]);
 
         const profiles = profRes.data || [];
@@ -267,19 +267,22 @@ export const dashboardService = {
         profiles.forEach((p) => {
           investorMap[p.id] = {
             id: p.id,
-            name: p.full_name || 'Inversionista',
+            name: p.full_name || 'Usuario',
             contact: p.whatsapp || p.email || 'N/A',
             piggiesCount: 0,
-            totalInvested: 0,
-            extraRoiSum: 0
+            activeCount: 0,
+            totalInvested: 0
           };
         });
 
         piggies.forEach((pig) => {
           if (investorMap[pig.user_id]) {
             investorMap[pig.user_id].piggiesCount += 1;
+            const isAct = pig.status === 'engorde' || pig.status === 'active';
+            if (isAct) {
+              investorMap[pig.user_id].activeCount += 1;
+            }
             investorMap[pig.user_id].totalInvested += Number(pig.investment_amount || 1000000);
-            investorMap[pig.user_id].extraRoiSum += Number(pig.extra_roi_bonus || 0);
           }
         });
 
@@ -289,14 +292,7 @@ export const dashboardService = {
           .slice(0, 5);
 
         if (sorted.length > 0) {
-          return sorted.map((inv) => {
-            const avgExtra = inv.piggiesCount > 0 ? inv.extraRoiSum / inv.piggiesCount : 0;
-            const basePct = inv.piggiesCount >= 3 ? 10 : (inv.piggiesCount === 2 ? 9 : 8);
-            return {
-              ...inv,
-              roiTier: `${basePct}% Base${avgExtra > 0 ? ` + ${(avgExtra * 100).toFixed(1)}% Extra` : ''}`
-            };
-          });
+          return sorted;
         }
       } catch (e) {
         console.warn('Top investors query error:', e);
@@ -304,8 +300,11 @@ export const dashboardService = {
     }
 
     return [
-      { id: '3349c043', name: 'Diomedes Diaz', contact: '3215580212', piggiesCount: 11, totalInvested: 13800000, roiTier: '10% Base + 1.6% Extra' },
-      { id: '7596fdaa', name: 'Valentina Marquez', contact: '3187324704', piggiesCount: 3, totalInvested: 3300000, roiTier: '10% Base' }
+      { id: '3349c043', name: 'Diomedes Diaz', contact: '3215580212', piggiesCount: 13, activeCount: 8, totalInvested: 16000000 },
+      { id: 'andres-l', name: 'Andrés Lemos', contact: '3124563322', piggiesCount: 15, activeCount: 9, totalInvested: 14950000 },
+      { id: 'homero-s', name: 'Homero Simpson', contact: '3128526998', piggiesCount: 4, activeCount: 0, totalInvested: 5100000 },
+      { id: 'juan-d', name: 'Juan David', contact: '+573187217478', piggiesCount: 4, activeCount: 0, totalInvested: 4000000 },
+      { id: '7596fdaa', name: 'Valentina Marquez', contact: '3187324704', piggiesCount: 3, activeCount: 3, totalInvested: 3300000 }
     ];
   }
 };

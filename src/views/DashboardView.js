@@ -90,10 +90,10 @@ export class DashboardView {
               <table class="data-table">
                 <thead>
                   <tr>
-                    <th>Inversionista</th>
+                    <th>Usuario</th>
                     <th>Piggys</th>
-                    <th>Inversión</th>
-                    <th>Nivel ROI</th>
+                    <th>Activos</th>
+                    <th>Valor</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -104,8 +104,12 @@ export class DashboardView {
                         <div style="font-size: 0.75rem; color: var(--text-muted);">${inv.contact}</div>
                       </td>
                       <td style="font-weight: 800; color: var(--primary-pink);">${inv.piggiesCount} Piggys</td>
+                      <td>
+                        <span class="badge" style="background-color: ${inv.activeCount > 0 ? 'rgba(139, 92, 246, 0.2)' : 'rgba(148, 163, 184, 0.2)'}; color: ${inv.activeCount > 0 ? 'var(--accent-purple)' : 'var(--text-secondary)'};">
+                          ${inv.activeCount} Activos
+                        </span>
+                      </td>
                       <td style="font-weight: 700; color: var(--accent-green);">$${(inv.totalInvested).toLocaleString('es-CO')}</td>
-                      <td><span class="badge badge-warning">${inv.roiTier}</span></td>
                     </tr>
                   `).join('')}
                 </tbody>
