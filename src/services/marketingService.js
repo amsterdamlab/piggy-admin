@@ -600,9 +600,9 @@ export const marketingService = {
       const payload = {
         title: item.title || '',
         priority: Number(item.priority || 1),
-        icon: item.icon || 'lightbulb',
+        icon: item.icon || '💡',
         cta_url: item.cta_url || '',
-        reward: Number(item.reward || 0),
+        reward: item.reward !== undefined && item.reward !== null ? String(item.reward).trim() : '',
         color: item.color || '#F770B4',
         is_active: item.is_active !== undefined ? Boolean(item.is_active) : true
       };
@@ -623,7 +623,7 @@ export const marketingService = {
         priority: Number(item.priority || 1),
         icon: item.icon,
         cta_url: item.cta_url,
-        reward: Number(item.reward || 0),
+        reward: item.reward !== undefined && item.reward !== null ? String(item.reward).trim() : '',
         color: item.color,
         is_active: Boolean(item.is_active)
       };
