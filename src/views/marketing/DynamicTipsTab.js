@@ -36,19 +36,18 @@ export class DynamicTipsTab {
           render: (row) => `<span class="badge badge-neutral">Nivel ${row.priority ?? 1}</span>`
         },
         {
-          header: 'Color / Icono',
+          header: 'Icono',
           render: (row) => `
-            <div style="display: flex; align-items: center; gap: 0.4rem;">
-              <span style="display: inline-block; width: 12px; height: 12px; border-radius: 50%; background: ${row.color || '#F770B4'}; border: 1px solid var(--border-color);"></span>
-              <span style="font-size: 0.75rem; color: var(--text-muted);">${row.icon || 'lightbulb'}</span>
-            </div>
+            <span style="font-size: 1.1rem; display: inline-flex; align-items: center; justify-content: center; min-width: 24px;">
+              ${row.icon || '-'}
+            </span>
           `
         },
         {
           header: 'Recompensa',
-          render: (row) => row.reward > 0 ? `
-            <span style="font-weight: 800; color: var(--accent-gold); font-size: 0.85rem;">
-              $${Number(row.reward).toLocaleString('es-CO')}
+          render: (row) => (row.reward && String(row.reward).trim() !== '' && String(row.reward).trim() !== '0') ? `
+            <span style="font-weight: 700; color: var(--accent-gold); font-size: 0.85rem;">
+              ${row.reward}
             </span>
           ` : '<span style="color: var(--text-muted); font-size: 0.75rem;">Sin premio</span>'
         },
@@ -139,15 +138,15 @@ export class DynamicTipsTab {
             </div>
 
             <div class="form-group">
-              <label class="form-label" for="tip-reward">Recompensa Opcional ($)</label>
-              <input type="number" id="tip-reward" class="form-input" value="${item?.reward || 0}" step="500" min="0" />
+              <label class="form-label" for="tip-reward">Recompensa Opcional</label>
+              <input type="text" id="tip-reward" class="form-input" value="${item?.reward ? String(item.reward).replace(/"/g, '&quot;') : ''}" placeholder="Ej: Bono $5.000, 1 Cerdito, etc." />
             </div>
           </div>
 
           <div class="form-row">
             <div class="form-group">
               <label class="form-label" for="tip-icon">Icono</label>
-              <input type="text" id="tip-icon" class="form-input" value="${item?.icon || 'lightbulb'}" placeholder="lightbulb, zap, pig..." />
+              <input type="text" id="tip-icon" class="form-input" value="${item?.icon || '💡'}" placeholder="💡, 🤝, 🔥, 🐖, 🎉..." />
             </div>
 
             <div class="form-group">
@@ -180,7 +179,7 @@ export class DynamicTipsTab {
           onClick: async (e, m) => {
             const title = document.querySelector('#tip-title').value.trim();
             const priority = document.querySelector('#tip-priority').value;
-            const reward = document.querySelector('#tip-reward').value;
+            const reward = document.querySelector('#tip-reward').value.trim();
             const icon = document.querySelector('#tip-icon').value.trim();
             const color = document.querySelector('#tip-color').value.trim();
             const cta_url = document.querySelector('#tip-cta').value.trim();
@@ -193,8 +192,8 @@ export class DynamicTipsTab {
 
             const payload = {
               title,
-              priority: Number(priority),
-              reward: Number(reward),
+              priority: Number(priority) || 1,
+              reward: reward || '',
               icon,
               color: color || '#F770B4',
               cta_url,
