@@ -9,8 +9,24 @@ import { modal } from '../components/Modal.js';
 import { toast } from '../components/Toast.js';
 import { icons } from '../icons.js';
 import { resolveImageUrl, getFallbackImageUrl, PIGGY_PRESET_IMAGES } from '../utils/imageUtils.js';
-import { formatCurrency, parseCurrency, setupCurrencyInput } from '../utils/formUtils.js';
+import { formatCurrency, parseCurrency, setupCurrencyInput, setupDateTimePicker } from '../utils/formUtils.js';
 import { PIGGY_CATEGORIES, getPiggyCategoryInfo, renderCategorySelectOptions } from '../utils/piggyCategories.js';
+
+function formatDateTimeForInput(dateStr) {
+  if (!dateStr) return '';
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return '';
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const hours = String(d.getHours()).padStart(2, '0');
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  } catch {
+    return '';
+  }
+}
 
 export class MarketplaceView {
   constructor() {
@@ -59,13 +75,26 @@ export class MarketplaceView {
             const isBonus = item.extraRoi > 0;
             const isAdvanced = item.daysAdvanced > 0;
             const badgeClass = isBonus ? 'badge-warning' : (isAdvanced ? 'badge-info' : 'badge-neutral');
-            const cycleText = isAdvanced ? `${item.daysAdvanced}d avance · ${item.currentWeight || 15} kg` : `144 días ciclo · ${item.currentWeight || 15} kg`;
+            const fixedDateFormatted = item.fixedEndDate 
+              ? new Date(item.fixedEndDate).toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' }) 
+              : null;
+            const cycleText = item.fixedEndDate
+              ? `Fecha fija: ${fixedDateFormatted} · ${item.currentWeight || 15} kg`
+              : (isAdvanced ? `${item.daysAdvanced}d avance · ${item.currentWeight || 15} kg` : `144 días ciclo · ${item.currentWeight || 15} kg`);
             return `
               <div>
                 <span class="badge ${badgeClass}">
                   ${item.badge}
                 </span>
-                <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 2px;">${cycleText}</div>
+                ${item.fixedEndDate ? `
+                  <div style="font-size: 0.72rem; color: var(--accent-gold); font-weight: 700; margin-top: 2px;">
+                    ${cycleText}
+                  </div>
+                ` : `
+                  <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 2px;">
+                    ${cycleText}
+                  </div>
+                `}
               </div>
             `;
           }
@@ -155,10 +184,12 @@ export class MarketplaceView {
       imageUrl: 'assets/piggies/stage1/et1-1.jpg',
       category: 'estandar',
       daysAdvanced: 0,
-      currentWeight: 15.0
+      currentWeight: 15.0,
+      fixedEndDate: null
     };
 
     const currentCat = (initial.category || 'estandar').toLowerCase();
+    const formattedFixedEndDate = formatDateTimeForInput(initial.fixedEndDate);
     const resolvedInitialImg = resolveImageUrl(initial.imageUrl);
     const fallbackInitialImg = getFallbackImageUrl(initial.imageUrl);
 
@@ -214,6 +245,23 @@ export class MarketplaceView {
             </div>
           </div>
 
+          <!-- Fecha Fija de Liquidación para Campañas Especiales -->
+          <div class="form-group datetime-enhanced-group">
+            <label class="form-label" for="mk-fixed-end-date">Fecha Fija de Liquidación (Campañas Especiales)</label>
+            <div class="datetime-input-wrapper">
+              <input 
+                type="datetime-local" 
+                id="mk-fixed-end-date" 
+                class="form-input" 
+                value="${formattedFixedEndDate}" 
+                style="color-scheme: dark;" 
+              />
+            </div>
+            <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 2px;">
+              Opcional. Permite definir una fecha fija exacta de finalización para campañas puntuales (anula el cálculo de 144 días).
+            </div>
+          </div>
+
           <div class="form-group">
             <label class="form-label" for="mk-desc">Descripción del Cerdito</label>
             <textarea id="mk-desc" class="form-textarea" rows="2" placeholder="Detalles de genética, alimentación o características...">${initial.description}</textarea>
@@ -262,11 +310,17 @@ export class MarketplaceView {
         const roiInput = modalBody.querySelector('#mk-roi');
         const daysInput = modalBody.querySelector('#mk-days-advanced');
         const weightInput = modalBody.querySelector('#mk-weight');
+        const fixedEndDateInput = modalBody.querySelector('#mk-fixed-end-date');
         const gallery = modalBody.querySelector('#mk-preset-gallery');
         const priceInput = modalBody.querySelector('#mk-price');
 
         // Formateador monetario con puntos de miles
         setupCurrencyInput(priceInput);
+
+        // Selector mini-calendario con botón interactivo
+        if (fixedEndDateInput) {
+          setupDateTimePicker(fixedEndDateInput);
+        }
 
         const updatePreview = (val) => {
           const clean = (val || '').trim();
@@ -331,6 +385,7 @@ export class MarketplaceView {
             const stock = root.querySelector('#mk-stock')?.value;
             const daysAdvanced = root.querySelector('#mk-days-advanced')?.value;
             const currentWeight = root.querySelector('#mk-weight')?.value;
+            const fixedEndDateVal = root.querySelector('#mk-fixed-end-date')?.value;
             const desc = root.querySelector('#mk-desc')?.value?.trim();
             const imageUrl = root.querySelector('#mk-image-url')?.value?.trim();
 
@@ -338,6 +393,8 @@ export class MarketplaceView {
               toast.error('El nombre del producto es obligatorio');
               return;
             }
+
+            const fixedEndDate = fixedEndDateVal ? new Date(fixedEndDateVal).toISOString() : null;
 
             const payload = {
               itemName: name,
@@ -347,6 +404,7 @@ export class MarketplaceView {
               stock: Number(stock),
               daysAdvanced: Number(daysAdvanced || 0),
               currentWeight: Number(currentWeight || 15.0),
+              fixedEndDate,
               description: desc,
               imageUrl
             };

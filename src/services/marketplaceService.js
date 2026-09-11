@@ -102,6 +102,7 @@ export const marketplaceService = {
             const daysRemaining = override.daysRemaining !== undefined ? Number(override.daysRemaining) : Number(item.days_remaining || (144 - daysAdvanced));
             const currentWeight = override.currentWeight !== undefined ? Number(override.currentWeight) : Number(item.current_weight || 15.0);
             const currentMonth = override.currentMonth !== undefined ? Number(override.currentMonth) : Number(item.current_month || 1);
+            const fixedEndDate = override.fixedEndDate !== undefined ? override.fixedEndDate : (item.fixed_end_date || null);
 
             return {
               id: item.id,
@@ -118,7 +119,8 @@ export const marketplaceService = {
               daysAdvanced,
               daysRemaining,
               currentWeight,
-              currentMonth
+              currentMonth,
+              fixedEndDate
             };
           });
         }
@@ -142,6 +144,7 @@ export const marketplaceService = {
     const currentMonth = Number(
       item.currentMonth || (daysAdvanced >= 120 ? 5 : daysAdvanced >= 90 ? 4 : daysAdvanced >= 60 ? 3 : daysAdvanced >= 30 ? 2 : 1)
     );
+    const fixedEndDate = item.fixedEndDate || null;
 
     const id = item.id || ('local-mk-' + Date.now());
     const itemData = {
@@ -157,6 +160,7 @@ export const marketplaceService = {
       daysRemaining,
       currentWeight: Number(item.currentWeight || 15.0),
       currentMonth,
+      fixedEndDate,
       badge: Number(item.extraRoi || 0) > 0 
         ? `+${(Number(item.extraRoi) * 100).toFixed(0)}% ROI` 
         : (daysAdvanced > 0 ? `+${daysAdvanced}d Ahorro` : 'Estándar')
@@ -176,7 +180,8 @@ export const marketplaceService = {
       days_advanced: daysAdvanced,
       days_remaining: daysRemaining,
       current_weight: Number(item.currentWeight || 15.0),
-      current_month: currentMonth
+      current_month: currentMonth,
+      fixed_end_date: fixedEndDate ? new Date(fixedEndDate).toISOString() : null
     };
 
     if (client) {
@@ -236,6 +241,10 @@ export const marketplaceService = {
     if (item.currentWeight !== undefined) {
       payload.current_weight = Number(item.currentWeight);
       localUpdates.currentWeight = Number(item.currentWeight);
+    }
+    if (item.fixedEndDate !== undefined) {
+      payload.fixed_end_date = item.fixedEndDate ? new Date(item.fixedEndDate).toISOString() : null;
+      localUpdates.fixedEndDate = item.fixedEndDate || null;
     }
 
     // 1. Save locally so changes reflect immediately and persist in the admin
