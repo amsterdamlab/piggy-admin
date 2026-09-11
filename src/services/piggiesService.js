@@ -1,6 +1,6 @@
 /* ==========================================================================
    PIGGY MASTER ADMIN DASHBOARD - PIGGIES SERVICE
-   Direct sync with Supabase `piggies` & real cycle telemetry
+   Direct sync with Supabase `piggies` and `profiles` tables
    ========================================================================== */
 
 import { getClient } from './supabase.js';
@@ -11,21 +11,27 @@ export const piggiesService = {
     if (!client) return [];
 
     try {
-      const [pigRes, profRes] = await Promise.all([
-        client.from('piggies').select('*').order('created_at', { ascending: false }),
-        client.from('profiles').select('id, full_name, whatsapp, email')
-      ]);
+      // 1. Obtener todos los piggies
+      const { data: piggies, error: piggiesError } = await client
+        .from('piggies')
+        .select('*')
+        .order('created_at', { ascending: false });
 
-      const piggies = pigRes.data || [];
-      const profiles = profRes.data || [];
-      const profileMap = {};
-      profiles.forEach((p) => {
-        profileMap[p.id] = p;
-      });
+      if (piggiesError) throw piggiesError;
 
-      if (piggies.length > 0) {
+      // 2. Obtener perfiles de usuarios para mapear nombres y teléfonos
+      const { data: profiles, error: profilesError } = await client
+        .from('profiles')
+        .select('id, full_name, email, whatsapp');
+
+      if (!profilesError && piggies) {
+        const profileMap = new Map();
+        (profiles || []).forEach((p) => {
+          profileMap.set(p.id, p);
+        });
+
         let mapped = piggies.map((p) => {
-          const owner = profileMap[p.user_id] || {};
+          const owner = profileMap.get(p.user_id) || {};
           return {
             id: p.id,
             userId: p.user_id,
@@ -36,7 +42,7 @@ export const piggiesService = {
             status: p.status || 'engorde',
             investmentAmount: Number(p.investment_amount || p.price || 1000000),
             extraRoiBonus: Number(p.extra_roi_bonus || p.extra_roi || 0),
-            currentWeight: Number(p.current_weight || 15.0),
+            currentWeight: Number(p.current_weight || 6.0),
             finalWeight: p.final_weight !== undefined && p.final_weight !== null ? Number(p.final_weight) : (p.target_weight !== undefined && p.target_weight !== null ? Number(p.target_weight) : 100.0),
             purchaseDate: p.purchase_date || p.created_at,
             endDate: p.end_date,
@@ -102,7 +108,7 @@ export const piggiesService = {
           name: data.name || 'Piggy Especial',
           investment_amount: Number(data.investmentAmount || 1000000),
           extra_roi_bonus: Number(data.extraRoiBonus || 0),
-          current_weight: Number(data.currentWeight || 15.0),
+          current_weight: Number(data.currentWeight || 6.0),
           status: data.status || 'engorde',
           image_url: data.imageUrl || '',
           purchase_date: new Date().toISOString(),
@@ -128,7 +134,11 @@ export const piggiesService = {
     const client = getClient();
     if (client) {
       try {
-        const { error } = await client.from('piggies').delete().eq('id', piggyId);
+        const { error } = await client
+          .from('piggies')
+          .delete()
+          .eq('id', piggyId);
+
         if (error) throw error;
         return { success: true };
       } catch (err) {

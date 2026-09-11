@@ -79,8 +79,8 @@ export class MarketplaceView {
               ? new Date(item.fixedEndDate).toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' }) 
               : null;
             const cycleText = item.fixedEndDate
-              ? `Fecha fija: ${fixedDateFormatted} · ${item.currentWeight || 15} kg`
-              : (isAdvanced ? `${item.daysAdvanced}d avance · ${item.currentWeight || 15} kg` : `144 días ciclo · ${item.currentWeight || 15} kg`);
+              ? `Fecha fija: ${fixedDateFormatted} · ${item.currentWeight || 6} kg`
+              : (isAdvanced ? `${item.daysAdvanced}d avance · ${item.currentWeight || 6} kg` : `144 días ciclo · ${item.currentWeight || 6} kg`);
             return `
               <div>
                 <span class="badge ${badgeClass}">
@@ -184,7 +184,7 @@ export class MarketplaceView {
       imageUrl: 'assets/piggies/stage1/et1-1.jpg',
       category: 'estandar',
       daysAdvanced: 0,
-      currentWeight: 15.0,
+      currentWeight: 6.0,
       fixedEndDate: null
     };
 
@@ -240,7 +240,7 @@ export class MarketplaceView {
 
             <div class="form-group">
               <label class="form-label" for="mk-weight">Peso Inicial / Actual (kg)</label>
-              <input type="number" id="mk-weight" class="form-input" value="${initial.currentWeight || 15.0}" min="10" max="150" step="0.1" required />
+              <input type="number" id="mk-weight" class="form-input" value="${initial.currentWeight || 6.0}" min="1" max="150" step="0.1" required />
               <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 2px;">Peso real aproximado en granja</div>
             </div>
           </div>
@@ -403,7 +403,7 @@ export class MarketplaceView {
               extraRoi: Number(roi),
               stock: Number(stock),
               daysAdvanced: Number(daysAdvanced || 0),
-              currentWeight: Number(currentWeight || 15.0),
+              currentWeight: Number(currentWeight || 6.0),
               fixedEndDate,
               description: desc,
               imageUrl

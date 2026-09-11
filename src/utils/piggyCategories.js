@@ -20,7 +20,7 @@ export const PIGGY_CATEGORIES = [
     extraRoiBonus: 0.02,
     daysAdvanced: 0,
     defaultPrice: 1300000,
-    defaultWeight: 15.0,
+    defaultWeight: 6.0,
     badgeClass: 'badge-warning',
     icon: '⚡',
     description: 'Corre a tomar esta mega oferta con bono extra de rentabilidad del +2% ROI.'
@@ -39,7 +39,7 @@ export const PIGGY_CATEGORIES = [
     extraRoiBonus: 0.03,
     daysAdvanced: 0,
     defaultPrice: 1500000,
-    defaultWeight: 15.0,
+    defaultWeight: 6.0,
     badgeClass: 'badge-warning',
     icon: '💎',
     description: 'Cerdito de alta gama con bono de rentabilidad extra del +3% ROI.'
@@ -58,7 +58,7 @@ export const PIGGY_CATEGORIES = [
     extraRoiBonus: 0.01,
     daysAdvanced: 0,
     defaultPrice: 1200000,
-    defaultWeight: 15.0,
+    defaultWeight: 6.0,
     badgeClass: 'badge-warning',
     icon: '✨',
     description: 'Cerdito especial con bono de rentabilidad extra del +1% ROI.'
@@ -77,7 +77,7 @@ export const PIGGY_CATEGORIES = [
     extraRoiBonus: 0.00,
     daysAdvanced: 0,
     defaultPrice: 1000000,
-    defaultWeight: 15.0,
+    defaultWeight: 6.0,
     badgeClass: 'badge-neutral',
     icon: '🐷',
     description: 'Cerdito estándar de engorde biológico de 144 días.'
@@ -211,7 +211,7 @@ export function getPiggyCategoryInfo(key) {
     extraRoiBonus: 0,
     daysAdvanced: 0,
     defaultPrice: 1000000,
-    defaultWeight: 15.0,
+    defaultWeight: 6.0,
     badgeClass: 'badge-info',
     icon: '⚡',
     description: 'Oferta especial por tiempo limitado.'

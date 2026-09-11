@@ -531,7 +531,7 @@ export class PiggiesView {
                   id="edit-end-date-input" 
                   class="form-input" 
                   value="${formattedEndDate}" 
-                  style="color-scheme: dark;"
+                  style="color-scheme: dark;" 
                 />
               </div>
               <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 3px;">
@@ -562,7 +562,7 @@ export class PiggiesView {
                 id="edit-weight-input" 
                 class="form-input" 
                 step="0.1" 
-                min="10" 
+                min="1" 
                 max="180" 
                 value="${piggy.currentWeight}" 
                 required 
@@ -763,7 +763,7 @@ export class PiggiesView {
           <div class="form-row">
             <div class="form-group">
               <label class="form-label" for="new-piggy-weight">Peso Inicial (kg)</label>
-              <input type="number" id="new-piggy-weight" class="form-input" value="15.0" step="0.5" required />
+              <input type="number" id="new-piggy-weight" class="form-input" value="6.0" min="1" step="0.5" required />
             </div>
 
             <div class="form-group">

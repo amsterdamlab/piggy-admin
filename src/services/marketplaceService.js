@@ -100,7 +100,7 @@ export const marketplaceService = {
             const category = override.category !== undefined ? override.category : (item.category || 'estandar');
             const daysAdvanced = override.daysAdvanced !== undefined ? Number(override.daysAdvanced) : Number(item.days_advanced || 0);
             const daysRemaining = override.daysRemaining !== undefined ? Number(override.daysRemaining) : Number(item.days_remaining || (144 - daysAdvanced));
-            const currentWeight = override.currentWeight !== undefined ? Number(override.currentWeight) : Number(item.current_weight || 15.0);
+            const currentWeight = override.currentWeight !== undefined ? Number(override.currentWeight) : Number(item.current_weight || 6.0);
             const currentMonth = override.currentMonth !== undefined ? Number(override.currentMonth) : Number(item.current_month || 1);
             const fixedEndDate = override.fixedEndDate !== undefined ? override.fixedEndDate : (item.fixed_end_date || null);
 
@@ -158,7 +158,7 @@ export const marketplaceService = {
       category: item.category || 'estandar',
       daysAdvanced,
       daysRemaining,
-      currentWeight: Number(item.currentWeight || 15.0),
+      currentWeight: Number(item.currentWeight || 6.0),
       currentMonth,
       fixedEndDate,
       badge: Number(item.extraRoi || 0) > 0 
@@ -179,7 +179,7 @@ export const marketplaceService = {
       category: item.category || 'estandar',
       days_advanced: daysAdvanced,
       days_remaining: daysRemaining,
-      current_weight: Number(item.currentWeight || 15.0),
+      current_weight: Number(item.currentWeight || 6.0),
       current_month: currentMonth,
       fixed_end_date: fixedEndDate ? new Date(fixedEndDate).toISOString() : null
     };

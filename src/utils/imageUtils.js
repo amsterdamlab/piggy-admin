@@ -60,11 +60,11 @@ export function getFallbackImageUrl(url) {
  * Standard preset images available in the Piggy ecosystem.
  */
 export const PIGGY_PRESET_IMAGES = [
-  { id: 'et1-1', label: 'E1 #1 (15kg)', path: 'assets/piggies/stage1/et1-1.jpg', stage: 'Etapa 1' },
-  { id: 'et1-2', label: 'E1 #2 (15kg)', path: 'assets/piggies/stage1/et1-2.jpg', stage: 'Etapa 1' },
-  { id: 'et1-3', label: 'E1 #3 (15kg)', path: 'assets/piggies/stage1/et1-3.jpg', stage: 'Etapa 1' },
-  { id: 'et1-4', label: 'E1 #4 (15kg)', path: 'assets/piggies/stage1/et1-4.jpg', stage: 'Etapa 1' },
-  { id: 'et1-5', label: 'E1 #5 (15kg)', path: 'assets/piggies/stage1/et1-5.jpg', stage: 'Etapa 1' },
+  { id: 'et1-1', label: 'E1 #1 (6kg)', path: 'assets/piggies/stage1/et1-1.jpg', stage: 'Etapa 1' },
+  { id: 'et1-2', label: 'E1 #2 (6kg)', path: 'assets/piggies/stage1/et1-2.jpg', stage: 'Etapa 1' },
+  { id: 'et1-3', label: 'E1 #3 (6kg)', path: 'assets/piggies/stage1/et1-3.jpg', stage: 'Etapa 1' },
+  { id: 'et1-4', label: 'E1 #4 (6kg)', path: 'assets/piggies/stage1/et1-4.jpg', stage: 'Etapa 1' },
+  { id: 'et1-5', label: 'E1 #5 (6kg)', path: 'assets/piggies/stage1/et1-5.jpg', stage: 'Etapa 1' },
 
   { id: 'et2-1', label: 'E2 #1 (35kg)', path: 'assets/piggies/stage2/et2-1.jpg', stage: 'Etapa 2' },
   { id: 'et2-2', label: 'E2 #2 (35kg)', path: 'assets/piggies/stage2/et2-2.jpg', stage: 'Etapa 2' },
