@@ -32,6 +32,7 @@ export class MarketplaceView {
   constructor() {
     this.dataTable = null;
     this.items = [];
+    this._realtimeChannel = null;
   }
 
   async render() {
@@ -160,6 +161,45 @@ export class MarketplaceView {
   attachEvents(container) {
     if (this.dataTable) {
       this.dataTable.attachEvents(container.querySelector('#marketplace-datatable-container'));
+    }
+
+    const client = window.__piggySupabaseClient;
+    if (client) {
+      this._connectRealtimeChannel(client);
+    }
+  }
+
+  _connectRealtimeChannel(client) {
+    if (this._realtimeChannel) {
+      try { client.removeChannel(this._realtimeChannel); } catch (_) {}
+    }
+
+    this._realtimeChannel = client
+      .channel('admin-marketplace-sync')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'marketplace' },
+        async () => {
+          try {
+            this.items = await marketplaceService.getItems();
+            if (this.dataTable) {
+              this.dataTable.setData(this.items);
+            }
+          } catch (e) {
+            console.warn('Realtime marketplace sync error:', e);
+          }
+        }
+      )
+      .subscribe();
+  }
+
+  destroy() {
+    if (this._realtimeChannel) {
+      const client = window.__piggySupabaseClient;
+      if (client) {
+        try { client.removeChannel(this._realtimeChannel); } catch (_) {}
+      }
+      this._realtimeChannel = null;
     }
   }
 

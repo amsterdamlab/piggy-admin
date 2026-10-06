@@ -74,9 +74,14 @@ function removeLocalCustomItem(id) {
 export const marketplaceService = {
   async getItems() {
     const client = getClient();
-    const overrides = getLocalOverrides();
-    const customItems = getLocalCustomItems();
 
+    // Purgar overrides obsoletos de localStorage para que nunca prevalezcan
+    // datos locales desincronizados sobre el stock e inventario real de Supabase
+    try {
+      localStorage.removeItem(STORAGE_KEY_OVERRIDES);
+    } catch (_) {}
+
+    const customItems = getLocalCustomItems();
     let itemsFromDb = [];
 
     if (client) {
@@ -88,39 +93,30 @@ export const marketplaceService = {
 
         if (!error && data && data.length > 0) {
           itemsFromDb = data.map((item) => {
-            const override = overrides[item.id] || {};
-            const itemName = override.itemName !== undefined 
-              ? override.itemName 
-              : (item.piggy_name || item.item_name || item.name || 'Piggy Especial');
-            const description = override.description !== undefined ? override.description : (item.description || '');
-            const price = override.price !== undefined ? Number(override.price) : Number(item.price || 1000000);
-            const extraRoi = override.extraRoi !== undefined ? Number(override.extraRoi) : Number(item.extra_roi || 0);
-            const stock = override.stock !== undefined ? Number(override.stock) : Number(item.stock || 0);
-            const imageUrl = override.imageUrl !== undefined ? override.imageUrl : (item.image_url || '');
-            const category = override.category !== undefined ? override.category : (item.category || 'estandar');
-            const daysAdvanced = override.daysAdvanced !== undefined ? Number(override.daysAdvanced) : Number(item.days_advanced || 0);
-            const daysRemaining = override.daysRemaining !== undefined ? Number(override.daysRemaining) : Number(item.days_remaining || (144 - daysAdvanced));
-            const currentWeight = override.currentWeight !== undefined ? Number(override.currentWeight) : Number(item.current_weight || 6.0);
-            const currentMonth = override.currentMonth !== undefined ? Number(override.currentMonth) : Number(item.current_month || 1);
-            const fixedEndDate = override.fixedEndDate !== undefined ? override.fixedEndDate : (item.fixed_end_date || null);
+            const extraRoi = Number(item.extra_roi || 0);
+            const daysAdvanced = Number(item.days_advanced || 0);
+            const daysRemaining = Number(item.days_remaining !== undefined && item.days_remaining !== null 
+              ? item.days_remaining 
+              : (144 - daysAdvanced));
+            const stock = Number(item.stock !== undefined && item.stock !== null ? item.stock : 0);
 
             return {
               id: item.id,
-              itemName,
-              description,
-              price,
+              itemName: item.piggy_name || item.item_name || item.name || 'Piggy Especial',
+              description: item.description || '',
+              price: Number(item.price || 1000000),
               extraRoi,
               stock,
-              imageUrl,
+              imageUrl: item.image_url || '',
               badge: extraRoi > 0 
                 ? `+${(extraRoi * 100).toFixed(0)}% ROI` 
                 : (daysAdvanced > 0 ? `+${daysAdvanced}d Ahorro` : 'Estándar'),
-              category,
+              category: item.category || 'estandar',
               daysAdvanced,
               daysRemaining,
-              currentWeight,
-              currentMonth,
-              fixedEndDate
+              currentWeight: Number(item.current_weight || 6.0),
+              currentMonth: Number(item.current_month || 1),
+              fixedEndDate: item.fixed_end_date || null
             };
           });
         }
@@ -130,7 +126,7 @@ export const marketplaceService = {
       }
     }
 
-    // Merge custom local items that might not be in DB yet
+    // Merge custom local items solo si no existen en la BD
     const existingIds = new Set(itemsFromDb.map(i => i.id));
     const uniqueCustom = customItems.filter(c => !existingIds.has(c.id));
 
@@ -145,29 +141,6 @@ export const marketplaceService = {
       item.currentMonth || (daysAdvanced >= 120 ? 5 : daysAdvanced >= 90 ? 4 : daysAdvanced >= 60 ? 3 : daysAdvanced >= 30 ? 2 : 1)
     );
     const fixedEndDate = item.fixedEndDate || null;
-
-    const id = item.id || ('local-mk-' + Date.now());
-    const itemData = {
-      id,
-      itemName: item.itemName,
-      description: item.description || '',
-      price: Number(item.price || 1000000),
-      extraRoi: Number(item.extraRoi || 0),
-      stock: Number(item.stock || 10),
-      imageUrl: item.imageUrl || '',
-      category: item.category || 'estandar',
-      daysAdvanced,
-      daysRemaining,
-      currentWeight: Number(item.currentWeight || 6.0),
-      currentMonth,
-      fixedEndDate,
-      badge: Number(item.extraRoi || 0) > 0 
-        ? `+${(Number(item.extraRoi) * 100).toFixed(0)}% ROI` 
-        : (daysAdvanced > 0 ? `+${daysAdvanced}d Ahorro` : 'Estándar')
-    };
-
-    // Save to local custom items
-    saveLocalCustomItem(itemData);
 
     const payload = {
       piggy_name: item.itemName,
@@ -186,88 +159,86 @@ export const marketplaceService = {
 
     if (client) {
       try {
-        await client.from('marketplace').insert([payload]);
+        const { data, error } = await client
+          .from('marketplace')
+          .insert([payload])
+          .select();
+
+        if (error) {
+          console.error('Supabase insert warning:', error.message);
+          return { success: false, error: error.message };
+        }
+        return { success: true, data: data?.[0] };
       } catch (err) {
-        console.warn('Supabase insert warning:', err.message);
+        console.error('Supabase insert exception:', err);
+        return { success: false, error: err.message };
       }
     }
 
+    const id = item.id || ('local-mk-' + Date.now());
+    const itemData = {
+      id,
+      ...item,
+      daysAdvanced,
+      daysRemaining,
+      currentMonth,
+      fixedEndDate
+    };
+    saveLocalCustomItem(itemData);
     return { success: true, data: itemData };
   },
 
   async updateItem(id, item) {
     const client = getClient();
     const payload = {};
-    const localUpdates = {};
 
-    if (item.itemName !== undefined) {
-      payload.piggy_name = item.itemName;
-      localUpdates.itemName = item.itemName;
-    }
-    if (item.description !== undefined) {
-      payload.description = item.description;
-      localUpdates.description = item.description;
-    }
-    if (item.price !== undefined) {
-      payload.price = Number(item.price);
-      localUpdates.price = Number(item.price);
-    }
-    if (item.extraRoi !== undefined) {
-      payload.extra_roi = Number(item.extraRoi);
-      localUpdates.extraRoi = Number(item.extraRoi);
-    }
-    if (item.stock !== undefined) {
-      payload.stock = Number(item.stock);
-      localUpdates.stock = Number(item.stock);
-    }
-    if (item.imageUrl !== undefined) {
-      payload.image_url = item.imageUrl;
-      localUpdates.imageUrl = item.imageUrl;
-    }
-    if (item.category !== undefined) {
-      payload.category = item.category;
-      localUpdates.category = item.category;
-    }
+    if (item.itemName !== undefined) payload.piggy_name = item.itemName;
+    if (item.description !== undefined) payload.description = item.description;
+    if (item.price !== undefined) payload.price = Number(item.price);
+    if (item.extraRoi !== undefined) payload.extra_roi = Number(item.extraRoi);
+    if (item.stock !== undefined) payload.stock = Number(item.stock);
+    if (item.imageUrl !== undefined) payload.image_url = item.imageUrl;
+    if (item.category !== undefined) payload.category = item.category;
     if (item.daysAdvanced !== undefined) {
       const adv = Number(item.daysAdvanced);
       payload.days_advanced = adv;
       payload.days_remaining = Number(item.daysRemaining || (144 - adv));
       payload.current_month = adv >= 120 ? 5 : adv >= 90 ? 4 : adv >= 60 ? 3 : adv >= 30 ? 2 : 1;
-
-      localUpdates.daysAdvanced = adv;
-      localUpdates.daysRemaining = payload.days_remaining;
-      localUpdates.currentMonth = payload.current_month;
     }
-    if (item.currentWeight !== undefined) {
-      payload.current_weight = Number(item.currentWeight);
-      localUpdates.currentWeight = Number(item.currentWeight);
-    }
+    if (item.currentWeight !== undefined) payload.current_weight = Number(item.currentWeight);
     if (item.fixedEndDate !== undefined) {
       payload.fixed_end_date = item.fixedEndDate ? new Date(item.fixedEndDate).toISOString() : null;
-      localUpdates.fixedEndDate = item.fixedEndDate || null;
     }
 
-    // 1. Save locally so changes reflect immediately and persist in the admin
-    saveLocalOverride(id, localUpdates);
-
-    // Also update custom item if it exists
+    // Actualizar también en custom items si fuera local
     const customItems = getLocalCustomItems();
     if (customItems.some(c => c.id === id)) {
-      saveLocalCustomItem({ id, ...localUpdates });
+      saveLocalCustomItem({ id, ...item });
     }
 
-    // 2. Sync to Supabase in background
     if (client) {
       try {
-        await client
+        const { error } = await client
           .from('marketplace')
           .update(payload)
           .eq('id', id);
+
+        if (error) {
+          console.error('Supabase update warning:', error.message);
+          return { success: false, error: error.message };
+        }
+
+        // Limpiar cualquier override para mantener sincronización 1:1 con la BD
+        removeLocalOverride(id);
+        return { success: true };
       } catch (err) {
-        console.warn('Supabase update warning:', err.message);
+        console.error('Supabase update exception:', err);
+        return { success: false, error: err.message };
       }
     }
 
+    // Solo si no hay cliente (offline fallback)
+    saveLocalOverride(id, item);
     return { success: true };
   },
 
@@ -278,9 +249,15 @@ export const marketplaceService = {
 
     if (client) {
       try {
-        await client.from('marketplace').delete().eq('id', id);
+        const { error } = await client.from('marketplace').delete().eq('id', id);
+        if (error) {
+          console.error('Supabase delete warning:', error.message);
+          return { success: false, error: error.message };
+        }
+        return { success: true };
       } catch (err) {
-        console.warn('Supabase delete warning:', err.message);
+        console.error('Supabase delete exception:', err);
+        return { success: false, error: err.message };
       }
     }
     return { success: true };
