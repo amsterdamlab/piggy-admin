@@ -296,3 +296,18 @@ export function renderCategorySelectOptions(selectedKey = 'dorado', exclusiveCon
     </optgroup>
   `).join('');
 }
+
+/**
+ * Calcula el peso biológico promedio proyectado en función de los días de avance
+ * Siguiendo la curva biológica oficial del ecosistema Piggy (de 6.0 kg a 100.0 kg en 144 días)
+ */
+export function calculateWeightForDays(daysAdvanced) {
+  const days = Math.max(0, Math.min(144, Number(daysAdvanced) || 0));
+  if (days <= 0) return 6.0;
+  if (days <= 30) return Number((6.0 + (days / 30) * (34.8 - 6.0)).toFixed(1));
+  if (days <= 45) return Number((34.8 + ((days - 30) / 15) * (45.0 - 34.8)).toFixed(1));
+  if (days <= 60) return Number((45.0 + ((days - 45) / 15) * (54.6 - 45.0)).toFixed(1));
+  if (days <= 75) return Number((54.6 + ((days - 60) / 15) * (64.5 - 54.6)).toFixed(1));
+  if (days <= 90) return Number((64.5 + ((days - 75) / 15) * (75.0 - 64.5)).toFixed(1));
+  return Number((75.0 + ((days - 90) / 54) * (100.0 - 75.0)).toFixed(1));
+}

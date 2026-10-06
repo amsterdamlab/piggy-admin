@@ -503,7 +503,7 @@ export class PiggiesView {
               />
             </div>
 
-            <div class="form-group">
+            <div class="form-group" style="flex: 1.5;">
               <label class="form-label" for="edit-contract-url-input">URL del Contrato</label>
               <div style="display: flex; gap: 0.5rem; align-items: center;">
                 <input 
@@ -776,6 +776,20 @@ export class PiggiesView {
       onInit: (modalBody) => {
         const amountInput = modalBody.querySelector('#new-piggy-amount');
         setupCurrencyInput(amountInput);
+
+        const categorySelect = modalBody.querySelector('#new-piggy-category');
+        const weightInput = modalBody.querySelector('#new-piggy-weight');
+        const roiInput = modalBody.querySelector('#new-piggy-roi');
+
+        if (categorySelect) {
+          categorySelect.addEventListener('change', (e) => {
+            const def = getPiggyCategoryInfo(e.target.value);
+            if (def) {
+              if (weightInput) weightInput.value = def.defaultWeight;
+              if (roiInput) roiInput.value = def.extraRoiBonus;
+            }
+          });
+        }
       },
       footerButtons: [
         { text: 'Cancelar', class: 'btn-secondary', onClick: (e, m) => m.close() },

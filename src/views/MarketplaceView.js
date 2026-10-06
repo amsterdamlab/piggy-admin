@@ -10,7 +10,7 @@ import { toast } from '../components/Toast.js';
 import { icons } from '../icons.js';
 import { resolveImageUrl, getFallbackImageUrl, PIGGY_PRESET_IMAGES } from '../utils/imageUtils.js';
 import { formatCurrency, parseCurrency, setupCurrencyInput, setupDateTimePicker } from '../utils/formUtils.js';
-import { PIGGY_CATEGORIES, getPiggyCategoryInfo, renderCategorySelectOptions } from '../utils/piggyCategories.js';
+import { PIGGY_CATEGORIES, getPiggyCategoryInfo, renderCategorySelectOptions, calculateWeightForDays } from '../utils/piggyCategories.js';
 
 function formatDateTimeForInput(dateStr) {
   if (!dateStr) return '';
@@ -407,6 +407,16 @@ export class MarketplaceView {
               if (roiInput) roiInput.value = def.extraRoiBonus;
               if (daysInput) daysInput.value = def.daysAdvanced;
               if (weightInput) weightInput.value = def.defaultWeight;
+            }
+          });
+        }
+
+        // Sincronización automática de peso promedio según días de avance ingresados
+        if (daysInput && weightInput) {
+          daysInput.addEventListener('input', (e) => {
+            const days = parseInt(e.target.value, 10);
+            if (!isNaN(days) && !isEdit) {
+              weightInput.value = calculateWeightForDays(days);
             }
           });
         }
