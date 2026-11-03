@@ -200,7 +200,33 @@ export class PiggiesView {
           }
         },
         {
+          header: 'Fecha Compra',
+          sortValue: (p) => (p.purchaseDate ? new Date(p.purchaseDate).getTime() : 0),
+          render: (p) => {
+            if (!p.purchaseDate) {
+              return `<div style="font-size: 0.8rem; color: var(--text-muted);">Sin registro</div>`;
+            }
+            const d = new Date(p.purchaseDate);
+            if (isNaN(d.getTime())) {
+              return `<div style="font-size: 0.8rem; color: var(--text-muted);">N/A</div>`;
+            }
+            const dateFormatted = d.toLocaleDateString('es-CO', {
+              year: 'numeric',
+              month: 'short',
+              day: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit'
+            });
+            return `
+              <div>
+                <div style="font-size: 0.82rem; color: var(--text-primary); font-weight: 600;">${dateFormatted}</div>
+              </div>
+            `;
+          }
+        },
+        {
           header: 'Liquidación',
+          sortValue: (p) => (p.endDate ? new Date(p.endDate).getTime() : 0),
           render: (p) => {
             if (!p.endDate) {
               return `<div style="font-size: 0.8rem; color: var(--text-muted);">19 semanas</div>`;
@@ -503,7 +529,7 @@ export class PiggiesView {
               />
             </div>
 
-            <div class="form-group" style="flex: 1.5;">
+            <div class="form-group">
               <label class="form-label" for="edit-contract-url-input">URL del Contrato</label>
               <div style="display: flex; gap: 0.5rem; align-items: center;">
                 <input 
@@ -531,7 +557,7 @@ export class PiggiesView {
                   id="edit-end-date-input" 
                   class="form-input" 
                   value="${formattedEndDate}" 
-                  style="color-scheme: dark;" 
+                  style="color-scheme: dark;"
                 />
               </div>
               <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 3px;">
