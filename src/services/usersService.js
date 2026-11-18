@@ -25,6 +25,11 @@ export const usersService = {
       const referrals = refRes.data || [];
 
       if (profiles.length > 0) {
+        const profileMap = {};
+        profiles.forEach((p) => {
+          profileMap[p.id] = p;
+        });
+
         return profiles.map((u) => {
           const userPiggies = piggies.filter((p) => p.user_id === u.id);
           const activePiggies = userPiggies.filter((p) => p.status === 'engorde' || p.status === 'active');
@@ -53,10 +58,38 @@ export const usersService = {
           const pendingRecharges = userReqs.filter((r) => r.status === 'pending' && (r.request_type === 'recharge' || r.payment_method != null)).length;
           const pendingWithdrawals = userReqs.filter((r) => r.status === 'pending' && r.request_type === 'withdrawal').length;
 
-          // Referidos a cargo
-          const userReferrals = referrals.filter((r) => r.referrer_id === u.id);
+          // Referidos a cargo (Auditoría Embajadores)
+          const userReferrals = referrals
+            .filter((r) => r.referrer_id === u.id)
+            .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
           const profileReferrals = profiles.filter((p) => p.referred_by === u.id);
           const referralsCount = Math.max(userReferrals.length, profileReferrals.length);
+
+          const referralsList = userReferrals.map((r) => {
+            const refUser = profileMap[r.referred_id] || {};
+            const tierCode = r.commission_tier || 'tier_1';
+            const tierName = tierCode === 'tier_3' ? 'Oro' : (tierCode === 'tier_2' ? 'Plata' : 'Bronce');
+            return {
+              id: r.id,
+              referredId: r.referred_id,
+              referredName: refUser.full_name || `Participante (${String(r.referred_id || '').substring(0, 6)})`,
+              referredEmail: refUser.email || 'Sin email',
+              status: r.status || 'pending',
+              commissionAmount: Number(r.commission_amount || 0),
+              commissionTier: tierCode,
+              tierName,
+              completedAt: r.completed_at || null,
+              createdAt: r.created_at || null
+            };
+          });
+
+          const completedReferrals = referralsList.filter((r) => r.status === 'completed');
+          const pendingReferrals = referralsList.filter((r) => r.status !== 'completed');
+          const completedCount = completedReferrals.length;
+          const ambassadorTier = completedCount >= 16
+            ? 'Oro ($50.000)'
+            : (completedCount >= 6 ? 'Plata ($30.000)' : 'Bronce ($20.000)');
+          const totalCommissionPaid = completedReferrals.reduce((sum, r) => sum + r.commissionAmount, 0);
 
           return {
             id: u.id,
@@ -72,6 +105,13 @@ export const usersService = {
             bonosConsumo: Number(u.consumption_balance || 0),
             referralCode: u.referral_code || 'Sin código',
             referralsCount,
+            referralsList,
+            ambassadorSummary: {
+              completedCount,
+              pendingCount: pendingReferrals.length,
+              ambassadorTier,
+              totalCommissionPaid
+            },
             totalCompraPiggies,
             valorReferenciaMercado,
             margenComercialLabel: margenLabel,

@@ -83,7 +83,7 @@ export class UsersView {
           `
         },
         {
-          header: 'Inversión & Piggies',
+          header: 'Compras & Piggies',
           key: 'totalCompraPiggies',
           sortValue: (u) => u.totalCompraPiggies,
           render: (u) => `
@@ -241,8 +241,11 @@ export class UsersView {
     const cleanPhone = user.whatsapp ? user.whatsapp.replace(/[^0-9]/g, '') : '';
     const waLink = cleanPhone ? `https://wa.me/${cleanPhone.startsWith('57') ? cleanPhone : '57' + cleanPhone}` : null;
 
+    const amb = user.ambassadorSummary || { completedCount: 0, pendingCount: 0, ambassadorTier: 'Bronce ($20.000)', totalCommissionPaid: 0 };
+    const refsList = Array.isArray(user.referralsList) ? user.referralsList : [];
+
     modal.open({
-      title: `Detalle del Inversionista: ${user.fullName}`,
+      title: `Detalle del Participante: ${user.fullName}`,
       size: 'large',
       contentHtml: `
         <div style="display: flex; flex-direction: column; gap: 1.25rem;">
@@ -428,7 +431,59 @@ export class UsersView {
             `}
           </div>
 
-          <!-- 4. CUMPLIMIENTO NORMATIVO -->
+          <!-- 4. AUDITORÍA DE EMBAJADORES & REFERIDOS (SOLO LECTURA) -->
+          <div style="background: var(--bg-dark); padding: 1.15rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.75rem;">
+              <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; display: flex; align-items: center; gap: 6px;">
+                <span style="color: var(--accent-gold);">${icons.award || icons.tag}</span> Auditoría de Embajadores (${user.referralCode || 'Sin código'})
+              </div>
+              <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                <span class="badge badge-warning">Nivel: ${amb.ambassadorTier}</span>
+                <span class="badge badge-success">${amb.completedCount} Completados</span>
+                <span class="badge badge-neutral">${amb.pendingCount} Pendientes</span>
+                <span class="badge badge-info">Total Comisiones: $${amb.totalCommissionPaid.toLocaleString('es-CO')}</span>
+              </div>
+            </div>
+            ${refsList.length > 0 ? `
+              <div style="max-height: 180px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: var(--radius-sm);">
+                <table style="width: 100%; border-collapse: collapse; font-size: 0.78rem;">
+                  <thead>
+                    <tr style="background: rgba(255,255,255,0.03); text-align: left; color: var(--text-muted);">
+                      <th style="padding: 0.45rem 0.65rem;">Referido</th>
+                      <th style="padding: 0.45rem 0.65rem;">Estado</th>
+                      <th style="padding: 0.45rem 0.65rem;">Nivel</th>
+                      <th style="padding: 0.45rem 0.65rem;">Comisión</th>
+                      <th style="padding: 0.45rem 0.65rem;">Fecha</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${refsList.map((r) => `
+                      <tr style="border-top: 1px solid var(--border-color);">
+                        <td style="padding: 0.45rem 0.65rem;">
+                          <div style="font-weight: 700; color: var(--text-primary);">${r.referredName}</div>
+                          <div style="font-size: 0.7rem; color: var(--text-muted);">${r.referredEmail}</div>
+                        </td>
+                        <td style="padding: 0.45rem 0.65rem;">
+                          <span class="badge ${r.status === 'completed' ? 'badge-success' : 'badge-warning'}" style="font-size: 0.68rem;">
+                            ${r.status === 'completed' ? 'Completado' : 'Pendiente'}
+                          </span>
+                        </td>
+                        <td style="padding: 0.45rem 0.65rem; color: var(--text-secondary);">${r.tierName}</td>
+                        <td style="padding: 0.45rem 0.65rem; font-weight: 700; color: var(--accent-green);">$${r.commissionAmount.toLocaleString('es-CO')}</td>
+                        <td style="padding: 0.45rem 0.65rem; color: var(--text-muted); font-family: monospace;">
+                          ${r.completedAt ? new Date(r.completedAt).toLocaleDateString('es-CO') : (r.createdAt ? new Date(r.createdAt).toLocaleDateString('es-CO') : '-')}
+                        </td>
+                      </tr>
+                    `).join('')}
+                  </tbody>
+                </table>
+              </div>
+            ` : `
+              <div style="font-size: 0.8rem; color: var(--text-muted);">Este participante aún no registra referidos en la tabla de embajadores.</div>
+            `}
+          </div>
+
+          <!-- 5. CUMPLIMIENTO NORMATIVO -->
           <div style="background: var(--bg-dark); padding: 0.9rem 1.1rem; border-radius: var(--radius-md); border: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
             <div style="font-size: 0.8rem; color: var(--text-muted); display: flex; align-items: center; gap: 4px;">
               ${icons.shieldCheck} Cumplimiento Normativo (Colombia):

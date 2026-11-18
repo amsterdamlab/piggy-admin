@@ -41,7 +41,7 @@ export class ChartWrapper {
             labels: {
               color: '#CBD5E1',
               font: {
-                family: "'Plus Jakarta Sans', sans-serif",
+                family: "'Inter', sans-serif",
                 size: 12,
                 weight: '600'
               },
@@ -51,7 +51,7 @@ export class ChartWrapper {
             }
           },
           tooltip: {
-            backgroundColor: '#111622',
+            backgroundColor: '#2B0519',
             titleColor: '#F8FAFC',
             bodyColor: '#E2E8F0',
             borderColor: 'rgba(255, 255, 255, 0.12)',
@@ -80,7 +80,7 @@ export class ChartWrapper {
             ticks: {
               color: '#94A3B8',
               font: {
-                family: "'Plus Jakarta Sans', sans-serif",
+                family: "'Inter', sans-serif",
                 size: 11
               }
             }
@@ -96,7 +96,7 @@ export class ChartWrapper {
             ticks: {
               color: '#94A3B8',
               font: {
-                family: "'Plus Jakarta Sans', sans-serif",
+                family: "'Inter', sans-serif",
                 size: 11
               },
               callback: function (value) {
@@ -122,7 +122,7 @@ export class ChartWrapper {
               color: '#94A3B8',
               precision: 0,
               font: {
-                family: "'Plus Jakarta Sans', sans-serif",
+                family: "'Inter', sans-serif",
                 size: 11
               },
               callback: function (value) {

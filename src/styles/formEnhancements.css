@@ -1,7 +1,27 @@
 /* ==========================================================================
-   PIGGY MASTER ADMIN DASHBOARD - FORM ENHANCEMENTS CSS
-   Clean dark-mode controls, custom currency inputs, and datepicker styling
+   PIGGY MASTER ADMIN DASHBOARD - FORM ENHANCEMENTS & BRAND V5 TOKENS
    ========================================================================== */
+
+:root {
+  --bg-dark: #1A0410;
+  --bg-sidebar: #220414;
+  --bg-card: #2B0519;
+  --bg-card-hover: #3B0823;
+  --primary-pink: #E91E63;
+  --primary-pink-hover: #8A0B52;
+  --primary-pink-light: rgba(233, 30, 99, 0.16);
+  --accent-purple: #8A0B52;
+  --accent-purple-light: rgba(138, 11, 82, 0.22);
+  --shadow-glow-pink: 0 0 20px rgba(233, 30, 99, 0.3);
+}
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+h1, h2, h3, .card-title, .stat-value {
+  font-family: 'Outfit', 'Inter', system-ui, sans-serif;
+}
 
 /* Currency Input Styling */
 .currency-input-wrapper {
@@ -11,20 +31,22 @@
   width: 100%;
 }
 
-.currency-input-wrapper input {
-  padding-left: 1.8rem !important;
-  font-weight: 700;
-  color: var(--accent-green) !important;
+.currency-input-prefix {
+  position: absolute;
+  left: 0.85rem;
+  font-weight: 800;
+  color: var(--accent-gold);
+  font-size: 0.95rem;
+  pointer-events: none;
+  z-index: 2;
 }
 
-.currency-symbol-prefix {
-  position: absolute;
-  left: 0.75rem;
-  font-weight: 800;
-  color: var(--accent-green);
-  pointer-events: none;
-  font-size: 1rem;
-  z-index: 2;
+.currency-input-wrapper .form-input {
+  padding-left: 1.85rem !important;
+  font-weight: 700;
+  color: var(--accent-gold);
+  font-family: 'Outfit', 'Inter', system-ui, -apple-system, sans-serif;
+  letter-spacing: 0.02em;
 }
 
 /* Date Time Picker Enhanced Container */
