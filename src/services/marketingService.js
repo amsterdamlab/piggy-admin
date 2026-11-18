@@ -510,9 +510,9 @@ export const marketingService = {
       const payload = {
         user_id: item.user_id || null,
         piggy_id: item.piggy_id || null,
-        piggy_type: item.piggy_type || 'plus',
-        piggy_label: item.piggy_label || (item.piggy_type ? `Piggy ${item.piggy_type.charAt(0).toUpperCase() + item.piggy_type.slice(1)}` : 'Piggy Plus'),
-        extra_roi_bonus: item.extra_roi_bonus !== undefined ? Number(item.extra_roi_bonus) : 0.01,
+        piggy_type: item.piggy_type || 'dorado',
+        piggy_label: item.piggy_label || (item.piggy_type ? `Piggy ${item.piggy_type.charAt(0).toUpperCase() + item.piggy_type.slice(1)}` : 'Piggy Dorado'),
+        extra_roi_bonus: item.extra_roi_bonus !== undefined ? Number(item.extra_roi_bonus) : 0.02,
         price: Number(item.price || 0),
         is_completed: item.is_completed !== undefined ? Boolean(item.is_completed) : false,
         expires_at: item.expires_at ? new Date(item.expires_at).toISOString() : null,
