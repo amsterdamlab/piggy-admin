@@ -639,7 +639,7 @@ export class CycleMissionsTab {
     }).join('');
 
     const expiresVal = item?.expires_at ? new Date(item.expires_at).toISOString().slice(0, 16) : '';
-    const initialType = item?.piggy_type || 'plus';
+    const initialType = item?.piggy_type || 'dorado';
     const initialCatInfo = getPiggyCategoryInfo(initialType);
     const exclusiveOverride = exclusiveConfigs.find(c => c.piggy_type === initialType);
     const defaultInitialPrice = exclusiveOverride ? Number(exclusiveOverride.price) : initialCatInfo.defaultPrice;
