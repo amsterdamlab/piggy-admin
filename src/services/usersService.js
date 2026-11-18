@@ -4,6 +4,7 @@
    ========================================================================== */
 
 import { getClient } from './supabase.js';
+import { calculatePiggyBaseRoi, calculatePiggyProjectedReturn } from '../utils/piggyCategories.js';
 
 export const usersService = {
   async getUsers() {
@@ -27,19 +28,20 @@ export const usersService = {
         return profiles.map((u) => {
           const userPiggies = piggies.filter((p) => p.user_id === u.id);
           const activePiggies = userPiggies.filter((p) => p.status === 'engorde' || p.status === 'active');
-          const completedPiggies = userPiggies.filter((p) => p.status === 'completado' || p.status === 'liquidado');
+          const activeCount = activePiggies.length;
 
           const totalCompraPiggies = userPiggies.reduce((sum, p) => sum + Number(p.investment_amount || 1000000), 0);
 
-          const piggyCount = userPiggies.length;
-          const baseRoiPct = piggyCount >= 3 ? 0.10 : (piggyCount === 2 ? 0.09 : 0.08);
-
-          // Valor de Referencia en Mercado (Beneficio proyectado / ganado)
+          // Valor de Referencia en Mercado (Beneficio comercial proyectado o congelado según cohorte v1_legacy / v2_2026)
           const valorReferenciaMercado = userPiggies.reduce((sum, p) => {
-            const inv = Number(p.investment_amount || 1000000);
-            const extraRoi = Number(p.extra_roi_bonus || 0);
-            return sum + Math.round(inv * (baseRoiPct + extraRoi));
+            const calc = calculatePiggyProjectedReturn(p, Math.max(1, activeCount));
+            return sum + calc.benefitAmount;
           }, 0);
+
+          const hasActiveV2 = activePiggies.some((p) => (p.plan_version || 'v1_legacy') === 'v2_2026');
+          const hasAnyV2 = userPiggies.some((p) => p.plan_version === 'v2_2026');
+          const displayCohort = (hasActiveV2 || hasAnyV2 || userPiggies.length === 0) ? 'v2_2026' : 'v1_legacy';
+          const baseRoiPct = calculatePiggyBaseRoi(displayCohort, Math.max(1, activeCount));
 
           const avgExtraRoi = userPiggies.length > 0
             ? userPiggies.reduce((sum, p) => sum + Number(p.extra_roi_bonus || 0), 0) / userPiggies.length
