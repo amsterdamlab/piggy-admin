@@ -195,7 +195,7 @@ export class CycleMissionsTab {
             <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem;">
               <div>
                 <div style="font-size: 0.72rem; text-transform: uppercase; color: var(--accent-green); font-weight: 700; letter-spacing: 0.05em; margin-bottom: 0.25rem;">
-                  🏆 Volumen Total Adquirido
+                  Volumen Total Adquirido
                 </div>
                 <div style="font-size: 1.2rem; font-weight: 800; color: var(--accent-green);">
                   $${totalAcceptedVolume.toLocaleString('es-CO')}
@@ -210,10 +210,10 @@ export class CycleMissionsTab {
             </div>
           </div>
 
-          <!-- Bloque 2 (Centro): Top Inversionista en Ofertas Post-Ciclo -->
+          <!-- Bloque 2 (Centro): Top Participante en Ofertas Post-Ciclo -->
           <div style="background: rgba(255, 75, 139, 0.08); border: 1px solid rgba(255, 75, 139, 0.25); border-radius: var(--radius-md); padding: 0.85rem 1rem;">
             <div style="font-size: 0.72rem; text-transform: uppercase; color: var(--primary-pink); font-weight: 700; letter-spacing: 0.05em; margin-bottom: 0.25rem;">
-              🔥 Top Inversionista Post-Ciclo
+              Top Participante Post-Ciclo
             </div>
             <div style="font-size: 0.95rem; font-weight: 800; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${topBuyerName}">
               ${topBuyerName}
@@ -228,7 +228,7 @@ export class CycleMissionsTab {
             <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem;">
               <div>
                 <div style="font-size: 0.72rem; text-transform: uppercase; color: var(--accent-blue); font-weight: 700; letter-spacing: 0.05em; margin-bottom: 0.25rem;">
-                  ⏳ Usuarios por Completar Ciclo
+                  Usuarios por Completar Ciclo
                 </div>
                 <div style="font-size: 1.2rem; font-weight: 800; color: var(--accent-blue);">
                   ${maturingWithin15Days.length} <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 500;">en ≤ 15 días</span>
@@ -588,7 +588,7 @@ export class CycleMissionsTab {
             
             <div style="background: var(--bg-dark); padding: 1.1rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
               <div style="font-size: 0.72rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; display: flex; align-items: center; gap: 4px;">
-                <span style="color: var(--accent-green);">${icons.wallet || '💳'}</span> Saldo Disponible en Billetera
+                <span style="color: var(--accent-green);">${icons.wallet}</span> Saldo Disponible en Cuenta
               </div>
               <div style="font-size: 1.35rem; font-weight: 800; color: var(--accent-green); margin-top: 0.3rem;">
                 $${walletBalance.toLocaleString('es-CO')}
@@ -600,7 +600,7 @@ export class CycleMissionsTab {
 
             <div style="background: var(--bg-dark); padding: 1.1rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
               <div style="font-size: 0.72rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; display: flex; align-items: center; gap: 4px;">
-                <span style="color: var(--primary-pink);">${icons.pig || '🐷'}</span> Valor de Compra Piggys
+                <span style="color: var(--primary-pink);">${icons.pig}</span> Valor de Compra Piggys
               </div>
               <div style="font-size: 1.35rem; font-weight: 800; color: var(--primary-pink); margin-top: 0.3rem;">
                 $${totalCompraPiggies.toLocaleString('es-CO')}
