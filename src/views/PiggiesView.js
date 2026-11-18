@@ -16,7 +16,8 @@ import {
   PIGGY_CATEGORIES, 
   getPiggyCategoryInfo, 
   getPiggyCategoryBadge, 
-  renderCategorySelectOptions 
+  renderCategorySelectOptions,
+  calculatePiggyProjectedReturn
 } from '../utils/piggyCategories.js';
 
 export class PiggiesView {
@@ -45,6 +46,14 @@ export class PiggiesView {
     const engordeCount = this.piggies.filter(p => p.status === 'engorde').length;
     const completadosCount = this.piggies.filter(p => p.status === 'completado').length;
 
+    // Contar activos en engorde por usuario para aplicar la tabla escalonada por cohorte
+    const activeCountByUser = {};
+    this.piggies.forEach(p => {
+      if (p.status === 'engorde') {
+        activeCountByUser[p.userId] = (activeCountByUser[p.userId] || 0) + 1;
+      }
+    });
+
     // Categorías más vendidas/compradas
     const catCounts = {};
     let totalCapital = 0;
@@ -56,10 +65,8 @@ export class PiggiesView {
 
       const cap = Number(p.investmentAmount || 1000000);
       totalCapital += cap;
-      const baseRoi = 0.10; // 10% promedio base
-      const extraRoi = Number(p.extraRoiBonus || 0);
-      const totalRoiRate = baseRoi + extraRoi;
-      totalExpectedPayout += cap * (1 + totalRoiRate);
+      const calc = calculatePiggyProjectedReturn(p, activeCountByUser[p.userId] || 1);
+      totalExpectedPayout += calc.totalPayout;
     });
 
     const sortedCats = Object.entries(catCounts).sort((a, b) => b[1] - a[1]);
@@ -116,7 +123,8 @@ export class PiggiesView {
       formattedCapital,
       formattedPayout,
       avgRoiPct,
-      urgentLiquidations
+      urgentLiquidations,
+      activeCountByUser
     };
   }
 
@@ -172,9 +180,11 @@ export class PiggiesView {
           header: 'CATEGORÍA',
           render: (p) => {
             const catInfo = getPiggyCategoryInfo(p.category);
+            const cohortTag = p.planVersion === 'v2_2026' ? `V2 · ${p.cycleDays || 122}d` : `V1 · ${p.cycleDays || 144}d`;
             return `
               <div>
                 ${getPiggyCategoryBadge(p.category, catInfo.label)}
+                <div style="font-size: 0.68rem; color: var(--text-muted); font-weight: 600; margin-top: 2px;">${cohortTag}</div>
               </div>
             `;
           }
@@ -185,7 +195,7 @@ export class PiggiesView {
             <div>
               <div style="font-weight: 700; color: var(--text-primary);">$${p.investmentAmount.toLocaleString('es-CO')}</div>
               <div style="font-size: 0.75rem; color: var(--accent-green); font-weight: 700;">
-                ${p.extraRoiBonus > 0 ? `+${(p.extraRoiBonus * 100).toFixed(1)}% Extra` : 'ROI Estándar'}
+                ${p.extraRoiBonus > 0 ? `+${(p.extraRoiBonus * 100).toFixed(0)}% Extra` : 'Beneficio Base'}
               </div>
             </div>
           `
@@ -329,7 +339,7 @@ export class PiggiesView {
                 </span>
               </div>
               <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">
-                Monitoreo preventivo para planificar y asegurar los pagos a inversionistas antes de su solicitud.
+                Monitoreo preventivo para planificar y asegurar los pagos a participantes antes de su solicitud.
               </div>
             </div>
             <div style="display: flex; align-items: center; gap: 0.75rem; font-size: 0.75rem;">
@@ -356,7 +366,7 @@ export class PiggiesView {
                   const dateStr = new Date(piggy.endDate).toLocaleDateString('es-CO', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
                   const resolvedImg = resolveImageUrl(piggy.imageUrl || 'assets/piggies/stage3/et3-1.jpg');
                   const fallbackImg = getFallbackImageUrl(piggy.imageUrl || 'assets/piggies/stage3/et3-1.jpg');
-                  const payout = piggy.investmentAmount * (1 + 0.10 + (piggy.extraRoiBonus || 0));
+                  const payout = calculatePiggyProjectedReturn(piggy, metrics.activeCountByUser[piggy.userId] || 1).totalPayout;
 
                   return `
                     <div style="background: ${bgCol}; border: 1px solid ${borderCol}; border-radius: var(--radius-md); padding: 0.95rem; display: flex; flex-direction: column; justify-content: space-between; gap: 0.75rem; transition: transform 0.2s ease;">
@@ -368,7 +378,7 @@ export class PiggiesView {
                           <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; margin-bottom: 2px;">
                             <div style="font-weight: 800; color: var(--text-primary); font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${piggy.name}</div>
                             <span style="background: ${badgeBg}; color: ${badgeCol}; border: 1px solid ${borderCol}; font-weight: 800; font-size: 0.72rem; padding: 2px 7px; border-radius: var(--radius-full); white-space: nowrap;">
-                              ${isCritical ? '🚨' : '⏳'} ${piggy.daysRemaining === 0 ? '¡Vence Hoy!' : `Vence en: ${piggy.daysRemaining}d`}
+                              ${piggy.daysRemaining === 0 ? 'Vence Hoy' : `Vence en: ${piggy.daysRemaining}d`}
                             </span>
                           </div>
                           <div style="font-size: 0.75rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.35rem;">
@@ -380,7 +390,7 @@ export class PiggiesView {
 
                       <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(0, 0, 0, 0.25); padding: 0.5rem 0.75rem; border-radius: var(--radius-sm); font-size: 0.75rem;">
                         <div>
-                          <div style="color: var(--text-muted); font-size: 0.7rem;">Inversionista:</div>
+                          <div style="color: var(--text-muted); font-size: 0.7rem;">Participante:</div>
                           <div style="font-weight: 700; color: var(--text-primary);">${piggy.userName}</div>
                         </div>
                         <div style="text-align: right;">
@@ -773,7 +783,7 @@ export class PiggiesView {
 
           <div class="form-row">
             <div class="form-group">
-              <label class="form-label" for="new-piggy-amount">Inversión</label>
+              <label class="form-label" for="new-piggy-amount">Compra Productiva</label>
               <div class="currency-input-wrapper">
                 <span class="currency-input-prefix">$</span>
                 <input type="text" id="new-piggy-amount" class="form-input" value="${formatCurrency(1000000)}" placeholder="1.000.000" required />
@@ -837,9 +847,12 @@ export class PiggiesView {
               return;
             }
 
+            const catDef = getPiggyCategoryInfo(category);
             const res = await piggiesService.createPiggyForUser(userId, {
               name,
               category,
+              cycleDays: catDef?.cycleDays || 122,
+              finalWeight: catDef?.defaultFinalWeight || 82.5,
               contractCode,
               investmentAmount: Number(amount || 0),
               currentWeight: Number(weight),
