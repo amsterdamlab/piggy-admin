@@ -67,7 +67,7 @@ export class ExclusiveConfigTab {
                 ${row.is_enabled ? 'Habilitado' : 'Deshabilitado'}
               </span>
               <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 3px; font-family: monospace;">
-                ⏳ ${row.duration_hours || 48} horas de vigencia
+                ${row.duration_hours || 48} horas de vigencia
               </div>
             </div>
           `
@@ -150,7 +150,7 @@ export class ExclusiveConfigTab {
 
             <div class="form-group">
               <label class="form-label" for="exclusive-type">Identificador Tipo</label>
-              <input type="text" id="exclusive-type" class="form-input" placeholder="Ej: dorado, plus, premium" value="${item?.piggy_type || ''}" required />
+              <input type="text" id="exclusive-type" class="form-input" placeholder="Ej: dorado, premium" value="${item?.piggy_type || ''}" required />
             </div>
           </div>
 
@@ -159,12 +159,12 @@ export class ExclusiveConfigTab {
               <label class="form-label" for="exclusive-price">Precio de Venta</label>
               <div class="currency-input-wrapper">
                 <span class="currency-input-prefix">$</span>
-                <input type="text" id="exclusive-price" class="form-input" placeholder="1.300.000" value="${formatCurrency(item?.price || 1300000)}" required />
+                <input type="text" id="exclusive-price" class="form-input" placeholder="1.000.000" value="${formatCurrency(item?.price || 1000000)}" required />
               </div>
             </div>
 
             <div class="form-group">
-              <label class="form-label" for="exclusive-roi">Bono ROI Extra (%)</label>
+              <label class="form-label" for="exclusive-roi">Beneficio Extra (%)</label>
               <input type="number" id="exclusive-roi" class="form-input" placeholder="2" value="${bonusPercent}" step="0.5" min="0" required />
             </div>
           </div>

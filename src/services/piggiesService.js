@@ -1,9 +1,10 @@
 /* ==========================================================================
    PIGGY MASTER ADMIN DASHBOARD - PIGGIES SERVICE
-   Direct sync with Supabase `piggies` and `profiles` tables
+   Direct sync with Supabase `piggies` & real cycle telemetry
    ========================================================================== */
 
 import { getClient } from './supabase.js';
+import { getPiggyCategoryInfo } from '../utils/piggyCategories.js';
 
 export const piggiesService = {
   async getPiggies(statusFilter = 'all') {
@@ -11,39 +12,40 @@ export const piggiesService = {
     if (!client) return [];
 
     try {
-      // 1. Obtener todos los piggies
-      const { data: piggies, error: piggiesError } = await client
-        .from('piggies')
-        .select('*')
-        .order('created_at', { ascending: false });
+      const [pigRes, profRes] = await Promise.all([
+        client.from('piggies').select('*').order('created_at', { ascending: false }),
+        client.from('profiles').select('id, full_name, whatsapp, email')
+      ]);
 
-      if (piggiesError) throw piggiesError;
+      const piggies = pigRes.data || [];
+      const profiles = profRes.data || [];
+      const profileMap = {};
+      profiles.forEach((p) => {
+        profileMap[p.id] = p;
+      });
 
-      // 2. Obtener perfiles de usuarios para mapear nombres y teléfonos
-      const { data: profiles, error: profilesError } = await client
-        .from('profiles')
-        .select('id, full_name, email, whatsapp');
-
-      if (!profilesError && piggies) {
-        const profileMap = new Map();
-        (profiles || []).forEach((p) => {
-          profileMap.set(p.id, p);
-        });
-
+      if (piggies.length > 0) {
         let mapped = piggies.map((p) => {
-          const owner = profileMap.get(p.user_id) || {};
+          const owner = profileMap[p.user_id] || {};
+          const planVersion = p.plan_version || 'v1_legacy';
+          const catInfo = getPiggyCategoryInfo(p.category || 'estandar');
+          const cycleDays = Number(p.cycle_days || (planVersion === 'v2_2026' ? catInfo.cycleDays : 144));
           return {
             id: p.id,
             userId: p.user_id,
-            userName: owner.full_name || p.full_name || `Inversionista (${p.user_id ? p.user_id.substring(0, 6) : 'N/A'})`,
+            userName: owner.full_name || p.full_name || `Participante (${p.user_id ? p.user_id.substring(0, 6) : 'N/A'})`,
             userPhone: owner.whatsapp || 'N/A',
             userEmail: owner.email || 'N/A',
             name: p.name || p.piggy_name || 'Piggy #' + String(p.id).substring(0, 5),
             status: p.status || 'engorde',
             investmentAmount: Number(p.investment_amount || p.price || 1000000),
             extraRoiBonus: Number(p.extra_roi_bonus || p.extra_roi || 0),
+            planVersion,
+            cycleDays,
+            lockedBaseRoi: p.locked_base_roi !== null && p.locked_base_roi !== undefined ? Number(p.locked_base_roi) : null,
+            finalReturnAmount: p.final_return_amount !== null && p.final_return_amount !== undefined ? Number(p.final_return_amount) : null,
             currentWeight: Number(p.current_weight || 6.0),
-            finalWeight: p.final_weight !== undefined && p.final_weight !== null ? Number(p.final_weight) : (p.target_weight !== undefined && p.target_weight !== null ? Number(p.target_weight) : 100.0),
+            finalWeight: p.final_weight !== undefined && p.final_weight !== null ? Number(p.final_weight) : (p.target_weight !== undefined && p.target_weight !== null ? Number(p.target_weight) : catInfo.defaultFinalWeight || 85.0),
             purchaseDate: p.purchase_date || p.created_at,
             endDate: p.end_date,
             contractCode: p.contract_code || '',
@@ -103,16 +105,26 @@ export const piggiesService = {
     const client = getClient();
     if (client) {
       try {
+        const catInfo = getPiggyCategoryInfo(data.category || 'estandar');
+        const cycleDays = Number(data.cycleDays || catInfo.cycleDays || 122);
+        const daysAdvanced = Number(catInfo.daysAdvanced || 0);
+        const daysRemaining = Math.max(1, cycleDays - daysAdvanced);
+
         const payload = {
           user_id: userId,
           name: data.name || 'Piggy Especial',
+          category: data.category || 'estandar',
+          plan_version: 'v2_2026',
+          cycle_days: cycleDays,
           investment_amount: Number(data.investmentAmount || 1000000),
-          extra_roi_bonus: Number(data.extraRoiBonus || 0),
-          current_weight: Number(data.currentWeight || 6.0),
+          extra_roi_bonus: data.extraRoiBonus !== undefined ? Number(data.extraRoiBonus) : Number(catInfo.extraRoiBonus || 0),
+          current_weight: Number(data.currentWeight || catInfo.defaultWeight || 6.0),
+          final_weight: Number(data.finalWeight || catInfo.defaultFinalWeight || 82.5),
+          contract_code: data.contractCode || null,
           status: data.status || 'engorde',
           image_url: data.imageUrl || '',
           purchase_date: new Date().toISOString(),
-          end_date: new Date(Date.now() + (144 * 24 * 3600000)).toISOString()
+          end_date: new Date(Date.now() + (daysRemaining * 24 * 3600000)).toISOString()
         };
 
         const { data: created, error } = await client
@@ -134,11 +146,7 @@ export const piggiesService = {
     const client = getClient();
     if (client) {
       try {
-        const { error } = await client
-          .from('piggies')
-          .delete()
-          .eq('id', piggyId);
-
+        const { error } = await client.from('piggies').delete().eq('id', piggyId);
         if (error) throw error;
         return { success: true };
       } catch (err) {
