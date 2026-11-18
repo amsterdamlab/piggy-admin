@@ -79,9 +79,10 @@ export class MarketplaceView {
             const fixedDateFormatted = item.fixedEndDate 
               ? new Date(item.fixedEndDate).toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' }) 
               : null;
+            const cycleDays = item.cycleDays || (['dorado', 'gold', 'premium'].includes((item.category || '').toLowerCase()) ? 152 : 122);
             const cycleText = item.fixedEndDate
               ? `Fecha fija: ${fixedDateFormatted} · ${item.currentWeight || 6} kg`
-              : (isAdvanced ? `${item.daysAdvanced}d avance · ${item.currentWeight || 6} kg` : `144 días ciclo · ${item.currentWeight || 6} kg`);
+              : (isAdvanced ? `${item.daysAdvanced}d avance (${cycleDays}d ciclo) · ${item.currentWeight || 6} kg` : `${cycleDays} días ciclo · ${item.currentWeight || 6} kg`);
             return `
               <div>
                 <span class="badge ${badgeClass}">
@@ -274,8 +275,8 @@ export class MarketplaceView {
           <div class="form-row">
             <div class="form-group">
               <label class="form-label" for="mk-days-advanced">Días de Avance (Ahorro)</label>
-              <input type="number" id="mk-days-advanced" class="form-input" value="${initial.daysAdvanced || 0}" min="0" max="144" step="1" required />
-              <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 2px;">Días ahorrados del ciclo de 144 días</div>
+              <input type="number" id="mk-days-advanced" class="form-input" value="${initial.daysAdvanced || 0}" min="0" max="30" step="1" required />
+              <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 2px;">Máximo 30 días sin fecha fija (ciclo V2 de 122 días)</div>
             </div>
 
             <div class="form-group">
@@ -298,7 +299,7 @@ export class MarketplaceView {
               />
             </div>
             <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 2px;">
-              Opcional. Permite definir una fecha fija exacta de finalización para campañas puntuales (anula el cálculo de 144 días).
+              Opcional. Permite definir una fecha fija exacta de finalización para campañas puntuales (anula el cálculo automático de 122/152 días).
             </div>
           </div>
 
@@ -416,7 +417,7 @@ export class MarketplaceView {
           daysInput.addEventListener('input', (e) => {
             const days = parseInt(e.target.value, 10);
             if (!isNaN(days) && !isEdit) {
-              weightInput.value = calculateWeightForDays(days);
+              weightInput.value = calculateWeightForDays(days, categorySelect?.value || 'estandar');
             }
           });
         }

@@ -4,6 +4,7 @@
    ========================================================================== */
 
 import { getClient } from './supabase.js';
+import { getPiggyCategoryInfo } from '../utils/piggyCategories.js';
 
 const STORAGE_KEY_OVERRIDES = 'piggy_marketplace_overrides';
 const STORAGE_KEY_CUSTOM = 'piggy_marketplace_custom_items';
@@ -93,11 +94,13 @@ export const marketplaceService = {
 
         if (!error && data && data.length > 0) {
           itemsFromDb = data.map((item) => {
+            const catInfo = getPiggyCategoryInfo(item.category || 'estandar');
+            const cycleDays = Number(item.cycle_days || catInfo.cycleDays || 122);
             const extraRoi = Number(item.extra_roi || 0);
             const daysAdvanced = Number(item.days_advanced || 0);
             const daysRemaining = Number(item.days_remaining !== undefined && item.days_remaining !== null 
               ? item.days_remaining 
-              : (144 - daysAdvanced));
+              : Math.max(1, cycleDays - daysAdvanced));
             const stock = Number(item.stock !== undefined && item.stock !== null ? item.stock : 0);
 
             return {
@@ -109,9 +112,10 @@ export const marketplaceService = {
               stock,
               imageUrl: item.image_url || '',
               badge: extraRoi > 0 
-                ? `+${(extraRoi * 100).toFixed(0)}% ROI` 
+                ? `+${(extraRoi * 100).toFixed(0)}% Extra` 
                 : (daysAdvanced > 0 ? `+${daysAdvanced}d Ahorro` : 'Estándar'),
               category: item.category || 'estandar',
+              cycleDays,
               daysAdvanced,
               daysRemaining,
               currentWeight: Number(item.current_weight || 6.0),
@@ -135,8 +139,10 @@ export const marketplaceService = {
 
   async createItem(item) {
     const client = getClient();
+    const catInfo = getPiggyCategoryInfo(item.category || 'estandar');
+    const cycleDays = Number(item.cycleDays || catInfo.cycleDays || 122);
     const daysAdvanced = Number(item.daysAdvanced || 0);
-    const daysRemaining = Number(item.daysRemaining || (144 - daysAdvanced));
+    const daysRemaining = Number(item.daysRemaining || Math.max(1, cycleDays - daysAdvanced));
     const currentMonth = Number(
       item.currentMonth || (daysAdvanced >= 120 ? 5 : daysAdvanced >= 90 ? 4 : daysAdvanced >= 60 ? 3 : daysAdvanced >= 30 ? 2 : 1)
     );
@@ -150,6 +156,7 @@ export const marketplaceService = {
       stock: Number(item.stock || 10),
       image_url: item.imageUrl || '',
       category: item.category || 'estandar',
+      cycle_days: cycleDays,
       days_advanced: daysAdvanced,
       days_remaining: daysRemaining,
       current_weight: Number(item.currentWeight || 6.0),
@@ -198,11 +205,17 @@ export const marketplaceService = {
     if (item.extraRoi !== undefined) payload.extra_roi = Number(item.extraRoi);
     if (item.stock !== undefined) payload.stock = Number(item.stock);
     if (item.imageUrl !== undefined) payload.image_url = item.imageUrl;
-    if (item.category !== undefined) payload.category = item.category;
+    if (item.category !== undefined) {
+      payload.category = item.category;
+      const catInfo = getPiggyCategoryInfo(item.category);
+      payload.cycle_days = Number(item.cycleDays || catInfo.cycleDays || 122);
+    }
     if (item.daysAdvanced !== undefined) {
+      const catInfo = getPiggyCategoryInfo(item.category || 'estandar');
+      const cycleDays = Number(payload.cycle_days || item.cycleDays || catInfo.cycleDays || 122);
       const adv = Number(item.daysAdvanced);
       payload.days_advanced = adv;
-      payload.days_remaining = Number(item.daysRemaining || (144 - adv));
+      payload.days_remaining = Number(item.daysRemaining || Math.max(1, cycleDays - adv));
       payload.current_month = adv >= 120 ? 5 : adv >= 90 ? 4 : adv >= 60 ? 3 : adv >= 30 ? 2 : 1;
     }
     if (item.currentWeight !== undefined) payload.current_weight = Number(item.currentWeight);
