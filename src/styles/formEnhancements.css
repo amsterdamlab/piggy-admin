@@ -20,6 +20,33 @@
   --shadow-glow-pink: 0 0 20px rgba(233, 30, 99, 0.3);
 }
 
+/* Sidebar, Header & Subsections Color Overrides */
+.nav-category {
+  color: #FFFFFF;
+}
+
+.nav-item {
+  color: #FFF0F5;
+}
+
+.nav-item:hover {
+  color: #FFFFFF;
+}
+
+.header-title,
+.header-page-title {
+  color: #FFFFFF;
+}
+
+.header-subtitle,
+.header-page-subtitle {
+  color: #FFF0F5;
+}
+
+.tab-btn {
+  color: #FFFFFF;
+}
+
 /* Currency Input Styling */
 .currency-input-wrapper {
   position: relative;
