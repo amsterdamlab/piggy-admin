@@ -51,10 +51,10 @@ export class ChartWrapper {
             }
           },
           tooltip: {
-            backgroundColor: '#8A0B52',
+            backgroundColor: '#2B0519',
             titleColor: '#F8FAFC',
             bodyColor: '#E2E8F0',
-            borderColor: 'rgba(255, 255, 255, 0.12)',
+            borderColor: 'rgba(255, 133, 179, 0.25)',
             borderWidth: 1,
             padding: 12,
             boxPadding: 6,

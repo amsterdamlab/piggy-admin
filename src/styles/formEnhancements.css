@@ -3,24 +3,21 @@
    ========================================================================== */
 
 :root {
-  --bg-dark: #8A0B52;
-  --bg-sidebar: #730844;
-  --bg-card: #7A0948;
-  --bg-card-hover: #9B125F;
+  --bg-dark: #2B0519;
+  --bg-sidebar: #1E0311;
+  --bg-card: #4B062C;
+  --bg-card-hover: #5E0738;
+  --border-color: rgba(255, 133, 179, 0.18);
+  --border-color-light: rgba(255, 133, 179, 0.30);
+  --text-primary: #FFFFFF;
+  --text-secondary: #FF85B3;
+  --text-muted: rgba(255, 240, 245, 0.65);
   --primary-pink: #E91E63;
   --primary-pink-hover: #FF4B8B;
   --primary-pink-light: rgba(233, 30, 99, 0.22);
   --accent-purple: #8A0B52;
   --accent-purple-light: rgba(138, 11, 82, 0.28);
   --shadow-glow-pink: 0 0 20px rgba(233, 30, 99, 0.3);
-}
-
-body {
-  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-}
-
-h1, h2, h3, .card-title, .stat-value {
-  font-family: 'Outfit', 'Inter', system-ui, sans-serif;
 }
 
 /* Currency Input Styling */
