@@ -3,15 +3,15 @@
    ========================================================================== */
 
 :root {
-  --bg-dark: #1A0410;
-  --bg-sidebar: #220414;
-  --bg-card: #2B0519;
-  --bg-card-hover: #3B0823;
+  --bg-dark: #8A0B52;
+  --bg-sidebar: #730844;
+  --bg-card: #7A0948;
+  --bg-card-hover: #9B125F;
   --primary-pink: #E91E63;
-  --primary-pink-hover: #8A0B52;
-  --primary-pink-light: rgba(233, 30, 99, 0.16);
+  --primary-pink-hover: #FF4B8B;
+  --primary-pink-light: rgba(233, 30, 99, 0.22);
   --accent-purple: #8A0B52;
-  --accent-purple-light: rgba(138, 11, 82, 0.22);
+  --accent-purple-light: rgba(138, 11, 82, 0.28);
   --shadow-glow-pink: 0 0 20px rgba(233, 30, 99, 0.3);
 }
 

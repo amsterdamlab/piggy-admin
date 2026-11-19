@@ -51,7 +51,7 @@ export class ChartWrapper {
             }
           },
           tooltip: {
-            backgroundColor: '#2B0519',
+            backgroundColor: '#8A0B52',
             titleColor: '#F8FAFC',
             bodyColor: '#E2E8F0',
             borderColor: 'rgba(255, 255, 255, 0.12)',
