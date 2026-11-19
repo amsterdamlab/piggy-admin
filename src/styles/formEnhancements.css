@@ -22,7 +22,7 @@
 
 /* Sidebar, Header & Subsections Color Overrides */
 .nav-category {
-  color: #FFFFFF;
+  color: rgba(255, 240, 245, 0.65);
 }
 
 .nav-item {
